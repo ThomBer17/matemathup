@@ -14,16 +14,309 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      ai_generation_log: {
+        Row: {
+          created_at: string
+          difficulty: number | null
+          error_message: string | null
+          generated_exercise: Json | null
+          id: string
+          model: string | null
+          status: string
+          topic_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          difficulty?: number | null
+          error_message?: string | null
+          generated_exercise?: Json | null
+          id?: string
+          model?: string | null
+          status?: string
+          topic_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          difficulty?: number | null
+          error_message?: string | null
+          generated_exercise?: Json | null
+          id?: string
+          model?: string | null
+          status?: string
+          topic_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_generation_log_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exercise_attempts: {
+        Row: {
+          created_at: string
+          exercise_id: string
+          hint_used: boolean
+          id: string
+          is_correct: boolean
+          time_spent_sec: number | null
+          user_answer: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          exercise_id: string
+          hint_used?: boolean
+          id?: string
+          is_correct: boolean
+          time_spent_sec?: number | null
+          user_answer?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          exercise_id?: string
+          hint_used?: boolean
+          id?: string
+          is_correct?: boolean
+          time_spent_sec?: number | null
+          user_answer?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_attempts_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exercises: {
+        Row: {
+          ai_generated: boolean
+          approved: boolean
+          correct_answer: string
+          created_at: string
+          created_by: string | null
+          difficulty: number
+          explanation: string | null
+          hints: Json | null
+          id: string
+          level: string | null
+          options: Json | null
+          statement: string
+          tags: string[] | null
+          topic_id: string
+          type: Database["public"]["Enums"]["exercise_type"]
+        }
+        Insert: {
+          ai_generated?: boolean
+          approved?: boolean
+          correct_answer: string
+          created_at?: string
+          created_by?: string | null
+          difficulty?: number
+          explanation?: string | null
+          hints?: Json | null
+          id?: string
+          level?: string | null
+          options?: Json | null
+          statement: string
+          tags?: string[] | null
+          topic_id: string
+          type?: Database["public"]["Enums"]["exercise_type"]
+        }
+        Update: {
+          ai_generated?: boolean
+          approved?: boolean
+          correct_answer?: string
+          created_at?: string
+          created_by?: string | null
+          difficulty?: number
+          explanation?: string | null
+          hints?: Json | null
+          id?: string
+          level?: string | null
+          options?: Json | null
+          statement?: string
+          tags?: string[] | null
+          topic_id?: string
+          type?: Database["public"]["Enums"]["exercise_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercises_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          current_streak: number
+          full_name: string | null
+          id: string
+          last_activity_date: string | null
+          level: number
+          longest_streak: number
+          updated_at: string
+          username: string | null
+          xp: number
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          current_streak?: number
+          full_name?: string | null
+          id: string
+          last_activity_date?: string | null
+          level?: number
+          longest_streak?: number
+          updated_at?: string
+          username?: string | null
+          xp?: number
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          current_streak?: number
+          full_name?: string | null
+          id?: string
+          last_activity_date?: string | null
+          level?: number
+          longest_streak?: number
+          updated_at?: string
+          username?: string | null
+          xp?: number
+        }
+        Relationships: []
+      }
+      topics: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          name: string
+          order_index: number
+          slug: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          order_index?: number
+          slug: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          order_index?: number
+          slug?: string
+        }
+        Relationships: []
+      }
+      user_progress: {
+        Row: {
+          correct_count: number
+          current_difficulty: number
+          exercises_completed: number
+          id: string
+          mastery_pct: number
+          recent_results: Json
+          topic_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          correct_count?: number
+          current_difficulty?: number
+          exercises_completed?: number
+          id?: string
+          mastery_pct?: number
+          recent_results?: Json
+          topic_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          correct_count?: number
+          current_difficulty?: number
+          exercises_completed?: number
+          id?: string
+          mastery_pct?: number
+          recent_results?: Json
+          topic_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_progress_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "student" | "teacher" | "admin"
+      exercise_type: "multiple_choice" | "open" | "true_false"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +443,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["student", "teacher", "admin"],
+      exercise_type: ["multiple_choice", "open", "true_false"],
+    },
   },
 } as const
