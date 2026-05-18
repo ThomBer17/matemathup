@@ -100,7 +100,7 @@ Variá el tipo. Verificá que la respuesta sea matemáticamente correcta.`;
       difficulty,
       model: "google/gemini-3-flash-preview",
       status: "success",
-      generated_exercise: parsed as unknown as Record<string, unknown>,
+      generated_exercise: JSON.parse(JSON.stringify(parsed)),
     });
 
     return {
