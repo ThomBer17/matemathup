@@ -243,6 +243,34 @@ function TopicPage() {
                 {exercise.statement}
               </h2>
 
+              {(() => {
+                const aiExprs = exercise.graph_expressions ?? [];
+                const detected = aiExprs.length ? [] : detectFunctions(exercise.statement);
+                const exprs = aiExprs.length
+                  ? aiExprs.map((latex, i) => ({ id: `ai${i}`, latex, color: i === 0 ? "#0EA5E9" : "#8B5CF6" }))
+                  : detected.map((d, i) => ({ id: `d${i}`, latex: d.latex, color: "#0EA5E9", label: d.label }));
+                if (!exprs.length) return null;
+                return (
+                  <div className="mt-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowGraph((s) => !s)}
+                      className="gap-2"
+                    >
+                      <LineChart className="h-4 w-4" />
+                      {showGraph ? "Ocultar gráfica" : "Ver gráfica"}
+                    </Button>
+                    {showGraph && (
+                      <div className="mt-3">
+                        <GraphCard expressions={exprs} height={320} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+
               <div className="mt-6 space-y-2">
                 {exercise.type === "multiple_choice" && exercise.options?.map((opt) => {
                   const isPicked = answer === opt;
