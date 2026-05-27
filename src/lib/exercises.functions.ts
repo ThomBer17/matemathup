@@ -117,6 +117,7 @@ Variá el tipo. Verificá que la respuesta sea matemáticamente correcta.`;
       correct_answer: parsed.correct_answer,
       explanation: parsed.explanation,
       hints: parsed.hints,
+      graph_expressions: parsed.graph_expressions ?? [],
       difficulty,
     };
   });
