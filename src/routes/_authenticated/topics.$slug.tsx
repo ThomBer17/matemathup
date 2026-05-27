@@ -2,7 +2,7 @@ import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ArrowLeft, Lightbulb, Loader2, Sparkles, Check, X, RotateCw } from "lucide-react";
+import { ArrowLeft, Lightbulb, Loader2, Sparkles, Check, X, RotateCw, LineChart } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { getTopicIcon, topicGradient } from "@/lib/topic-icons";
+import { GraphCard } from "@/components/math/GraphCard";
+import { detectFunctions } from "@/lib/math-detect";
 
 export const Route = createFileRoute("/_authenticated/topics/$slug")({
   component: TopicPage,
@@ -25,6 +27,7 @@ type AIExercise = {
   correct_answer: string;
   explanation: string;
   hints: string[];
+  graph_expressions?: string[];
   difficulty: number;
 };
 
