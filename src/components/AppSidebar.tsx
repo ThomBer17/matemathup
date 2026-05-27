@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, BookOpen, User, LogOut, GraduationCap } from "lucide-react";
+import { LayoutDashboard, BookOpen, User, LogOut, GraduationCap, LineChart } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 const items = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Temas", url: "/topics", icon: BookOpen },
+  { title: "Explorar", url: "/explore", icon: LineChart },
   { title: "Perfil", url: "/profile", icon: User },
 ];
 
