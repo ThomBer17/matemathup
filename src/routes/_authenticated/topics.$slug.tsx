@@ -71,6 +71,7 @@ function TopicPage() {
   const [hintIndex, setHintIndex] = useState(-1);
   const [sessionCount, setSessionCount] = useState(0);
   const [sessionCorrect, setSessionCorrect] = useState(0);
+  const [showGraph, setShowGraph] = useState(false);
 
   const Icon = getTopicIcon(topic?.icon);
   const mastery = Math.round(Number(progressRow?.mastery_pct ?? 0));
@@ -83,6 +84,7 @@ function TopicPage() {
     setRevealed(false);
     setIsCorrect(null);
     setHintIndex(-1);
+    setShowGraph(false);
     try {
       const ex = await genFn({ data: { topicId: topic.id, topicName: topic.name, difficulty } });
       setExercise(ex);
