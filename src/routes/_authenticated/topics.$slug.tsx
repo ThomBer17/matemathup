@@ -2,7 +2,7 @@ import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ArrowLeft, Lightbulb, Loader2, Sparkles, Check, X, RotateCw } from "lucide-react";
+import { ArrowLeft, Lightbulb, Loader2, Sparkles, Check, X, RotateCw, LineChart } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { getTopicIcon, topicGradient } from "@/lib/topic-icons";
+import { GraphCard } from "@/components/math/GraphCard";
+import { detectFunctions } from "@/lib/math-detect";
 
 export const Route = createFileRoute("/_authenticated/topics/$slug")({
   component: TopicPage,
@@ -25,6 +27,7 @@ type AIExercise = {
   correct_answer: string;
   explanation: string;
   hints: string[];
+  graph_expressions?: string[];
   difficulty: number;
 };
 
@@ -68,6 +71,7 @@ function TopicPage() {
   const [hintIndex, setHintIndex] = useState(-1);
   const [sessionCount, setSessionCount] = useState(0);
   const [sessionCorrect, setSessionCorrect] = useState(0);
+  const [showGraph, setShowGraph] = useState(false);
 
   const Icon = getTopicIcon(topic?.icon);
   const mastery = Math.round(Number(progressRow?.mastery_pct ?? 0));
@@ -80,6 +84,7 @@ function TopicPage() {
     setRevealed(false);
     setIsCorrect(null);
     setHintIndex(-1);
+    setShowGraph(false);
     try {
       const ex = await genFn({ data: { topicId: topic.id, topicName: topic.name, difficulty } });
       setExercise(ex);
@@ -237,6 +242,34 @@ function TopicPage() {
               <h2 className="mt-2 font-display text-xl font-semibold leading-snug md:text-2xl">
                 {exercise.statement}
               </h2>
+
+              {(() => {
+                const aiExprs = exercise.graph_expressions ?? [];
+                const detected = aiExprs.length ? [] : detectFunctions(exercise.statement);
+                const exprs = aiExprs.length
+                  ? aiExprs.map((latex, i) => ({ id: `ai${i}`, latex, color: i === 0 ? "#0EA5E9" : "#8B5CF6" }))
+                  : detected.map((d, i) => ({ id: `d${i}`, latex: d.latex, color: "#0EA5E9", label: d.label }));
+                if (!exprs.length) return null;
+                return (
+                  <div className="mt-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowGraph((s) => !s)}
+                      className="gap-2"
+                    >
+                      <LineChart className="h-4 w-4" />
+                      {showGraph ? "Ocultar gráfica" : "Ver gráfica"}
+                    </Button>
+                    {showGraph && (
+                      <div className="mt-3">
+                        <GraphCard expressions={exprs} height={320} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
 
               <div className="mt-6 space-y-2">
                 {exercise.type === "multiple_choice" && exercise.options?.map((opt) => {

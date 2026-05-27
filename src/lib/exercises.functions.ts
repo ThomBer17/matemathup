@@ -9,6 +9,7 @@ const ExerciseSchema = z.object({
   correct_answer: z.string().min(1),
   explanation: z.string().min(5),
   hints: z.array(z.string()).default([]),
+  graph_expressions: z.array(z.string()).default([]),
 });
 
 export const generateExercise = createServerFn({ method: "POST" })
@@ -32,11 +33,16 @@ Devolvé SOLO un objeto JSON con esta estructura exacta:
 {
   "statement": "enunciado claro y conciso",
   "type": "multiple_choice" | "true_false" | "open",
-  "options": ["opción A", "opción B", "opción C", "opción D"],   // solo si type=multiple_choice
-  "correct_answer": "respuesta correcta exacta (debe coincidir con una opción si es multiple_choice; 'true'/'false' si true_false)",
+  "options": ["opción A", "opción B", "opción C", "opción D"],
+  "correct_answer": "respuesta correcta exacta",
   "explanation": "explicación paso a paso de la resolución",
-  "hints": ["pista 1 sutil", "pista 2 más directa"]
+  "hints": ["pista 1 sutil", "pista 2 más directa"],
+  "graph_expressions": ["expresión LaTeX para Desmos, ej: y=x^2-2x"]
 }
+Reglas para graph_expressions:
+- Si el ejercicio involucra funciones graficables (lineal, cuadrática, racional, exponencial, logarítmica, trigonométrica), incluí 1 o 2 expresiones LaTeX válidas para Desmos (ej: "y=2x+3", "y=\\\\sin(x)", "y=\\\\frac{1}{x-1}").
+- Si NO hay función graficable (ej: ecuación pura sin variable, cálculo aritmético), devolvé un array vacío.
+- Las expresiones deben ser auto-suficientes y matemáticamente coherentes con el enunciado.
 Variá el tipo. Verificá que la respuesta sea matemáticamente correcta.`;
 
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -111,6 +117,7 @@ Variá el tipo. Verificá que la respuesta sea matemáticamente correcta.`;
       correct_answer: parsed.correct_answer,
       explanation: parsed.explanation,
       hints: parsed.hints,
+      graph_expressions: parsed.graph_expressions ?? [],
       difficulty,
     };
   });
