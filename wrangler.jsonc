@@ -4,4 +4,14 @@
   "compatibility_date": "2025-09-24",
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.ts",
+  // Variables de RUNTIME (server-side). Quedan en el código para que sobrevivan
+  // a cada deploy (wrangler pisa las del dashboard). Son públicas / no-secretas.
+  // El secreto AI_API_KEY se carga aparte como Secret en el dashboard del Worker
+  // (los Secrets NO los borra el deploy, a diferencia de estos "vars").
+  "vars": {
+    "SUPABASE_URL": "https://drpsplylcnhmaevqprxp.supabase.co",
+    "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_4O96y-vg7H4xJy-T6On9KQ_SCvj4H6e",
+    "AI_BASE_URL": "https://openrouter.ai/api/v1/chat/completions",
+    "AI_MODEL": "openai/gpt-oss-120b:free"
+  }
 }
