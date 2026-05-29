@@ -1,13 +1,15 @@
 const DEFAULT_BASE_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL = "openai/gpt-oss-120b:free";
 
-/** Reintentos internos ante respuestas no parseables o errores transitorios. */
-const MAX_ATTEMPTS = 3;
+/** Reintentos internos por defecto ante respuestas no parseables o errores transitorios. */
+const DEFAULT_MAX_ATTEMPTS = 3;
 
 export interface AIConfig {
   apiKey: string;
   baseUrl: string;
   model: string;
+  /** Modelo rápido opcional (AI_MODEL_FAST) para flujos sensibles a latencia. */
+  fastModel: string;
 }
 
 export function getAIConfig(): AIConfig {
@@ -17,10 +19,12 @@ export function getAIConfig(): AIConfig {
       "Falta AI_API_KEY en el entorno. Configurala en .env (ver .env.example).",
     );
   }
+  const model = process.env.AI_MODEL ?? DEFAULT_MODEL;
   return {
     apiKey,
     baseUrl: process.env.AI_BASE_URL ?? DEFAULT_BASE_URL,
-    model: process.env.AI_MODEL ?? DEFAULT_MODEL,
+    model,
+    fastModel: process.env.AI_MODEL_FAST ?? model,
   };
 }
 
@@ -29,39 +33,54 @@ export interface AICallOptions {
   userPrompt: string;
   /** Etiqueta opcional para logs de timing (ej. "generateExercise", "evaluateAnswer"). */
   label?: string;
+  /** Override del modelo (ej. el fastModel para práctica adaptativa). */
+  model?: string;
+  /** Esfuerzo de razonamiento. "low" acelera mucho en modelos de reasoning (gpt-oss). */
+  reasoningEffort?: "low" | "medium" | "high";
+  /** Máximo de intentos internos. Default 3; bajalo para fallar rápido. */
+  maxAttempts?: number;
 }
 
 export async function callAI<T>(options: AICallOptions): Promise<T> {
-  const { apiKey, baseUrl, model } = getAIConfig();
+  const cfg = getAIConfig();
+  const { apiKey, baseUrl } = cfg;
+  const model = options.model ?? cfg.model;
+  const maxAttempts = options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
   const tag = options.label ?? "callAI";
   const inputTokensEst = Math.round((options.systemPrompt.length + options.userPrompt.length) / 4);
 
   let lastError: Error | null = null;
 
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const start = Date.now();
     try {
+      const body: Record<string, unknown> = {
+        model,
+        messages: [
+          { role: "system", content: options.systemPrompt },
+          // En reintentos, recordamos que la respuesta debe ser SOLO JSON.
+          {
+            role: "user",
+            content:
+              attempt === 1
+                ? options.userPrompt
+                : `${options.userPrompt}\n\nIMPORTANTE: respondé ÚNICAMENTE con el objeto JSON, sin texto adicional, sin markdown, sin explicaciones.`,
+          },
+        ],
+        response_format: { type: "json_object" },
+      };
+      // Control de razonamiento (OpenRouter ignora el campo si el modelo no es de reasoning).
+      if (options.reasoningEffort) {
+        body.reasoning = { effort: options.reasoningEffort };
+      }
+
       const res = await fetch(baseUrl, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: "system", content: options.systemPrompt },
-            // En reintentos, recordamos que la respuesta debe ser SOLO JSON.
-            {
-              role: "user",
-              content:
-                attempt === 1
-                  ? options.userPrompt
-                  : `${options.userPrompt}\n\nIMPORTANTE: respondé ÚNICAMENTE con el objeto JSON, sin texto adicional, sin markdown, sin explicaciones.`,
-            },
-          ],
-          response_format: { type: "json_object" },
-        }),
+        body: JSON.stringify(body),
       });
 
       // Errores no recuperables: cortamos de inmediato.
@@ -73,7 +92,7 @@ export async function callAI<T>(options: AICallOptions): Promise<T> {
         lastError = new Error(
           res.status === 429 ? "Límite de uso alcanzado." : `Error de IA (${res.status})`,
         );
-        await backoff(attempt);
+        await backoff(attempt, maxAttempts);
         continue;
       }
 
@@ -81,7 +100,7 @@ export async function callAI<T>(options: AICallOptions): Promise<T> {
       const content = json.choices?.[0]?.message?.content ?? "";
       const elapsed = Date.now() - start;
       console.log(
-        `[AI:${tag}] attempt ${attempt}/${MAX_ATTEMPTS} · ${elapsed}ms · model=${model} · in≈${inputTokensEst}tok · out=${content.length}ch`,
+        `[AI:${tag}] attempt ${attempt}/${maxAttempts} · ${elapsed}ms · model=${model} · in≈${inputTokensEst}tok · out=${content.length}ch`,
       );
 
       try {
@@ -89,7 +108,7 @@ export async function callAI<T>(options: AICallOptions): Promise<T> {
       } catch {
         lastError = new Error("Respuesta no parseable");
         console.warn(`[AI:${tag}] parse falló en intento ${attempt}, contenido:`, content.slice(0, 200));
-        await backoff(attempt);
+        await backoff(attempt, maxAttempts);
         continue;
       }
     } catch (e) {
@@ -97,19 +116,19 @@ export async function callAI<T>(options: AICallOptions): Promise<T> {
       // Error de red u otro → reintentamos.
       lastError = e instanceof Error ? e : new Error(String(e));
       console.warn(`[AI:${tag}] error en intento ${attempt}:`, lastError.message);
-      await backoff(attempt);
+      await backoff(attempt, maxAttempts);
     }
   }
 
-  console.error(`[AI:${tag}] agotó ${MAX_ATTEMPTS} intentos`, lastError);
+  console.error(`[AI:${tag}] agotó ${maxAttempts} intentos`, lastError);
   throw new Error("La IA no respondió correctamente. Probá de nuevo en unos segundos.");
 }
 
 class FatalAIError extends Error {}
 
 /** Espera incremental entre reintentos: 0ms (1er retry), 400ms, 800ms. */
-function backoff(attempt: number): Promise<void> {
-  if (attempt >= MAX_ATTEMPTS) return Promise.resolve();
+function backoff(attempt: number, maxAttempts: number): Promise<void> {
+  if (attempt >= maxAttempts) return Promise.resolve();
   return new Promise((r) => setTimeout(r, (attempt - 1) * 400));
 }
 

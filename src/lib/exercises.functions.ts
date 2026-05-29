@@ -66,29 +66,13 @@ function validateExercise(ex: ParsedExercise): { ok: true } | { ok: false; reaso
   return { ok: true };
 }
 
-const BASE_SYSTEM_PROMPT = `Profesor de matemática para secundaria argentina (5°-6°). Generás UN ejercicio en JSON. Notación: x^2, sqrt(), pi. Sin LaTeX.
-Reglas: multiple_choice → 4 opciones distintas, correct_answer coincide EXACTO con una opción. true_false → correct_answer es "Verdadero" o "Falso".
-DIFICULTAD = profundidad DENTRO del tema, NUNCA cambiar de tema ni saltar a temas avanzados fuera del programa.
-
-CONSISTENCIA MATEMÁTICA OBLIGATORIA:
-- correct_answer DEBE ser EXACTAMENTE el resultado al que llega el razonamiento de "explanation".
-- Si el cálculo concluye X, entonces correct_answer = X. Sin invertir, sin reinterpretar, sin "twist".
-- En multiple_choice: la opción marcada como correcta es la que el cálculo produce, no "la que parece más razonable según la redacción".
-
-PROHIBIDO EN explanation (la frase descalifica el ejercicio):
-- "según la redacción", "según el enunciado, la respuesta es...", "según la pregunta"
-- "reinterpretando", "interpretando que la respuesta sería..."
-- "la respuesta buscada es", "la respuesta correcta sería" (cuando difiere del cálculo)
-- "pero en realidad la respuesta es", "en realidad la respuesta sería"
-- "invirtiendo el resultado/valor/cociente"
-- "error intencional", correcciones ficticias
-
-La explicación es lineal: consigna → pasos → resultado. Sin giros narrativos, sin justificación post-hoc de una respuesta distinta a la calculada.
-
-AUTO-VERIFICACIÓN ANTES DE RESPONDER:
-- Resolvé el ejercicio mentalmente y confirmá que el resultado cumple TODAS las restricciones de la consigna.
-- Si la consigna pide que el resultado esté en un intervalo, conjunto o cumpla una condición → verificá que efectivamente la cumpla. Si NO la cumple, cambiá los números del enunciado para que sí.
-- Nunca generes una consigna cuyo resultado correcto haga imposible cumplir lo que la propia consigna pide.`;
+// System prompt minimalista. Las reglas de consistencia/narrativa se enforce-an
+// con validadores deterministas (validateExercise, checkConsistency, checkArtificialPatterns),
+// así que acá solo dejamos lo esencial. Menos input = menor tiempo al primer token.
+const BASE_SYSTEM_PROMPT = `Profesor de matemática secundaria argentina (5°-6°). Generás UN ejercicio en JSON. Notación x^2, sqrt(), pi. Sin LaTeX.
+Reglas: multiple_choice→4 opciones distintas, correct_answer EXACTO igual a una opción. true_false→correct_answer "Verdadero"/"Falso".
+correct_answer = el resultado real del cálculo de "explanation" (sin invertir ni reinterpretar). Si la consigna pide un intervalo/condición, verificá que el resultado la cumpla.
+DIFICULTAD = profundidad dentro del tema, nunca cambiar de tema.`;
 
 function buildUserPrompt(
   topicName: string,
@@ -98,20 +82,20 @@ function buildUserPrompt(
   avoid: string[],
   retryReason?: string,
 ) {
-  const retryNote = retryReason ? `\nIntento anterior falló: ${retryReason}. Corregilo manteniéndote DENTRO del tema.` : "";
+  const retryNote = retryReason ? `\nFalló: ${retryReason}. Corregilo.` : "";
+  // Solo los últimos 3 enunciados a evitar (menos tokens que toda la historia).
   const avoidBlock = avoid.length
-    ? `\nENUNCIADOS YA VISTOS (no repetir ni hacer variantes mínimas con números distintos):\n${avoid.map((s) => `- "${s}"`).join("\n")}`
+    ? `\nNo repitas (ni variantes con otros números): ${avoid.slice(0, 3).map((s) => `"${s}"`).join("; ")}`
     : "";
 
   return `Ejercicio de "${topicName}" dificultad ${diffLabel} (${difficulty}/5).
-Scope: ${scope.description}
-Conceptos permitidos: ${scope.concepts.join("; ")}.
-NO usar: ${scope.outOfScopeKeywords.join(", ")}.${avoidBlock}
-JSON: {"statement","type":"multiple_choice"|"true_false"|"open","options":["..."],"correct_answer","explanation","hints":["pista 1","pista 2"],"graph_expressions":["y=..."]}
-- explanation: máx 4 pasos breves
-- hints: 1 oración cada una, la primera sutil
-- graph_expressions: 1-2 si hay función graficable, sino []
-Variá el tipo Y el contexto DENTRO del tema.${retryNote}`;
+Conceptos: ${scope.concepts.slice(0, 6).join("; ")}.
+NO usar: ${scope.outOfScopeKeywords.slice(0, 6).join(", ")}.${avoidBlock}
+JSON: {"statement","type":"multiple_choice"|"true_false"|"open","options":["..."],"correct_answer","explanation","hints":["pista"],"graph_expressions":[]}
+- explanation: máx 3 pasos cortos
+- hints: 1 sola pista sutil
+- graph_expressions: 1 expresión "y=..." SOLO si hay función graficable, sino []
+Variá tipo y contexto.${retryNote}`;
 }
 
 async function generateOnce(
@@ -126,6 +110,9 @@ async function generateOnce(
     systemPrompt: BASE_SYSTEM_PROMPT,
     userPrompt: buildUserPrompt(topicName, diffLabel, difficulty, scope, avoid, retryReason),
     label: retryReason ? "generateExercise:retry" : "generateExercise",
+    model: getAIConfig().fastModel, // usa AI_MODEL_FAST si está seteado
+    reasoningEffort: "low", // clave: acelera mucho en modelos de reasoning
+    maxAttempts: 2, // fallar rápido en vez de 3 intentos lentos
   });
   return ExerciseSchema.parse(raw);
 }
@@ -152,6 +139,8 @@ export const generateExercise = createServerFn({ method: "POST" })
       ["muy fácil", "fácil", "intermedio", "difícil", "muy difícil"][difficulty - 1] ?? "intermedio";
 
     const scope = getTopicScope(topicName);
+    const t0 = Date.now();
+    let retried = false;
 
     let parsed: ParsedExercise;
     try {
@@ -209,9 +198,11 @@ export const generateExercise = createServerFn({ method: "POST" })
       return { ok: true };
     };
 
+    const tGen = Date.now();
     let validation = checkAll(parsed);
     let effectiveDifficulty = difficulty;
     if (!validation.ok) {
+      retried = true;
       // Si el rechazo es por scope y estamos en dificultad alta, bajamos un escalón en el retry:
       // a difficulty 5 el modelo tiende a salirse del tema. Degradar evita el dead-end.
       const isScopeFailure = validation.reason.toLowerCase().includes("fuera del tema");
@@ -239,6 +230,10 @@ export const generateExercise = createServerFn({ method: "POST" })
       }
       effectiveDifficulty = retryDifficulty;
     }
+    const tValidate = Date.now();
+    console.log(
+      `[generateExercise] TOTAL ${tValidate - t0}ms · gen=${tGen - t0}ms · validate=${tValidate - tGen}ms · retry=${retried} · tema=${topicName} diff=${effectiveDifficulty}`,
+    );
 
     const { supabase } = context;
     const { data: inserted, error } = await supabase

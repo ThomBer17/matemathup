@@ -88,6 +88,35 @@ function TopicPage() {
   const completed = progressRow?.exercises_completed ?? 0;
   const mastered = mastery >= 95 && completed >= 5;
 
+  // Prefetch del próximo ejercicio: se genera en background mientras el alumno
+  // lee la explicación, así "Siguiente" se siente instantáneo.
+  const prefetchRef = useRef<{ difficulty: number; promise: Promise<AIExercise> } | null>(null);
+
+  const fetchExercise = async (diff: number): Promise<AIExercise> => {
+    if (!topic) throw new Error("Sin tema");
+    let avoid: string[] = [];
+    if (user) {
+      const { data: recent } = await supabase
+        .from("exercises")
+        .select("statement")
+        .eq("topic_id", topic.id)
+        .eq("created_by", user.id)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      avoid = (recent ?? []).map((r) => r.statement).filter(Boolean);
+    }
+    return genFn({ data: { topicId: topic.id, topicName: topic.name, difficulty: diff, avoid } });
+  };
+
+  const startPrefetch = (diff: number) => {
+    if (!topic) return;
+    prefetchRef.current = { difficulty: diff, promise: fetchExercise(diff).catch(() => {
+      // si falla el prefetch, lo descartamos silenciosamente; loadNew hará fetch fresco
+      prefetchRef.current = null;
+      throw new Error("prefetch failed");
+    }) };
+  };
+
   const loadNew = async () => {
     if (!topic) return;
     setLoading(true);
@@ -99,21 +128,13 @@ function TopicPage() {
     setHintIndex(-1);
     setShowGraph(false);
     try {
-      // Trae los últimos 5 enunciados de este user+tema para evitar repeticiones
-      let avoid: string[] = [];
-      if (user) {
-        const { data: recent } = await supabase
-          .from("exercises")
-          .select("statement")
-          .eq("topic_id", topic.id)
-          .eq("created_by", user.id)
-          .order("created_at", { ascending: false })
-          .limit(5);
-        avoid = (recent ?? []).map((r) => r.statement).filter(Boolean);
-      }
-      const ex = await genFn({
-        data: { topicId: topic.id, topicName: topic.name, difficulty, avoid },
-      });
+      // Si hay un prefetch listo para la dificultad actual, lo usamos (instantáneo).
+      const pf = prefetchRef.current;
+      prefetchRef.current = null;
+      const ex =
+        pf && pf.difficulty === difficulty
+          ? await pf.promise.catch(() => fetchExercise(difficulty))
+          : await fetchExercise(difficulty);
       setExercise(ex);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Error al generar el ejercicio";
@@ -171,6 +192,10 @@ function TopicPage() {
     const lastThree = newRecent.slice(-3);
     if (lastThree.length === 3 && lastThree.every((r) => r) && difficulty < 5) newDifficulty = difficulty + 1;
     if (lastThree.length === 3 && lastThree.every((r) => !r) && difficulty > 1) newDifficulty = difficulty - 1;
+
+    // Prefetch del próximo ejercicio mientras el alumno lee la explicación:
+    // usa la dificultad ya ajustada para que "Siguiente" sea instantáneo.
+    startPrefetch(newDifficulty);
 
     const completed = (progressRow?.exercises_completed ?? 0) + 1;
     const correctCount = (progressRow?.correct_count ?? 0) + (correct ? 1 : 0);
