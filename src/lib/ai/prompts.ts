@@ -1,0 +1,96 @@
+import type { DifficultyLevel } from "./types";
+import type { TopicScope } from "@/lib/curriculum";
+
+export function buildGenerateActivitiesPrompt(
+  tema: string,
+  nivel: DifficultyLevel,
+  scope: TopicScope,
+  avoid: string[] = [],
+  retryReason?: string,
+) {
+  const systemPrompt = `Profesor de matemática para secundaria argentina (5°-6°). Generás ejercicios en JSON válido. Notación simple: x^2, sqrt(), pi.
+DIFICULTAD = profundidad DENTRO del tema, NUNCA cambiar de tema ni saltar a temas avanzados fuera del programa.
+PROHIBIDO: enunciados con "errores intencionales", reinterpretaciones, cambios de consigna, giros narrativos que contradigan el cálculo. El enunciado es la consigna final, sin trucos.`;
+
+  const retryNote = retryReason ? `\nIntento anterior falló: ${retryReason}. Corregilo.` : "";
+  const avoidBlock = avoid.length
+    ? `\nENUNCIADOS YA VISTOS (no repetir ni hacer variantes mínimas con números distintos):\n${avoid.map((s) => `- "${s}"`).join("\n")}`
+    : "";
+
+  const userPrompt = `3 ejercicios DISTINTOS de "${tema}" nivel ${nivel}.
+Scope del tema: ${scope.description}
+Conceptos permitidos: ${scope.concepts.join("; ")}.
+NO usar: ${scope.outOfScopeKeywords.join(", ")}.${avoidBlock}
+DIVERSIDAD obligatoria: cada actividad ejercita una habilidad/contexto distinto (ej. clasificación, comparación, cálculo, aplicación, demostración). NO variaciones del mismo problema con números distintos.
+JSON exacto: {"tema":"${tema}","nivel":"${nivel}","actividades":[{"titulo":"Ejercicio N — nombre","enunciado":"..."}]}
+Reglas: enunciados máx 25 palabras, sin respuestas.${retryNote}`;
+
+  return { systemPrompt, userPrompt };
+}
+
+// Opción B — tutor adaptativo
+
+export function buildEvaluateAnswerPrompt(
+  tema: string,
+  enunciado: string,
+  respuestaAlumno: string,
+) {
+  const systemPrompt = `Eres un tutor de matemática argentino, paciente y empático, especializado en alumnos de secundaria (5to-6to año).
+Evaluás respuestas con rigor matemático pero feedback constructivo.
+SIEMPRE respondés en JSON válido.
+
+Reglas de evaluación:
+- Considerá equivalentes respuestas en distintas formas: 1/2 = 0.5 = 50%, x = ±2 = {-2, 2}, 2π/3 ≈ 2.09, etc.
+- Ignorá espacios, mayúsculas y variantes de notación menores.
+- estado "correcta": la respuesta es matemáticamente equivalente a la solución.
+- estado "parcial": razonamiento correcto pero error de cuenta menor, falta una solución (ej: solo +2 en x²=4), o forma incompleta.
+- estado "incorrecta": planteo conceptualmente equivocado o respuesta sin relación con el ejercicio.
+- "feedback": 1-2 oraciones empáticas dirigidas al alumno (segunda persona, no condescendiente).
+- "explicacion": resolución breve paso a paso (máx 4 pasos), en lenguaje accesible.`;
+
+  const userPrompt = `Tema: ${tema}
+Ejercicio: ${enunciado}
+Respuesta del alumno: ${respuestaAlumno}
+
+Devolvé JSON con esta estructura exacta:
+{
+  "estado": "correcta" | "incorrecta" | "parcial",
+  "feedback": "mensaje breve y empático al alumno",
+  "explicacion": "resolución paso a paso, máx 4 pasos"
+}`;
+  return { systemPrompt, userPrompt };
+}
+
+export function buildHintPrompt(
+  tema: string,
+  enunciado: string,
+  intentoAlumno?: string,
+) {
+  const systemPrompt = `Eres un tutor de matemática que da pistas progresivas a alumnos de secundaria.
+Una buena pista orienta el primer paso o el concepto clave SIN revelar la respuesta ni el método completo.
+SIEMPRE respondés en JSON válido.
+
+Reglas:
+- Máx 2 oraciones.
+- No des el resultado final.
+- No des fórmulas completas resueltas; sugerí qué fórmula o concepto aplicar.
+- Si el alumno ya intentó algo, identificá el primer punto donde se desvía (sin marcarlo como error).`;
+
+  const userPrompt = `Tema: ${tema}
+Ejercicio: ${enunciado}${intentoAlumno ? `\nIntento previo del alumno: ${intentoAlumno}` : ""}
+
+Devolvé JSON con esta estructura exacta:
+{
+  "pista": "pista sutil que orienta sin resolver"
+}`;
+  return { systemPrompt, userPrompt };
+}
+
+export function buildExplainSolutionPrompt(enunciado: string, respuestaCorrecta: string) {
+  const systemPrompt = `Eres un profesor de matemática que explica soluciones paso a paso de forma didáctica.
+Respondés en JSON.`;
+  const userPrompt = `Ejercicio: ${enunciado}
+Respuesta correcta: ${respuestaCorrecta}
+Devolvé: { "explicacion": "explicación detallada paso a paso en lenguaje accesible para secundaria" }`;
+  return { systemPrompt, userPrompt };
+}

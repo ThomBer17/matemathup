@@ -13,10 +13,11 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedTopicsRouteImport } from './routes/_authenticated/topics'
+import { Route as AuthenticatedProgressRouteImport } from './routes/_authenticated/progress'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedExploreRouteImport } from './routes/_authenticated/explore'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedTopicsIndexRouteImport } from './routes/_authenticated/topics.index'
 import { Route as AuthenticatedTopicsSlugRouteImport } from './routes/_authenticated/topics.$slug'
 
 const SignupRoute = SignupRouteImport.update({
@@ -38,9 +39,9 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedTopicsRoute = AuthenticatedTopicsRouteImport.update({
-  id: '/topics',
-  path: '/topics',
+const AuthenticatedProgressRoute = AuthenticatedProgressRouteImport.update({
+  id: '/progress',
+  path: '/progress',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
@@ -58,10 +59,16 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedTopicsIndexRoute =
+  AuthenticatedTopicsIndexRouteImport.update({
+    id: '/topics/',
+    path: '/topics/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedTopicsSlugRoute = AuthenticatedTopicsSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => AuthenticatedTopicsRoute,
+  id: '/topics/$slug',
+  path: '/topics/$slug',
+  getParentRoute: () => AuthenticatedRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -71,8 +78,9 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/explore': typeof AuthenticatedExploreRoute
   '/profile': typeof AuthenticatedProfileRoute
-  '/topics': typeof AuthenticatedTopicsRouteWithChildren
+  '/progress': typeof AuthenticatedProgressRoute
   '/topics/$slug': typeof AuthenticatedTopicsSlugRoute
+  '/topics/': typeof AuthenticatedTopicsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -81,8 +89,9 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/explore': typeof AuthenticatedExploreRoute
   '/profile': typeof AuthenticatedProfileRoute
-  '/topics': typeof AuthenticatedTopicsRouteWithChildren
+  '/progress': typeof AuthenticatedProgressRoute
   '/topics/$slug': typeof AuthenticatedTopicsSlugRoute
+  '/topics': typeof AuthenticatedTopicsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -93,8 +102,9 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/explore': typeof AuthenticatedExploreRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
-  '/_authenticated/topics': typeof AuthenticatedTopicsRouteWithChildren
+  '/_authenticated/progress': typeof AuthenticatedProgressRoute
   '/_authenticated/topics/$slug': typeof AuthenticatedTopicsSlugRoute
+  '/_authenticated/topics/': typeof AuthenticatedTopicsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -105,8 +115,9 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/explore'
     | '/profile'
-    | '/topics'
+    | '/progress'
     | '/topics/$slug'
+    | '/topics/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -115,8 +126,9 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/explore'
     | '/profile'
-    | '/topics'
+    | '/progress'
     | '/topics/$slug'
+    | '/topics'
   id:
     | '__root__'
     | '/'
@@ -126,8 +138,9 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/explore'
     | '/_authenticated/profile'
-    | '/_authenticated/topics'
+    | '/_authenticated/progress'
     | '/_authenticated/topics/$slug'
+    | '/_authenticated/topics/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -167,11 +180,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/topics': {
-      id: '/_authenticated/topics'
-      path: '/topics'
-      fullPath: '/topics'
-      preLoaderRoute: typeof AuthenticatedTopicsRouteImport
+    '/_authenticated/progress': {
+      id: '/_authenticated/progress'
+      path: '/progress'
+      fullPath: '/progress'
+      preLoaderRoute: typeof AuthenticatedProgressRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/profile': {
@@ -195,39 +208,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/topics/': {
+      id: '/_authenticated/topics/'
+      path: '/topics'
+      fullPath: '/topics/'
+      preLoaderRoute: typeof AuthenticatedTopicsIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/topics/$slug': {
       id: '/_authenticated/topics/$slug'
-      path: '/$slug'
+      path: '/topics/$slug'
       fullPath: '/topics/$slug'
       preLoaderRoute: typeof AuthenticatedTopicsSlugRouteImport
-      parentRoute: typeof AuthenticatedTopicsRoute
+      parentRoute: typeof AuthenticatedRoute
     }
   }
 }
-
-interface AuthenticatedTopicsRouteChildren {
-  AuthenticatedTopicsSlugRoute: typeof AuthenticatedTopicsSlugRoute
-}
-
-const AuthenticatedTopicsRouteChildren: AuthenticatedTopicsRouteChildren = {
-  AuthenticatedTopicsSlugRoute: AuthenticatedTopicsSlugRoute,
-}
-
-const AuthenticatedTopicsRouteWithChildren =
-  AuthenticatedTopicsRoute._addFileChildren(AuthenticatedTopicsRouteChildren)
 
 interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedExploreRoute: typeof AuthenticatedExploreRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
-  AuthenticatedTopicsRoute: typeof AuthenticatedTopicsRouteWithChildren
+  AuthenticatedProgressRoute: typeof AuthenticatedProgressRoute
+  AuthenticatedTopicsSlugRoute: typeof AuthenticatedTopicsSlugRoute
+  AuthenticatedTopicsIndexRoute: typeof AuthenticatedTopicsIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedExploreRoute: AuthenticatedExploreRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
-  AuthenticatedTopicsRoute: AuthenticatedTopicsRouteWithChildren,
+  AuthenticatedProgressRoute: AuthenticatedProgressRoute,
+  AuthenticatedTopicsSlugRoute: AuthenticatedTopicsSlugRoute,
+  AuthenticatedTopicsIndexRoute: AuthenticatedTopicsIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

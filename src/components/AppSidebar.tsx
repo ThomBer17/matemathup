@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, BookOpen, User, LogOut, GraduationCap, LineChart } from "lucide-react";
+import { LayoutDashboard, BookOpen, User, LogOut, GraduationCap, LineChart, TrendingUp } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -14,10 +14,12 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
+import { StreakWidget } from "@/components/gamification/StreakWidget";
 
 const items = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Temas", url: "/topics", icon: BookOpen },
+  { title: "Mi progreso", url: "/progress", icon: TrendingUp },
   { title: "Explorar", url: "/explore", icon: LineChart },
   { title: "Perfil", url: "/profile", icon: User },
 ];
@@ -61,6 +63,9 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
+        <div className="px-2 group-data-[collapsible=icon]:hidden">
+          <StreakWidget />
+        </div>
         <div className="px-2 pb-2 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
           <p className="truncate">{user?.email}</p>
         </div>

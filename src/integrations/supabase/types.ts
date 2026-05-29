@@ -61,31 +61,43 @@ export type Database = {
       exercise_attempts: {
         Row: {
           created_at: string
-          exercise_id: string
+          difficulty: number | null
+          exercise_id: string | null
           hint_used: boolean
           id: string
           is_correct: boolean
+          source: string
+          status: string | null
           time_spent_sec: number | null
+          topic_id: string | null
           user_answer: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
-          exercise_id: string
+          difficulty?: number | null
+          exercise_id?: string | null
           hint_used?: boolean
           id?: string
           is_correct: boolean
+          source?: string
+          status?: string | null
           time_spent_sec?: number | null
+          topic_id?: string | null
           user_answer?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
-          exercise_id?: string
+          difficulty?: number | null
+          exercise_id?: string | null
           hint_used?: boolean
           id?: string
           is_correct?: boolean
+          source?: string
+          status?: string | null
           time_spent_sec?: number | null
+          topic_id?: string | null
           user_answer?: string | null
           user_id?: string
         }

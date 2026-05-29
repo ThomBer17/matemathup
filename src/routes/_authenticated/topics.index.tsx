@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Progress } from "@/components/ui/progress";
 import { getTopicIcon, topicGradient } from "@/lib/topic-icons";
 
-export const Route = createFileRoute("/_authenticated/topics")({
+export const Route = createFileRoute("/_authenticated/topics/")({
   component: TopicsPage,
 });
 

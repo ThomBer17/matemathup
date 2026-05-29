@@ -1,8 +1,8 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ArrowLeft, Lightbulb, Loader2, Sparkles, Check, X, RotateCw, LineChart } from "lucide-react";
+import { ArrowLeft, Lightbulb, Loader2, Sparkles, Check, X, RotateCw, LineChart, AlertCircle, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -11,9 +11,16 @@ import { generateExercise } from "@/lib/exercises.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getTopicIcon, topicGradient } from "@/lib/topic-icons";
 import { GraphCard } from "@/components/math/GraphCard";
 import { detectFunctions } from "@/lib/math-detect";
+import { ActivityGenerator } from "@/components/ai/ActivityGenerator";
+import { CalculatorFAB } from "@/components/calculator/CalculatorFAB";
+import { MathInputHelper } from "@/components/math/MathInputHelper";
+import { MathPreview } from "@/components/math/MathPreview";
+import { answersEqual, displayCorrectAnswer, normalizeTrueFalse, trueFalseLabel } from "@/lib/answer-normalize";
+import type { DifficultyLevel } from "@/lib/ai/types";
 
 export const Route = createFileRoute("/_authenticated/topics/$slug")({
   component: TopicPage,
@@ -34,6 +41,7 @@ type AIExercise = {
 function TopicPage() {
   const { slug } = useParams({ from: "/_authenticated/topics/$slug" });
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const genFn = useServerFn(generateExercise);
 
   const { data: topic } = useQuery({
@@ -65,7 +73,9 @@ function TopicPage() {
 
   const [exercise, setExercise] = useState<AIExercise | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [answer, setAnswer] = useState("");
+  const openAnswerRef = useRef<HTMLInputElement>(null);
   const [revealed, setRevealed] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [hintIndex, setHintIndex] = useState(-1);
@@ -75,10 +85,13 @@ function TopicPage() {
 
   const Icon = getTopicIcon(topic?.icon);
   const mastery = Math.round(Number(progressRow?.mastery_pct ?? 0));
+  const completed = progressRow?.exercises_completed ?? 0;
+  const mastered = mastery >= 95 && completed >= 5;
 
   const loadNew = async () => {
     if (!topic) return;
     setLoading(true);
+    setLoadError(null);
     setExercise(null);
     setAnswer("");
     setRevealed(false);
@@ -86,10 +99,25 @@ function TopicPage() {
     setHintIndex(-1);
     setShowGraph(false);
     try {
-      const ex = await genFn({ data: { topicId: topic.id, topicName: topic.name, difficulty } });
+      // Trae los últimos 5 enunciados de este user+tema para evitar repeticiones
+      let avoid: string[] = [];
+      if (user) {
+        const { data: recent } = await supabase
+          .from("exercises")
+          .select("statement")
+          .eq("topic_id", topic.id)
+          .eq("created_by", user.id)
+          .order("created_at", { ascending: false })
+          .limit(5);
+        avoid = (recent ?? []).map((r) => r.statement).filter(Boolean);
+      }
+      const ex = await genFn({
+        data: { topicId: topic.id, topicName: topic.name, difficulty, avoid },
+      });
       setExercise(ex);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Error al generar el ejercicio";
+      setLoadError(msg);
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -104,24 +132,35 @@ function TopicPage() {
 
   const checkAnswer = (a: string) => {
     if (!exercise) return;
-    const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
-    const correct = norm(a) === norm(exercise.correct_answer);
+    const correct = answersEqual(a, exercise.correct_answer, exercise.type);
     setIsCorrect(correct);
     setRevealed(true);
-    if (correct) toast.success("¡Correcto! ✨");
-    else toast.error("Casi. Mirá la explicación.");
+    if (correct) {
+      const xpGain = 10 + difficulty * 2;
+      toast.success(`¡Correcto! +${xpGain} XP`);
+    } else {
+      toast.error("Casi. Mirá la explicación.");
+    }
     persistAttempt(correct);
   };
 
   const persistAttempt = async (correct: boolean) => {
-    if (!exercise || !user || !topic || !progressRow !== !progressRow) return;
-    await supabase.from("exercise_attempts").insert({
+    if (!exercise || !user || !topic) return;
+    const { error: attemptError } = await supabase.from("exercise_attempts").insert({
       user_id: user.id,
       exercise_id: exercise.id,
+      topic_id: topic.id,
       user_answer: answer,
       is_correct: correct,
+      status: correct ? "correct" : "incorrect",
+      source: "adaptive",
+      difficulty,
       hint_used: hintIndex >= 0,
     });
+    if (attemptError) {
+      console.error("[persistAttempt] insert exercise_attempts falló:", attemptError);
+      toast.error(`No se pudo guardar el intento: ${attemptError.message}`);
+    }
 
     // adaptive: track recent results, adjust difficulty
     const recent: boolean[] = Array.isArray(progressRow?.recent_results)
@@ -174,6 +213,11 @@ function TopicPage() {
     setSessionCount((c) => c + 1);
     if (correct) setSessionCorrect((c) => c + 1);
     refetchProgress();
+    // Invalida los queries de perfil para que el StreakWidget + dashboard reflejen XP/racha al instante
+    queryClient.invalidateQueries({ queryKey: ["profile-mini", user.id] });
+    queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+    queryClient.invalidateQueries({ queryKey: ["my-attempts-dash", user.id] });
+    queryClient.invalidateQueries({ queryKey: ["my-attempts", user.id] });
   };
 
   const useHint = () => {
@@ -215,16 +259,73 @@ function TopicPage() {
       <div className="mt-6 grid grid-cols-3 gap-3">
         <Stat label="Dificultad" value={diffLabel} />
         <Stat label="Dominio" value={`${mastery}%`} />
-        <Stat label="Sesión" value={`${sessionCorrect}/${sessionCount}`} />
+        <Stat
+          label="Resueltos"
+          value={completed.toString()}
+          hint={sessionCount > 0 ? `+${sessionCorrect}/${sessionCount} en esta sesión` : undefined}
+        />
       </div>
+
+      {mastered && (
+        <motion.div
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300"
+        >
+          <Trophy className="h-4 w-4 shrink-0" />
+          <span>¡Tema dominado! Seguí generando ejercicios para mantener el nivel.</span>
+        </motion.div>
+      )}
 
       <div className="mt-2"><Progress value={mastery} className="h-1.5" /></div>
 
-      <div className="mt-8 rounded-2xl border bg-card p-6 shadow-soft md:p-8">
+      <Tabs defaultValue="practica" className="mt-8">
+        <TabsList className="grid w-full grid-cols-2 md:w-auto md:inline-flex">
+          <TabsTrigger value="practica" className="gap-2">
+            <RotateCw className="h-3.5 w-3.5" />
+            Práctica adaptativa
+          </TabsTrigger>
+          <TabsTrigger value="tanda" className="gap-2">
+            <Sparkles className="h-3.5 w-3.5" />
+            Tanda IA
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="practica" className="mt-4">
+          <div className="rounded-2xl border bg-card p-6 shadow-soft md:p-8">
         {loading && (
           <div className="flex flex-col items-center gap-3 py-12 text-muted-foreground">
             <Sparkles className="h-6 w-6 animate-pulse text-primary" />
             <p className="text-sm">Generando ejercicio adaptado a tu nivel…</p>
+          </div>
+        )}
+
+        {!loading && !exercise && loadError && (
+          <div className="flex flex-col items-center gap-4 py-10 text-center">
+            <div className="grid h-10 w-10 place-items-center rounded-full bg-destructive/10 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+            </div>
+            <div className="max-w-sm">
+              <p className="text-sm font-medium">{loadError}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Puede ser un fallo transitorio del modelo. Reintentá en un momento.
+              </p>
+            </div>
+            <Button onClick={loadNew} size="sm" className="gap-2">
+              <RotateCw className="h-4 w-4" />
+              Reintentar
+            </Button>
+          </div>
+        )}
+
+        {!loading && !exercise && !loadError && (
+          <div className="flex flex-col items-center gap-4 py-10 text-center text-muted-foreground">
+            <Sparkles className="h-6 w-6 text-primary" />
+            <p className="text-sm">Listo para empezar.</p>
+            <Button onClick={loadNew} size="sm" className="gap-2">
+              <Sparkles className="h-4 w-4" />
+              Generar ejercicio
+            </Button>
           </div>
         )}
 
@@ -274,7 +375,7 @@ function TopicPage() {
               <div className="mt-6 space-y-2">
                 {exercise.type === "multiple_choice" && exercise.options?.map((opt) => {
                   const isPicked = answer === opt;
-                  const isRight = revealed && opt === exercise.correct_answer;
+                  const isRight = revealed && answersEqual(opt, exercise.correct_answer, "multiple_choice");
                   const isWrong = revealed && isPicked && !isRight;
                   return (
                     <button
@@ -291,41 +392,55 @@ function TopicPage() {
                   );
                 })}
 
-                {exercise.type === "true_false" && (
-                  <div className="grid grid-cols-2 gap-2">
-                    {["true", "false"].map((v) => {
-                      const label = v === "true" ? "Verdadero" : "Falso";
-                      const isPicked = answer === v;
-                      const isRight = revealed && v === exercise.correct_answer.toLowerCase();
-                      const isWrong = revealed && isPicked && !isRight;
-                      return (
-                        <button
-                          key={v}
-                          disabled={revealed}
-                          onClick={() => { setAnswer(v); checkAnswer(v); }}
-                          className={`rounded-xl border bg-background p-4 text-sm font-medium transition hover:border-primary
-                            ${isRight ? "border-success bg-success/10" : ""}
-                            ${isWrong ? "border-destructive bg-destructive/10" : ""}`}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                {exercise.type === "true_false" && (() => {
+                  const correctCanonical = normalizeTrueFalse(exercise.correct_answer);
+                  return (
+                    <div className="grid grid-cols-2 gap-2">
+                      {(["true", "false"] as const).map((v) => {
+                        const label = trueFalseLabel(v);
+                        const isPicked = answer === v;
+                        const isRight = revealed && correctCanonical === v;
+                        const isWrong = revealed && isPicked && !isRight;
+                        return (
+                          <button
+                            key={v}
+                            disabled={revealed}
+                            onClick={() => { setAnswer(v); checkAnswer(v); }}
+                            className={`rounded-xl border bg-background p-4 text-sm font-medium transition hover:border-primary
+                              ${isRight ? "border-success bg-success/10" : ""}
+                              ${isWrong ? "border-destructive bg-destructive/10" : ""}`}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
 
                 {exercise.type === "open" && (
                   <form
                     onSubmit={(e) => { e.preventDefault(); if (!revealed) checkAnswer(answer); }}
-                    className="flex gap-2"
+                    className="space-y-2"
                   >
-                    <Input
+                    <div className="flex gap-2">
+                      <Input
+                        ref={openAnswerRef}
+                        value={answer}
+                        onChange={(e) => setAnswer(e.target.value)}
+                        disabled={revealed}
+                        placeholder="Escribí tu respuesta"
+                        className="font-mono"
+                      />
+                      {!revealed && <Button type="submit">Enviar</Button>}
+                    </div>
+                    <MathInputHelper
+                      targetRef={openAnswerRef}
                       value={answer}
-                      onChange={(e) => setAnswer(e.target.value)}
+                      onChange={setAnswer}
                       disabled={revealed}
-                      placeholder="Escribí tu respuesta"
                     />
-                    {!revealed && <Button type="submit">Enviar</Button>}
+                    <MathPreview value={answer} />
                   </form>
                 )}
               </div>
@@ -348,7 +463,7 @@ function TopicPage() {
                 >
                   <div className="flex items-center gap-2 text-sm font-semibold">
                     {isCorrect ? <Check className="h-4 w-4 text-success" /> : <X className="h-4 w-4 text-destructive" />}
-                    {isCorrect ? "¡Bien hecho!" : `Respuesta correcta: ${exercise.correct_answer}`}
+                    {isCorrect ? "¡Bien hecho!" : `Respuesta correcta: ${displayCorrectAnswer(exercise.correct_answer, exercise.type)}`}
                   </div>
                   <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">
                     {exercise.explanation}
@@ -376,16 +491,37 @@ function TopicPage() {
             </motion.div>
           </AnimatePresence>
         )}
-      </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="tanda" className="mt-4">
+          <div className="rounded-2xl border bg-card p-6 shadow-soft md:p-8">
+            <ActivityGenerator
+              topicId={topic.id}
+              topicName={topic.name}
+              initialLevel={difficultyToLevel(difficulty)}
+            />
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      <CalculatorFAB />
     </div>
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function difficultyToLevel(d: number): DifficultyLevel {
+  if (d <= 2) return "básico";
+  if (d >= 4) return "alto";
+  return "intermedio";
+}
+
+function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="rounded-xl border bg-card px-3 py-2">
       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="font-display text-sm font-semibold">{value}</p>
+      {hint && <p className="mt-0.5 text-[10px] text-muted-foreground">{hint}</p>}
     </div>
   );
 }

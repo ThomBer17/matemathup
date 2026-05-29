@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"E:\\\\repos\\\\matemathup\" -Force)",
+      "Bash(Select-Object Mode, Name)"
+    ]
+  }
+}
