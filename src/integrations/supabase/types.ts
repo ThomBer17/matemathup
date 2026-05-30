@@ -183,6 +183,7 @@ export type Database = {
           last_activity_date: string | null
           level: number
           longest_streak: number
+          plan: string
           updated_at: string
           username: string | null
           xp: number
@@ -196,6 +197,7 @@ export type Database = {
           last_activity_date?: string | null
           level?: number
           longest_streak?: number
+          plan?: string
           updated_at?: string
           username?: string | null
           xp?: number
@@ -209,6 +211,7 @@ export type Database = {
           last_activity_date?: string | null
           level?: number
           longest_streak?: number
+          plan?: string
           updated_at?: string
           username?: string | null
           xp?: number

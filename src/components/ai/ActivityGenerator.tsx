@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "motion/react";
 import { Sparkles, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -6,6 +7,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { generateActivities } from "@/lib/ai/activities";
 import { Button } from "@/components/ui/button";
 import { ActivityCard } from "./ActivityCard";
+import { PaywallDialog } from "@/components/billing/PaywallDialog";
+import { isFreemiumLimitError } from "@/lib/billing/plans";
 import type { DifficultyLevel, GeneratedActivities } from "@/lib/ai/types";
 
 const DIFFICULTY_OPTIONS: { value: DifficultyLevel; label: string; desc: string }[] = [
@@ -47,10 +50,12 @@ export function ActivityGenerator({
   initialLevel?: DifficultyLevel;
 }) {
   const genFn = useServerFn(generateActivities);
+  const queryClient = useQueryClient();
   const [nivel, setNivel] = useState<DifficultyLevel>(initialLevel);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<GeneratedActivities | null>(null);
   const [batchKey, setBatchKey] = useState(0);
+  const [paywallOpen, setPaywallOpen] = useState(false);
   const loadingMessage = useRotatingMessage(loading);
 
   const runGenerate = async (force: boolean) => {
@@ -61,9 +66,15 @@ export function ActivityGenerator({
       const data = await genFn({ data: { tema: topicName, nivel, force } });
       setResult(data);
       setBatchKey((k) => k + 1);
+      queryClient.invalidateQueries({ queryKey: ["usage-status"] });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Error al generar las actividades";
-      toast.error(msg);
+      // Límite freemium → paywall amable.
+      if (isFreemiumLimitError(msg) === "tanda") {
+        setPaywallOpen(true);
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -205,6 +216,8 @@ export function ActivityGenerator({
           </motion.div>
         )}
       </AnimatePresence>
+
+      <PaywallDialog open={paywallOpen} onOpenChange={setPaywallOpen} kind="tanda" />
     </div>
   );
 }

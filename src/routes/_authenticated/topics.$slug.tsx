@@ -20,6 +20,8 @@ import { CalculatorFAB } from "@/components/calculator/CalculatorFAB";
 import { MathInputHelper } from "@/components/math/MathInputHelper";
 import { MathPreview } from "@/components/math/MathPreview";
 import { answersEqual, displayCorrectAnswer, normalizeTrueFalse, trueFalseLabel } from "@/lib/answer-normalize";
+import { PaywallDialog } from "@/components/billing/PaywallDialog";
+import { isFreemiumLimitError } from "@/lib/billing/plans";
 import type { DifficultyLevel } from "@/lib/ai/types";
 
 export const Route = createFileRoute("/_authenticated/topics/$slug")({
@@ -74,6 +76,8 @@ function TopicPage() {
   const [exercise, setExercise] = useState<AIExercise | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [paywallOpen, setPaywallOpen] = useState(false);
+  const [adaptiveLimited, setAdaptiveLimited] = useState(false);
   const [answer, setAnswer] = useState("");
   const openAnswerRef = useRef<HTMLInputElement>(null);
   const [revealed, setRevealed] = useState(false);
@@ -138,8 +142,14 @@ function TopicPage() {
       setExercise(ex);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Error al generar el ejercicio";
-      setLoadError(msg);
-      toast.error(msg);
+      // Límite freemium → paywall amable, no error técnico.
+      if (isFreemiumLimitError(msg) === "adaptive") {
+        setAdaptiveLimited(true);
+        setPaywallOpen(true);
+      } else {
+        setLoadError(msg);
+        toast.error(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -243,6 +253,7 @@ function TopicPage() {
     queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
     queryClient.invalidateQueries({ queryKey: ["my-attempts-dash", user.id] });
     queryClient.invalidateQueries({ queryKey: ["my-attempts", user.id] });
+    queryClient.invalidateQueries({ queryKey: ["usage-status", user.id] });
   };
 
   const useHint = () => {
@@ -343,7 +354,26 @@ function TopicPage() {
           </div>
         )}
 
-        {!loading && !exercise && !loadError && (
+        {!loading && !exercise && adaptiveLimited && (
+          <div className="flex flex-col items-center gap-4 py-10 text-center">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-violet-500 to-purple-700">
+              <Sparkles className="h-6 w-6 text-white" />
+            </div>
+            <div className="max-w-sm">
+              <p className="font-display text-base font-semibold">Llegaste al límite diario 🙂</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Completaste tus ejercicios gratis de hoy. Volvé mañana o pasate a Premium para
+                practicar sin límites.
+              </p>
+            </div>
+            <Button onClick={() => setPaywallOpen(true)} size="sm" className="gap-2">
+              <Sparkles className="h-4 w-4" />
+              Pasar a Premium
+            </Button>
+          </div>
+        )}
+
+        {!loading && !exercise && !loadError && !adaptiveLimited && (
           <div className="flex flex-col items-center gap-4 py-10 text-center text-muted-foreground">
             <Sparkles className="h-6 w-6 text-primary" />
             <p className="text-sm">Listo para empezar.</p>
@@ -531,6 +561,7 @@ function TopicPage() {
       </Tabs>
 
       <CalculatorFAB />
+      <PaywallDialog open={paywallOpen} onOpenChange={setPaywallOpen} kind="adaptive" />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { getTopicScope, validateInScope } from "@/lib/curriculum";
 import { checkArtificialPatterns } from "./quality-checks";
 import { validateDiversity, mostSimilar } from "./diversity";
 import { rateLimit } from "./rate-limit";
+import { assertWithinFreemiumLimit } from "@/lib/billing/usage";
 import type { GeneratedActivities, DifficultyLevel } from "./types";
 
 const SIMILARITY_THRESHOLD = 0.7;
@@ -98,15 +99,19 @@ export const generateActivities = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { tema, nivel, force } = data;
-    const { userId } = context;
+    const { userId, supabase } = context;
     const key = cacheKey(tema, nivel);
 
     const cached = cache.get(key);
     const cacheFresh = cached && Date.now() - cached.ts < CACHE_TTL_MS;
 
+    // Cache hit: re-lectura de una tanda ya contada → no consume cuota.
     if (!force && cacheFresh) {
       return cached.data;
     }
+
+    // Freemium: bloquea si ya generó su cuota diaria de tandas IA.
+    await assertWithinFreemiumLimit(supabase, userId, "tanda");
 
     // Rate limit: 15 generaciones por minuto por user (es la operación más cara)
     const rl = rateLimit(userId, "generate", 15);
@@ -159,7 +164,6 @@ export const generateActivities = createServerFn({ method: "POST" })
 
     cache.set(key, { data: parsed, ts: Date.now() });
 
-    const { supabase } = context;
     void supabase
       .from("ai_generation_log")
       .insert({

@@ -8,6 +8,7 @@ import { checkArtificialPatterns } from "@/lib/ai/quality-checks";
 import { mostSimilar } from "@/lib/ai/diversity";
 import { rateLimit } from "@/lib/ai/rate-limit";
 import { checkConsistency } from "@/lib/ai/consistency";
+import { assertWithinFreemiumLimit } from "@/lib/billing/usage";
 
 const SIMILARITY_THRESHOLD = 0.7;
 
@@ -128,7 +129,11 @@ export const generateExercise = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { topicId, topicName, difficulty, avoid = [] } = data;
-    const { userId } = context;
+    const { userId, supabase } = context;
+
+    // Freemium: bloquea si ya respondió su cuota diaria de práctica adaptativa.
+    // Lanza un código estable que el cliente traduce a paywall (no error técnico).
+    await assertWithinFreemiumLimit(supabase, userId, "adaptive");
 
     const rl = rateLimit(userId, "generate", 15);
     if (!rl.ok) {
@@ -235,7 +240,6 @@ export const generateExercise = createServerFn({ method: "POST" })
       `[generateExercise] TOTAL ${tValidate - t0}ms · gen=${tGen - t0}ms · validate=${tValidate - tGen}ms · retry=${retried} · tema=${topicName} diff=${effectiveDifficulty}`,
     );
 
-    const { supabase } = context;
     const { data: inserted, error } = await supabase
       .from("exercises")
       .insert({

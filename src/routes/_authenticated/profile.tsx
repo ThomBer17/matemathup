@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Progress } from "@/components/ui/progress";
 import { BadgeGrid } from "@/components/gamification/BadgeGrid";
+import { PlanUsageCard } from "@/components/billing/PlanUsageCard";
 import {
   aggregateByTopic,
   computeOverall,
@@ -115,6 +116,10 @@ function ProfilePage() {
           value={`${badgeCount.earned}/${badgeCount.total}`}
           color="text-violet-600 bg-violet-500/10"
         />
+      </div>
+
+      <div className="mt-6">
+        <PlanUsageCard />
       </div>
 
       <div className="mt-10 space-y-3">
