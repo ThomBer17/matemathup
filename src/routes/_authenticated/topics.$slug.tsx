@@ -139,6 +139,16 @@ function TopicPage() {
         pf && pf.difficulty === difficulty
           ? await pf.promise.catch(() => fetchExercise(difficulty))
           : await fetchExercise(difficulty);
+      // Render guard defensivo: nunca renderizar un ejercicio incompleto.
+      if (
+        !ex ||
+        !ex.statement ||
+        ex.statement.trim().length < 10 ||
+        !ex.correct_answer ||
+        (ex.type === "multiple_choice" && (!ex.options || ex.options.length < 2))
+      ) {
+        throw new Error("No pudimos generar un ejercicio válido. Reintentá.");
+      }
       setExercise(ex);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Error al generar el ejercicio";

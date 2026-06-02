@@ -8,6 +8,8 @@ import { checkArtificialPatterns } from "@/lib/ai/quality-checks";
 import { mostSimilar } from "@/lib/ai/diversity";
 import { rateLimit } from "@/lib/ai/rate-limit";
 import { checkConsistency } from "@/lib/ai/consistency";
+import { checkNumericSanity } from "@/lib/ai/numeric-sanity";
+import { validateStructure } from "@/lib/ai/structural";
 import { assertWithinFreemiumLimit } from "@/lib/billing/usage";
 
 const SIMILARITY_THRESHOLD = 0.7;
@@ -73,6 +75,8 @@ function validateExercise(ex: ParsedExercise): { ok: true } | { ok: false; reaso
 const BASE_SYSTEM_PROMPT = `Profesor de matemática secundaria argentina (5°-6°). Generás UN ejercicio en JSON. Notación x^2, sqrt(), pi. Sin LaTeX.
 Reglas: multiple_choice→4 opciones distintas, correct_answer EXACTO igual a una opción. true_false→correct_answer "Verdadero"/"Falso".
 correct_answer = el resultado real del cálculo de "explanation" (sin invertir ni reinterpretar). Si la consigna pide un intervalo/condición, verificá que el resultado la cumpla.
+El "statement" DEBE incluir el objeto matemático explícito: si pedís factorizar/resolver/simplificar, escribí el polinomio/ecuación/expresión EN el enunciado. Nunca "Factorizá el siguiente polinomio" sin el polinomio.
+Las cuentas y aproximaciones de "explanation" deben ser numéricamente correctas (ej: 1.732×3.646≈6.315, no 4.587).
 DIFICULTAD = profundidad dentro del tema, nunca cambiar de tema.`;
 
 function buildUserPrompt(
@@ -169,21 +173,40 @@ export const generateExercise = createServerFn({ method: "POST" })
     }
 
     const checkCore = (ex: ParsedExercise): { ok: true } | { ok: false; reason: string } => {
-      const structural = validateExercise(ex);
-      if (!structural.ok) return structural;
+      // 1) Estructura básica (tipo/opciones/answer key)
+      const structuralBasic = validateExercise(ex);
+      if (!structuralBasic.ok) return structuralBasic;
+
+      // 2) Estructura completa: campos requeridos + objeto matemático presente
+      const structure = validateStructure(ex);
+      if (!structure.ok) return structure;
+
       const combined = combinedScopeText(ex);
+
+      // 3) Scope curricular
       const scopeRes = validateInScope(combined, scope);
       if (!scopeRes.inScope) {
-        return { ok: false, reason: `usó "${scopeRes.matched}" fuera del tema ${topicName}` };
+        return { ok: false, reason: `invalid_structure: usó "${scopeRes.matched}" fuera del tema ${topicName}` };
       }
+
+      // 4) Narrativa artificial / correcciones ficticias
       const artifact = checkArtificialPatterns(combined);
       if (!artifact.ok) {
-        return { ok: false, reason: `narrativa artificial: "${artifact.matched}"` };
+        return { ok: false, reason: `math_validation_failed: narrativa artificial "${artifact.matched}"` };
       }
+
+      // 5) Coherencia consigna ↔ respuesta (intervalos, etc.)
       const consistency = checkConsistency(ex.statement, ex.correct_answer);
       if (!consistency.ok) {
-        return { ok: false, reason: consistency.reason ?? "incoherencia consigna-respuesta" };
+        return { ok: false, reason: `math_validation_failed: ${consistency.reason ?? "incoherencia consigna-respuesta"}` };
       }
+
+      // 6) Sanity numérico de la explicación (cálculos y aproximaciones reales)
+      const sanity = checkNumericSanity(`${ex.explanation} ${ex.statement}`);
+      if (!sanity.ok) {
+        return { ok: false, reason: sanity.reason ?? "numeric_sanity_failed" };
+      }
+
       return { ok: true };
     };
 
@@ -215,9 +238,10 @@ export const generateExercise = createServerFn({ method: "POST" })
       const retryDiffLabel =
         ["muy fácil", "fácil", "intermedio", "difícil", "muy difícil"][retryDifficulty - 1] ?? "intermedio";
 
+      // Observabilidad: el reason ya viene con código (missing_expression,
+      // numeric_sanity_failed, math_validation_failed, invalid_structure...).
       console.warn(
-        `[generateExercise] validación falló, reintentando${retryDifficulty !== difficulty ? ` con dificultad ${retryDifficulty}` : ""}:`,
-        validation.reason,
+        `[generateExercise] retry_reason=${validation.reason}${retryDifficulty !== difficulty ? ` (baja a dif ${retryDifficulty})` : ""}`,
       );
       try {
         parsed = await generateOnce(topicName, retryDiffLabel, retryDifficulty, scope, avoid, validation.reason);
@@ -225,13 +249,13 @@ export const generateExercise = createServerFn({ method: "POST" })
         console.error("AI parse error (retry)", e);
         throw new Error("La IA devolvió un formato inválido. Probá de nuevo.");
       }
-      // En el retry solo exigimos consistencia estructural/scope/narrativa.
-      // La similitud era best-effort en el primer intento — si el modelo no logró diversificar
-      // pero el ejercicio es válido, lo aceptamos en vez de dejar al user sin ejercicio.
+      // En el retry exigimos toda la validez matemática/estructural (checkCore),
+      // pero NO la similitud (era best-effort). Mejor un ejercicio válido repetido
+      // que dejar al alumno sin ejercicio.
       const coreRetry = checkCore(parsed);
       if (!coreRetry.ok) {
-        console.error("[generateExercise] core check falló tras retry:", coreRetry.reason, parsed);
-        throw new Error("No pudimos generar un ejercicio consistente y en tema. Probá de nuevo.");
+        console.error(`[generateExercise] FALLÓ tras retry · reason=${coreRetry.reason}`, parsed);
+        throw new Error("No pudimos generar un ejercicio válido. Reintentá.");
       }
       effectiveDifficulty = retryDifficulty;
     }

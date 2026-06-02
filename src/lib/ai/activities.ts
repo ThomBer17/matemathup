@@ -5,6 +5,7 @@ import { callAI, getAIConfig } from "./service";
 import { buildGenerateActivitiesPrompt } from "./prompts";
 import { getTopicScope, validateInScope } from "@/lib/curriculum";
 import { checkArtificialPatterns } from "./quality-checks";
+import { checkRequiredExpression } from "./structural";
 import { validateDiversity, mostSimilar } from "./diversity";
 import { rateLimit } from "./rate-limit";
 import { assertWithinFreemiumLimit } from "@/lib/billing/usage";
@@ -48,6 +49,11 @@ function validateCore(parsed: Parsed, scope: ReturnType<typeof getTopicScope>) {
     const artifact = checkArtificialPatterns(combined);
     if (!artifact.ok) {
       return { ok: false as const, reason: `patrón artificial "${artifact.matched}"` };
+    }
+    // Objeto matemático requerido: "Factorizá..." sin polinomio = irresoluble.
+    const expr = checkRequiredExpression(act.enunciado);
+    if (!expr.ok) {
+      return { ok: false as const, reason: expr.reason };
     }
   }
   const div = validateDiversity(parsed.actividades);
