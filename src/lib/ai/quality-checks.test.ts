@@ -1,5 +1,39 @@
 import { describe, it, expect } from "vitest";
-import { checkArtificialPatterns } from "./quality-checks";
+import { checkArtificialPatterns, checkStatementMutation } from "./quality-checks";
+
+describe("checkStatementMutation — DETECTA mutación de consigna", () => {
+  const malos = [
+    "Como p(2)=0, corrijamos el divisor a (x+2).",
+    "La respuesta esperada era 4, así que ajustamos.",
+    "El resultado esperado era 6 según la guía.",
+    "Según lo esperado, el resto debería ser 4.",
+    "Para que coincida con la opción, usamos (x+2).",
+    "Usar (x+2) en vez de (x-2) para obtener 4.",
+    "En vez de (x-2) tomamos el divisor (x+2).",
+    "Redefinimos la consigna para que dé entero.",
+  ];
+  for (const t of malos) {
+    it(`detecta: "${t}"`, () => {
+      const r = checkStatementMutation(t);
+      expect(r.ok).toBe(false);
+    });
+  }
+});
+
+describe("checkStatementMutation — NO marca explicaciones legítimas", () => {
+  const buenos = [
+    "Aplicamos el teorema del resto: evaluamos p(2) = 0, el resto es 0.",
+    "Resolvemos 2x + 3 = 7, despejamos x = 2.",
+    "Factorizamos x^2 - 4 = (x+2)(x-2).",
+    "El divisor es (x-2), entonces evaluamos en x=2.",
+    "Calculamos el área multiplicando base por altura.",
+  ];
+  for (const t of buenos) {
+    it(`acepta: "${t}"`, () => {
+      expect(checkStatementMutation(t).ok).toBe(true);
+    });
+  }
+});
 
 describe("checkArtificialPatterns — debe DETECTAR (label específico)", () => {
   // Casos donde un patrón único debería matchear con su label exacto.

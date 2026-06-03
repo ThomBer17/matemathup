@@ -51,3 +51,33 @@ export function checkArtificialPatterns(
   }
   return { ok: true };
 }
+
+/**
+ * Detección de MUTACIÓN DE CONSIGNA: la IA cambia el problema (divisor, signo,
+ * datos) para forzar coincidencia con una answer key esperada, en vez de respetar
+ * la matemática. La consigna es inmutable una vez generada.
+ */
+const STATEMENT_MUTATION_PATTERNS: ArtifactPattern[] = [
+  { pattern: /\bcorrij\w+\b/i, label: "corrijamos/corregir la consigna" },
+  { pattern: /\bla\s+respuesta\s+esperada\s+(era|es|deber[ií]a)\b/i, label: "la respuesta esperada era" },
+  { pattern: /\bel\s+resultado\s+esperado\s+(era|es)\b/i, label: "el resultado esperado era" },
+  { pattern: /\bseg[uú]n\s+lo\s+esperado\b/i, label: "según lo esperado" },
+  { pattern: /\bcomo\s+se\s+esperaba\b/i, label: "como se esperaba" },
+  { pattern: /\bpara\s+que\s+(coincida|d[eé]|sea|cuadre)\b/i, label: "para que coincida" },
+  // Sustitución de un operando/dato por otro: "usar (x+2) en vez de (x-2)"
+  { pattern: /\b(us\w+|usemos|tom\w+|cambi\w+|reemplac\w+|consider\w+)\b[^.]{0,40}\ben\s+(vez|lugar)\s+de\b/i, label: "sustituir dato en vez de" },
+  { pattern: /\ben\s+(vez|lugar)\s+de\b[^.]{0,40}\b(divisor|el signo|la ecuaci[oó]n|x\s*[-+])/i, label: "cambiar divisor/signo en vez de" },
+  { pattern: /\bdeber[ií]a\s+(ser|dar)\b[^.]{0,30}\bas[ií]\s+que\b/i, label: "debería ser X así que" },
+  { pattern: /\bredefin\w+\s+(el|la|los)\b/i, label: "redefinir la consigna" },
+];
+
+export function checkStatementMutation(
+  text: string,
+): { ok: true } | { ok: false; matched: string } {
+  for (const { pattern, label } of STATEMENT_MUTATION_PATTERNS) {
+    if (pattern.test(text)) {
+      return { ok: false, matched: label };
+    }
+  }
+  return { ok: true };
+}

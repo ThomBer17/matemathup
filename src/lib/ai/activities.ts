@@ -4,7 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { callAI, getAIConfig } from "./service";
 import { buildGenerateActivitiesPrompt } from "./prompts";
 import { getTopicScope, validateInScope } from "@/lib/curriculum";
-import { checkArtificialPatterns } from "./quality-checks";
+import { checkArtificialPatterns, checkStatementMutation } from "./quality-checks";
 import { checkRequiredExpression } from "./structural";
 import { validateDiversity, mostSimilar } from "./diversity";
 import { rateLimit } from "./rate-limit";
@@ -49,6 +49,10 @@ function validateCore(parsed: Parsed, scope: ReturnType<typeof getTopicScope>) {
     const artifact = checkArtificialPatterns(combined);
     if (!artifact.ok) {
       return { ok: false as const, reason: `patrón artificial "${artifact.matched}"` };
+    }
+    const mutation = checkStatementMutation(combined);
+    if (!mutation.ok) {
+      return { ok: false as const, reason: `statement_mutation_attempt "${mutation.matched}"` };
     }
     // Objeto matemático requerido: "Factorizá..." sin polinomio = irresoluble.
     const expr = checkRequiredExpression(act.enunciado);

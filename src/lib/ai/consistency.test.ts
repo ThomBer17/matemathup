@@ -3,7 +3,38 @@ import {
   parseNumericValue,
   parseIntervalFromStatement,
   checkIntervalConsistency,
+  checkAnswerKeyConsistency,
 } from "./consistency";
+
+describe("checkAnswerKeyConsistency — MATH > ANSWER KEY", () => {
+  it("detecta key que no coincide con el resultado de la explicación (teorema del resto)", () => {
+    const r = checkAnswerKeyConsistency(
+      "Por el teorema del resto, evaluamos p(2). El resto es 0.",
+      "4",
+    );
+    expect(r.ok).toBe(false);
+    expect(r.reason).toContain("answer_key_mismatch");
+  });
+
+  it("acepta cuando la explicación concluye lo mismo que la key", () => {
+    expect(
+      checkAnswerKeyConsistency("Evaluamos y el resultado es 0.", "0").ok,
+    ).toBe(true);
+  });
+
+  it("ignora keys no numéricas (algebraicas / texto)", () => {
+    expect(checkAnswerKeyConsistency("por lo tanto x = 2", "x = 2").ok).toBe(true);
+    expect(checkAnswerKeyConsistency("la respuesta es la opción B", "Opción B").ok).toBe(true);
+  });
+
+  it("no marca si la explicación no etiqueta un resultado", () => {
+    expect(checkAnswerKeyConsistency("Aplicamos la fórmula y sustituimos.", "5").ok).toBe(true);
+  });
+
+  it("tolera redondeo menor", () => {
+    expect(checkAnswerKeyConsistency("el resultado es 1.5", "1.5").ok).toBe(true);
+  });
+});
 
 describe("parseNumericValue", () => {
   it("enteros y decimales", () => {

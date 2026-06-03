@@ -129,10 +129,51 @@ export function checkIntervalConsistency(
   return { ok: true };
 }
 
-/** Punto de entrada agregador para futuros chequeos de coherencia. */
+/**
+ * MATH > ANSWER KEY: si la explicación concluye un resultado numérico etiquetado
+ * (ej: "el resto es 0", "por lo tanto 5") que NO coincide con la answer key numérica,
+ * la key es la sospechosa → marcamos mismatch para regenerar (nunca alterar la cuenta).
+ *
+ * Conservador: solo aplica cuando la answer key es un número simple y la explicación
+ * tiene un resultado claramente etiquetado. Respuestas algebraicas (x=2) se ignoran.
+ */
+export function checkAnswerKeyConsistency(
+  explanation: string,
+  correctAnswer: string,
+): ConsistencyResult {
+  const key = parseNumericValue(correctAnswer);
+  if (key === null || !explanation) return { ok: true };
+
+  // Captura números precedidos por una palabra de "conclusión".
+  const re =
+    /(?:el resto|el resultado|la respuesta|por lo tanto|por tanto|entonces|finalmente|en conclusi[oó]n|obtenemos|nos da|da como resultado|es igual a)\s*(?:es|:|=|de|a)?\s*(-?\d[\d.,]*(?:\s*\/\s*\d+)?)/gi;
+
+  let m: RegExpExecArray | null;
+  let concluded: number | null = null;
+  while ((m = re.exec(explanation)) !== null) {
+    const v = parseNumericValue(m[1]);
+    if (v !== null) concluded = v; // nos quedamos con el último resultado etiquetado
+  }
+  if (concluded === null) return { ok: true };
+
+  const diff = Math.abs(concluded - key);
+  const scale = Math.max(Math.abs(concluded), Math.abs(key), 1);
+  if (diff > Math.max(0.05, 0.02 * scale)) {
+    return {
+      ok: false,
+      reason: `answer_key_mismatch: la explicación concluye ${concluded} pero answer_key="${correctAnswer}"`,
+    };
+  }
+  return { ok: true };
+}
+
+/** Punto de entrada agregador para chequeos de coherencia consigna/respuesta. */
 export function checkConsistency(
   statement: string,
   correctAnswer: string,
+  explanation = "",
 ): ConsistencyResult {
-  return checkIntervalConsistency(statement, correctAnswer);
+  const interval = checkIntervalConsistency(statement, correctAnswer);
+  if (!interval.ok) return interval;
+  return checkAnswerKeyConsistency(explanation, correctAnswer);
 }
