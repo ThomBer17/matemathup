@@ -34,6 +34,20 @@ describe("checkAnswerKeyConsistency — MATH > ANSWER KEY", () => {
   it("tolera redondeo menor", () => {
     expect(checkAnswerKeyConsistency("el resultado es 1.5", "1.5").ok).toBe(true);
   });
+
+  it("NO falsea positivo con coeficientes tras 'entonces' (3x=6, key 2)", () => {
+    expect(
+      checkAnswerKeyConsistency("Despejamos: 3x = 6, entonces x = 2.", "2").ok,
+    ).toBe(true);
+  });
+
+  it("acepta resultado final con unidades", () => {
+    expect(checkAnswerKeyConsistency("Por lo tanto el resultado es 3 metros.", "3").ok).toBe(true);
+  });
+
+  it("no toma el coeficiente '3x' como resultado", () => {
+    expect(checkAnswerKeyConsistency("El resultado es 3x + 1.", "5").ok).toBe(true);
+  });
 });
 
 describe("parseNumericValue", () => {

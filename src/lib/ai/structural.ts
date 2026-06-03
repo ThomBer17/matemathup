@@ -34,26 +34,35 @@ export function hasMathExpression(text: string): boolean {
     /\^/.test(t) || // exponente x^2
     /√|sqrt/i.test(t) || // raíz
     /[a-zA-Z]\s*[²³⁴]/.test(t) || // x² superíndice
-    /\d\s*[a-zA-Z]/.test(t) || // coeficiente-variable: 2x, 3y
-    /[a-zA-Z]\s*[-+*/=]\s*\d/.test(t) || // x = 3, x+2
-    /\d\s*[-+*/]\s*[a-zA-Z]/.test(t) || // 3 + x
+    /\d\s*[a-zA-Z](?![a-zA-Z])/.test(t) || // coeficiente-variable de 1 letra: 2x, 3y (no "5 metros")
+    /(?<![a-zA-Z])[a-zA-Z]\s*[-+*/=]\s*\d/.test(t) || // variable de 1 letra: x = 3, x+2 (no "casa+2")
+    /\d\s*[-+*/]\s*[a-zA-Z](?![a-zA-Z])/.test(t) || // 3 + x
     /\d+\s*\/\s*\d+/.test(t) || // fracción 3/4
-    /[a-zA-Z]\s*[-+]\s*[a-zA-Z]/.test(t) || // a + b
+    /(?<![a-zA-Z])[a-zA-Z]\s*[-+]\s*[a-zA-Z](?![a-zA-Z])/.test(t) || // a + b (variables sueltas)
     /=/.test(t) // cualquier igualdad/ecuación
   );
 }
 
-// Verbos/sustantivos que EXIGEN un objeto matemático explícito en el enunciado.
+// Verbos que EXIGEN un objeto matemático explícito (en consigna imperativa).
 const REQUIRES_EXPRESSION =
   /\b(factoriz\w*|simplific\w*|desarroll\w*|deriv\w*|integr\w*|resolv\w*|resuelv\w*|despej\w*)\b/i;
+// Sustantivo APUNTADO con artículo definido/demostrativo ("el siguiente polinomio",
+// "esta ecuación") → debe estar presente. "una ecuación" (indefinido) es conceptual.
 const POINTER_NOUN =
-  /\b(polinomio|ecuaci[oó]n|inecuaci[oó]n|sistema de ecuaciones|expresi[oó]n algebraica)\b/i;
+  /\b(el|la|los|las|este|esta|estos|estas|siguiente|siguientes)\s+(siguiente\s+|pr[oó]xim[oa]\s+)?(polinomio|ecuaci[oó]n|inecuaci[oó]n|sistema|expresi[oó]n algebraica)\b/i;
+// Pregunta conceptual / método general: NO requiere un objeto concreto.
+// Nota: usamos \w* (no \w+) en los verbos porque acentos como "Explicá"/"definí"
+// no cuentan como \w sin flag unicode; \w* matchea el stem igual.
+const CONCEPTUAL =
+  /[¿?]|^\s*(qu[eé]|c[oó]mo|cu[aá]ndo|cu[aá]l|por\s+qu[eé]|defin\w*|explic\w*|describ\w*|enumer\w*)|\bse\s+(resuelv|factoriz|calcul|simplific|despej|deriv|integr)\w*/i;
 
 /**
- * Chequea que, si el enunciado pide operar sobre un objeto matemático, ese objeto
- * esté efectivamente presente. Usado tanto en práctica adaptativa como en tandas.
+ * Chequea que, si el enunciado pide operar sobre un objeto matemático concreto, ese
+ * objeto esté presente. Ignora preguntas conceptuales ("¿cómo se resuelve...?").
+ * Usado en práctica adaptativa y en tandas.
  */
 export function checkRequiredExpression(statement: string): { ok: true } | { ok: false; reason: string } {
+  if (CONCEPTUAL.test(statement)) return { ok: true }; // pregunta/método general
   const needsExpr = REQUIRES_EXPRESSION.test(statement) || POINTER_NOUN.test(statement);
   if (needsExpr && !hasMathExpression(statement)) {
     return { ok: false, reason: "missing_expression: el enunciado pide operar sobre un objeto matemático que no está presente" };

@@ -13,6 +13,14 @@ describe("hasMathExpression", () => {
     expect(hasMathExpression("Factoriza el siguiente polinomio")).toBe(false);
     expect(hasMathExpression("Elegí la opción correcta")).toBe(false);
   });
+  it("no confunde números con unidades como expresión", () => {
+    expect(hasMathExpression("Calculá la distancia de 5 metros")).toBe(false);
+    expect(hasMathExpression("Tenés 3 manzanas y 2 peras")).toBe(false);
+  });
+  it("sí reconoce variables sueltas reales", () => {
+    expect(hasMathExpression("el valor de 2x")).toBe(true);
+    expect(hasMathExpression("x + 3")).toBe(true);
+  });
 });
 
 describe("checkRequiredExpression", () => {
@@ -33,6 +41,17 @@ describe("checkRequiredExpression", () => {
   it("no exige expresión a consignas auto-contenidas", () => {
     expect(checkRequiredExpression("Calculá el área de un triángulo de base 5 y altura 4.").ok).toBe(true);
     expect(checkRequiredExpression("Clasificá si pi es racional o irracional.").ok).toBe(true);
+  });
+
+  it("no bloquea preguntas conceptuales / método general", () => {
+    expect(checkRequiredExpression("¿Cómo se resuelve una ecuación cuadrática?").ok).toBe(true);
+    expect(checkRequiredExpression("Explicá qué es factorizar un polinomio.").ok).toBe(true);
+    expect(checkRequiredExpression("¿Cuál es el método para factorizar un trinomio?").ok).toBe(true);
+  });
+
+  it("sigue bloqueando la consigna imperativa sin objeto", () => {
+    expect(checkRequiredExpression("Factorizá el siguiente polinomio.").ok).toBe(false);
+    expect(checkRequiredExpression("Resolvé la siguiente ecuación.").ok).toBe(false);
   });
 });
 

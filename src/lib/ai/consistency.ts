@@ -144,9 +144,12 @@ export function checkAnswerKeyConsistency(
   const key = parseNumericValue(correctAnswer);
   if (key === null || !explanation) return { ok: true };
 
-  // Captura números precedidos por una palabra de "conclusión".
+  // Captura números precedidos por un marcador de RESULTADO FINAL de alta precisión.
+  // Evitamos "entonces/por lo tanto/obtenemos" porque suelen preceder una ecuación
+  // o un paso intermedio (ej. "entonces 3x = 6" capturaría el coeficiente 3).
+  // El lookahead (?![\d.,]*[a-zA-Z]) descarta coeficientes como "3x".
   const re =
-    /(?:el resto|el resultado|la respuesta|por lo tanto|por tanto|entonces|finalmente|en conclusi[oó]n|obtenemos|nos da|da como resultado|es igual a)\s*(?:es|:|=|de|a)?\s*(-?\d[\d.,]*(?:\s*\/\s*\d+)?)/gi;
+    /(?:el resto|el resultado(?:\s+final)?|la respuesta|en conclusi[oó]n|da como resultado|es igual a|el cociente|el valor final)\s*(?:es|:|=|vale)?\s*(-?\d[\d.,]*(?:\s*\/\s*\d+)?)(?![\d.,]*[a-zA-Z])/gi;
 
   let m: RegExpExecArray | null;
   let concluded: number | null = null;

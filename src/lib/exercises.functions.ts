@@ -208,8 +208,10 @@ export const generateExercise = createServerFn({ method: "POST" })
         return { ok: false, reason: `math_consistency_failed: ${consistency.reason ?? "incoherencia consigna-respuesta"}` };
       }
 
-      // 6) Sanity numérico de la explicación (cálculos y aproximaciones reales)
-      const sanity = checkNumericSanity(`${ex.explanation} ${ex.statement}`);
+      // 6) Sanity numérico SOLO de la explicación (sus cálculos deben ser correctos).
+      //    NO escaneamos el statement: un true_false válido puede contener una
+      //    afirmación falsa a propósito (ej. "Verdadero o falso: 2+2=5").
+      const sanity = checkNumericSanity(ex.explanation);
       if (!sanity.ok) {
         return { ok: false, reason: sanity.reason ?? "numeric_sanity_failed" };
       }
