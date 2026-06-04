@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { MaterialExerciseGenerator } from "@/components/materials/MaterialExerciseGenerator";
 import { isMathematicalContent } from "@/lib/materials/classify";
+import { CalculatorFAB } from "@/components/calculator/CalculatorFAB";
+import { MathWorkspace } from "@/components/workspace/MathWorkspace";
 
 export const Route = createFileRoute("/_authenticated/materials/$id")({
   component: MaterialDetailPage,
@@ -123,6 +125,10 @@ function MaterialDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Herramientas de estudio mientras resolvés (mismas que en los temas) */}
+      <CalculatorFAB />
+      <MathWorkspace storageKey={`mathup:workspace:material-${material.id}`} />
     </div>
   );
 }
