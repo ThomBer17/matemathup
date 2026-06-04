@@ -1,3 +1,4 @@
+<img width="1895" height="867" alt="imagen" src="https://github.com/user-attachments/assets/68eb2137-7ff3-4a29-a6e3-d514232523e3" />
 # 📚 MatemathUp
 
 MatemathUp es una plataforma educativa impulsada por IA que ayuda a estudiantes de secundaria y primeros años universitarios a practicar matemática mediante ejercicios adaptativos, generación inteligente de actividades y planes de estudio personalizados.
