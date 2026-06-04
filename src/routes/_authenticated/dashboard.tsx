@@ -12,6 +12,7 @@ import { aggregateByTopic, computeOverall, type AttemptRow, type TopicMeta } fro
 import { recommendNext } from "@/lib/progress/recommendations";
 import { computeBadges, badgeStats } from "@/lib/gamification/badges";
 import { ReportProblem } from "@/components/feedback/ReportProblem";
+import { MyMaterials } from "@/components/materials/MyMaterials";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -253,6 +254,11 @@ function Dashboard() {
             </motion.div>
           );
         })}
+      </div>
+
+      {/* Mi Material */}
+      <div className="mt-10">
+        <MyMaterials />
       </div>
 
       {/* Badges preview */}

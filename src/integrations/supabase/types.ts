@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      materials: {
+        Row: {
+          created_at: string
+          detected_topic: string | null
+          error_message: string | null
+          extracted_text: string | null
+          file_name: string
+          file_size: number | null
+          file_type: string
+          id: string
+          mime_type: string | null
+          page_count: number | null
+          preview: string | null
+          status: string
+          storage_path: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          detected_topic?: string | null
+          error_message?: string | null
+          extracted_text?: string | null
+          file_name: string
+          file_size?: number | null
+          file_type: string
+          id?: string
+          mime_type?: string | null
+          page_count?: number | null
+          preview?: string | null
+          status?: string
+          storage_path?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          detected_topic?: string | null
+          error_message?: string | null
+          extracted_text?: string | null
+          file_name?: string
+          file_size?: number | null
+          file_type?: string
+          id?: string
+          mime_type?: string | null
+          page_count?: number | null
+          preview?: string | null
+          status?: string
+          storage_path?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       feedback_reports: {
         Row: {
           created_at: string
