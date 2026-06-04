@@ -1,5 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, BookOpen, User, LogOut, GraduationCap, LineChart, TrendingUp } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { LayoutDashboard, BookOpen, User, LogOut, GraduationCap, LineChart, TrendingUp, Flag } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Sidebar,
   SidebarContent,
@@ -27,6 +29,20 @@ const items = [
 export function AppSidebar() {
   const path = useRouterState({ select: (r) => r.location.pathname });
   const { signOut, user } = useAuth();
+
+  const { data: isAdmin } = useQuery({
+    queryKey: ["is-admin", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user!.id)
+        .eq("role", "admin")
+        .maybeSingle();
+      return !!data;
+    },
+  });
 
   return (
     <Sidebar collapsible="icon">
@@ -58,6 +74,16 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                 );
               })}
+              {isAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={path.startsWith("/admin")}>
+                    <Link to="/admin/reports" className="flex items-center gap-2">
+                      <Flag className="h-4 w-4" />
+                      <span>Reportes</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

@@ -18,6 +18,7 @@ import { detectFunctions } from "@/lib/math-detect";
 import { ActivityGenerator } from "@/components/ai/ActivityGenerator";
 import { CalculatorFAB } from "@/components/calculator/CalculatorFAB";
 import { MathWorkspace } from "@/components/workspace/MathWorkspace";
+import { ReportProblem } from "@/components/feedback/ReportProblem";
 import { MathInputHelper } from "@/components/math/MathInputHelper";
 import { MathPreview } from "@/components/math/MathPreview";
 import { answersEqual, displayCorrectAnswer, normalizeTrueFalse, trueFalseLabel } from "@/lib/answer-normalize";
@@ -553,6 +554,24 @@ function TopicPage() {
                     Siguiente
                   </Button>
                 )}
+              </div>
+
+              <div className="mt-2 flex justify-end">
+                <ReportProblem
+                  className="text-muted-foreground"
+                  context={{
+                    topic: topic.name,
+                    exerciseId: exercise.id,
+                    difficulty,
+                    metadata: {
+                      exercise_type: exercise.type,
+                      correct_answer: exercise.correct_answer,
+                      user_answer: answer,
+                      source: "adaptive",
+                      statement: exercise.statement,
+                    },
+                  }}
+                />
               </div>
             </motion.div>
           </AnimatePresence>

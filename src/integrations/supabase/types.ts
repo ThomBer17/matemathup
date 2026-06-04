@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      feedback_reports: {
+        Row: {
+          created_at: string
+          difficulty: number | null
+          exercise_id: string | null
+          id: string
+          message: string
+          metadata: Json
+          status: string
+          topic: string | null
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          difficulty?: number | null
+          exercise_id?: string | null
+          id?: string
+          message: string
+          metadata?: Json
+          status?: string
+          topic?: string | null
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          difficulty?: number | null
+          exercise_id?: string | null
+          id?: string
+          message?: string
+          metadata?: Json
+          status?: string
+          topic?: string | null
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       ai_generation_log: {
         Row: {
           created_at: string

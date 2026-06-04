@@ -22,6 +22,7 @@ import { MathPreview } from "@/components/math/MathPreview";
 import { evaluateAnswer } from "@/lib/ai/evaluate";
 import { giveHint } from "@/lib/ai/hints";
 import { recordTutorAttempt } from "@/lib/progress/attempts";
+import { ReportProblem } from "@/components/feedback/ReportProblem";
 import type { Activity, DifficultyLevel, EvaluationResult, EvaluationStatus } from "@/lib/ai/types";
 
 const NIVEL_TO_DIFFICULTY: Record<DifficultyLevel, number> = {
@@ -345,6 +346,25 @@ export function ActivityCard({
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              <div className="flex justify-end pt-1">
+                <ReportProblem
+                  label="Reportar"
+                  className="h-7 text-[11px] text-muted-foreground"
+                  context={{
+                    topic: tema,
+                    exerciseId: null,
+                    difficulty: NIVEL_TO_DIFFICULTY[nivel],
+                    metadata: {
+                      source: "tanda",
+                      titulo: activity.titulo,
+                      statement: activity.enunciado,
+                      user_answer: answer,
+                      evaluation: evaluation?.estado ?? null,
+                    },
+                  }}
+                />
+              </div>
             </div>
           </motion.div>
         )}

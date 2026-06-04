@@ -19,6 +19,7 @@ import { Route as AuthenticatedExploreRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedTopicsIndexRouteImport } from './routes/_authenticated/topics.index'
 import { Route as AuthenticatedTopicsSlugRouteImport } from './routes/_authenticated/topics.$slug'
+import { Route as AuthenticatedAdminReportsRouteImport } from './routes/_authenticated/admin.reports'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -70,6 +71,12 @@ const AuthenticatedTopicsSlugRoute = AuthenticatedTopicsSlugRouteImport.update({
   path: '/topics/$slug',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedAdminReportsRoute =
+  AuthenticatedAdminReportsRouteImport.update({
+    id: '/admin/reports',
+    path: '/admin/reports',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -79,6 +86,7 @@ export interface FileRoutesByFullPath {
   '/explore': typeof AuthenticatedExploreRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/progress': typeof AuthenticatedProgressRoute
+  '/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/topics/$slug': typeof AuthenticatedTopicsSlugRoute
   '/topics/': typeof AuthenticatedTopicsIndexRoute
 }
@@ -90,6 +98,7 @@ export interface FileRoutesByTo {
   '/explore': typeof AuthenticatedExploreRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/progress': typeof AuthenticatedProgressRoute
+  '/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/topics/$slug': typeof AuthenticatedTopicsSlugRoute
   '/topics': typeof AuthenticatedTopicsIndexRoute
 }
@@ -103,6 +112,7 @@ export interface FileRoutesById {
   '/_authenticated/explore': typeof AuthenticatedExploreRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/progress': typeof AuthenticatedProgressRoute
+  '/_authenticated/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/_authenticated/topics/$slug': typeof AuthenticatedTopicsSlugRoute
   '/_authenticated/topics/': typeof AuthenticatedTopicsIndexRoute
 }
@@ -116,6 +126,7 @@ export interface FileRouteTypes {
     | '/explore'
     | '/profile'
     | '/progress'
+    | '/admin/reports'
     | '/topics/$slug'
     | '/topics/'
   fileRoutesByTo: FileRoutesByTo
@@ -127,6 +138,7 @@ export interface FileRouteTypes {
     | '/explore'
     | '/profile'
     | '/progress'
+    | '/admin/reports'
     | '/topics/$slug'
     | '/topics'
   id:
@@ -139,6 +151,7 @@ export interface FileRouteTypes {
     | '/_authenticated/explore'
     | '/_authenticated/profile'
     | '/_authenticated/progress'
+    | '/_authenticated/admin/reports'
     | '/_authenticated/topics/$slug'
     | '/_authenticated/topics/'
   fileRoutesById: FileRoutesById
@@ -222,6 +235,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTopicsSlugRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/reports': {
+      id: '/_authenticated/admin/reports'
+      path: '/admin/reports'
+      fullPath: '/admin/reports'
+      preLoaderRoute: typeof AuthenticatedAdminReportsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
@@ -230,6 +250,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedExploreRoute: typeof AuthenticatedExploreRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedProgressRoute: typeof AuthenticatedProgressRoute
+  AuthenticatedAdminReportsRoute: typeof AuthenticatedAdminReportsRoute
   AuthenticatedTopicsSlugRoute: typeof AuthenticatedTopicsSlugRoute
   AuthenticatedTopicsIndexRoute: typeof AuthenticatedTopicsIndexRoute
 }
@@ -239,6 +260,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedExploreRoute: AuthenticatedExploreRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedProgressRoute: AuthenticatedProgressRoute,
+  AuthenticatedAdminReportsRoute: AuthenticatedAdminReportsRoute,
   AuthenticatedTopicsSlugRoute: AuthenticatedTopicsSlugRoute,
   AuthenticatedTopicsIndexRoute: AuthenticatedTopicsIndexRoute,
 }

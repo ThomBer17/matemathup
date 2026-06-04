@@ -11,6 +11,7 @@ import { RecommendedCard } from "@/components/progress/RecommendedCard";
 import { aggregateByTopic, computeOverall, type AttemptRow, type TopicMeta } from "@/lib/progress/aggregate";
 import { recommendNext } from "@/lib/progress/recommendations";
 import { computeBadges, badgeStats } from "@/lib/gamification/badges";
+import { ReportProblem } from "@/components/feedback/ReportProblem";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -100,11 +101,18 @@ function Dashboard() {
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8 md:py-12">
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-        <p className="text-sm text-muted-foreground">Hola{isNewUser ? "" : " de nuevo"},</p>
-        <h1 className="font-display text-3xl font-bold md:text-4xl">
-          {isNewUser ? `Bienvenido/a, ${firstName}` : `¿Qué resolvemos hoy, ${firstName}?`}
-        </h1>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-start justify-between gap-4"
+      >
+        <div>
+          <p className="text-sm text-muted-foreground">Hola{isNewUser ? "" : " de nuevo"},</p>
+          <h1 className="font-display text-3xl font-bold md:text-4xl">
+            {isNewUser ? `Bienvenido/a, ${firstName}` : `¿Qué resolvemos hoy, ${firstName}?`}
+          </h1>
+        </div>
+        <ReportProblem variant="outline" className="shrink-0" />
       </motion.div>
 
       {/* Onboarding card para users sin actividad */}
