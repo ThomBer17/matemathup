@@ -4,6 +4,7 @@ import { ArrowLeft, FileText, Image as ImageIcon, Loader2, Sparkles } from "luci
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { MaterialExerciseGenerator } from "@/components/materials/MaterialExerciseGenerator";
+import { isMathematicalContent } from "@/lib/materials/classify";
 
 export const Route = createFileRoute("/_authenticated/materials/$id")({
   component: MaterialDetailPage,
@@ -59,6 +60,7 @@ function MaterialDetailPage() {
 
   const hasText = !!material.extracted_text && material.extracted_text.trim().length >= 40;
   const ready = material.status === "ready";
+  const isMath = hasText && isMathematicalContent(material.extracted_text!);
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 md:py-12">
@@ -86,11 +88,19 @@ function MaterialDetailPage() {
 
       {/* Generador desde el material */}
       <div className="mt-8 rounded-2xl border bg-card p-6 shadow-soft md:p-8">
-        {ready && hasText ? (
+        {ready && hasText && isMath ? (
           <MaterialExerciseGenerator materialId={material.id} topicHint={material.detected_topic} />
         ) : material.status === "processing" ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" /> Procesando el material…
+          </div>
+        ) : ready && hasText && !isMath ? (
+          <div className="flex flex-col items-center gap-2 py-6 text-center text-muted-foreground">
+            <Sparkles className="h-6 w-6 text-muted-foreground" />
+            <p className="text-sm">
+              Este material no parece contener matemática, así que no podemos generar ejercicios.
+            </p>
+            <p className="text-xs">Subí una guía o ejercicios de matemática para usar esta función.</p>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2 py-6 text-center text-muted-foreground">

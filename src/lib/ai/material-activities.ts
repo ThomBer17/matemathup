@@ -8,6 +8,7 @@ import { checkRequiredExpression } from "./structural";
 import { validateDiversity } from "./diversity";
 import { assertWithinFreemiumLimit } from "@/lib/billing/usage";
 import { rateLimit } from "./rate-limit";
+import { classifyMaterial } from "@/lib/materials/classify";
 import type { GeneratedActivities, DifficultyLevel } from "./types";
 
 const ActivitySchema = z.object({
@@ -83,6 +84,12 @@ export const generateFromMaterial = createServerFn({ method: "POST" })
     const text = material.extracted_text?.trim();
     if (!text || text.length < 40) {
       throw new Error("Este material no tiene suficiente texto para generar ejercicios.");
+    }
+    // Guardrail: solo generamos desde contenido que parezca matemático.
+    const classification = classifyMaterial(text);
+    if (!classification.isMath) {
+      console.log(`[generateFromMaterial] rechazado: no es contenido matemático (score ${classification.mathScore})`);
+      throw new Error("Este material no parece contener matemática. Subí una guía o ejercicios de matemática.");
     }
     const topicHint = material.detected_topic ?? "";
 

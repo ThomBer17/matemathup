@@ -81,17 +81,49 @@ function normalize(s: string): string {
     .replace(/\s+/g, " ");
 }
 
+// Señales generales de "esto es matemática" (independientes del tema).
+const MATH_WORDS = [
+  "calcul", "resolv", "resuelv", "ecuacion", "inecuacion", "funcion", "numero",
+  "formula", "grafic", "demostr", "despej", "factoriz", "derivad", "integral",
+  "limite", "logaritmo", "trigonometr", "geometr", "probabilidad", "polinomio",
+  "fraccion", "raiz", "potencia", "angulo", "triangulo", "perimetro", "volumen",
+  "teorema", "vertice", "pendiente", "exponente", "conjunto", "intervalo",
+  "operacion", "multiplic", "division", "porcentaje", "decimal", "racional",
+  "ejercicio", "problema", "incognita", "variable",
+];
+
+/** Cuenta tipos de símbolos matemáticos presentes (cada tipo suma 1). */
+function symbolSignals(rawText: string): number {
+  let n = 0;
+  if (/\d\s*[=]\s*\d|[a-z]\s*=\s*\d|=\s*-?\d/i.test(rawText)) n++; // ecuación con =
+  if (/\d\s*[+\-*/×÷·]\s*\d/.test(rawText)) n++; // operación entre números
+  if (/\^|²|³|x\s*\^?\s*2/i.test(rawText)) n++; // potencias
+  if (/√|sqrt|π|≤|≥|≠|∞|±/i.test(rawText)) n++; // símbolos matemáticos
+  if (/\d+\s*\/\s*\d+/.test(rawText)) n++; // fracciones
+  if (/\b\d+\s*[a-z]\b/i.test(rawText)) n++; // coeficiente-variable (2x)
+  return n;
+}
+
 export interface ClassifyResult {
   /** Nombre del tema detectado, o null = "Sin clasificar". */
   topic: string | null;
   slug: string | null;
   /** 0–1 según cuán dominante fue el tema ganador. */
   confidence: number;
+  /** true si el contenido parece matemático (independiente de detectar el tema). */
+  isMath: boolean;
+  /** Puntaje de "matematicidad" (para debug/umbral). */
+  mathScore: number;
 }
 
+const MATH_THRESHOLD = 3;
+
 export function classifyMaterial(text: string): ClassifyResult {
-  const t = normalize(text ?? "");
-  if (t.trim().length < 10) return { topic: null, slug: null, confidence: 0 };
+  const raw = text ?? "";
+  const t = normalize(raw);
+  if (t.trim().length < 10) {
+    return { topic: null, slug: null, confidence: 0, isMath: false, mathScore: 0 };
+  }
 
   const scored = TOPICS.map((topic) => {
     let hits = 0;
@@ -104,11 +136,26 @@ export function classifyMaterial(text: string): ClassifyResult {
   const best = scored[0];
   const second = scored[1];
 
+  // Señales generales de matemática.
+  let generalWords = 0;
+  for (const w of MATH_WORDS) {
+    if (t.includes(w)) generalWords++;
+  }
+  const symbols = symbolSignals(raw);
+
+  // Puntaje combinado: keywords de tema + palabras generales + símbolos.
+  const mathScore = best.hits + generalWords + symbols;
+  const isMath = mathScore >= MATH_THRESHOLD;
+
   if (best.hits < MIN_HITS) {
-    return { topic: null, slug: null, confidence: 0 };
+    return { topic: null, slug: null, confidence: 0, isMath, mathScore };
   }
 
-  // Confianza: cuánto domina el ganador sobre el segundo.
   const confidence = best.hits / (best.hits + (second?.hits ?? 0));
-  return { topic: best.topic.name, slug: best.topic.slug, confidence };
+  return { topic: best.topic.name, slug: best.topic.slug, confidence, isMath, mathScore };
+}
+
+/** Atajo: ¿el texto parece contenido matemático? */
+export function isMathematicalContent(text: string): boolean {
+  return classifyMaterial(text).isMath;
 }

@@ -1,5 +1,31 @@
 import { describe, it, expect } from "vitest";
-import { classifyMaterial } from "./classify";
+import { classifyMaterial, isMathematicalContent } from "./classify";
+
+describe("isMathematicalContent", () => {
+  it("acepta una guía de matemática", () => {
+    expect(isMathematicalContent(
+      "Resolvé las siguientes ecuaciones: 2x + 3 = 7. Calculá el valor de x y verificá el resultado.",
+    )).toBe(true);
+  });
+
+  it("acepta texto con símbolos matemáticos", () => {
+    expect(isMathematicalContent("Hallar x si x^2 - 4 = 0 y graficar la función.")).toBe(true);
+  });
+
+  it("rechaza contenido NO matemático", () => {
+    expect(isMathematicalContent(
+      "Receta de torta: mezclar la harina con los huevos y el azúcar. Hornear durante una hora.",
+    )).toBe(false);
+    expect(isMathematicalContent(
+      "La Revolución de Mayo fue un proceso histórico ocurrido en Buenos Aires.",
+    )).toBe(false);
+  });
+
+  it("rechaza texto vacío o muy corto", () => {
+    expect(isMathematicalContent("")).toBe(false);
+    expect(isMathematicalContent("hola")).toBe(false);
+  });
+});
 
 describe("classifyMaterial", () => {
   it("clasifica trigonometría", () => {
