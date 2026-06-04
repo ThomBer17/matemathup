@@ -4,6 +4,7 @@ import {
   parseIntervalFromStatement,
   checkIntervalConsistency,
   checkAnswerKeyConsistency,
+  checkIntervalAnswerKey,
 } from "./consistency";
 
 describe("checkAnswerKeyConsistency — MATH > ANSWER KEY", () => {
@@ -47,6 +48,31 @@ describe("checkAnswerKeyConsistency — MATH > ANSWER KEY", () => {
 
   it("no toma el coeficiente '3x' como resultado", () => {
     expect(checkAnswerKeyConsistency("El resultado es 3x + 1.", "5").ok).toBe(true);
+  });
+});
+
+describe("checkIntervalAnswerKey — intervalos (caso MC más cercana)", () => {
+  it("detecta key intervalo distinta al resultado de la explicación", () => {
+    const r = checkIntervalAnswerKey(
+      "Calculando el rango obtenemos [-10, 17].",
+      "[-7,35]",
+    );
+    expect(r.ok).toBe(false);
+    expect(r.reason).toContain("answer_key_mismatch");
+  });
+
+  it("acepta cuando el intervalo coincide", () => {
+    expect(
+      checkIntervalAnswerKey("El rango es [-10, 17].", "[-10,17]").ok,
+    ).toBe(true);
+  });
+
+  it("la apertura importa: (3,5) ≠ [3,5]", () => {
+    expect(checkIntervalAnswerKey("el conjunto es (3, 5)", "[3,5]").ok).toBe(false);
+  });
+
+  it("ignora si la key no es intervalo", () => {
+    expect(checkIntervalAnswerKey("el rango es [-10,17]", "5").ok).toBe(true);
   });
 });
 

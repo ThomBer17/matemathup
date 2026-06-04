@@ -1,5 +1,36 @@
 import { describe, it, expect } from "vitest";
-import { checkArtificialPatterns, checkStatementMutation } from "./quality-checks";
+import { checkArtificialPatterns, checkStatementMutation, checkClosestOptionFraud } from "./quality-checks";
+
+describe("checkClosestOptionFraud — DETECTA 'opción más cercana'", () => {
+  const malos = [
+    "El rango es [-10, 17]. Ninguna opción coincide, la opción más cercana es [-7,35].",
+    "Como ninguna de las opciones es correcta, elegimos la más cercana.",
+    "La respuesta más parecida es 18.",
+    "Aunque no coincide exactamente, marcamos esa opción.",
+    "Es la opción esperada según las alternativas.",
+    "Tomamos la opción que más se aproxima al resultado.",
+    "Aproximadamente coincide con la tercera opción.",
+  ];
+  for (const t of malos) {
+    it(`detecta: "${t}"`, () => {
+      expect(checkClosestOptionFraud(t).ok).toBe(false);
+    });
+  }
+});
+
+describe("checkClosestOptionFraud — NO marca legítimo", () => {
+  const buenos = [
+    "Hallá el punto más cercano al origen.", // geometría, no opciones
+    "La opción correcta es la B porque x = 2.",
+    "Evaluamos cada opción y la verdadera es 17.",
+    "El número más cercano a pi entre los enteros es 3.",
+  ];
+  for (const t of buenos) {
+    it(`acepta: "${t}"`, () => {
+      expect(checkClosestOptionFraud(t).ok).toBe(true);
+    });
+  }
+});
 
 describe("checkStatementMutation — DETECTA mutación de consigna", () => {
   const malos = [

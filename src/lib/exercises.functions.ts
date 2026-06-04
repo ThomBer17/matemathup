@@ -4,7 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { callAI, getAIConfig } from "@/lib/ai/service";
 import { answersEqual, normalizeTrueFalse } from "@/lib/answer-normalize";
 import { getTopicScope, validateInScope, type TopicScope } from "@/lib/curriculum";
-import { checkArtificialPatterns, checkStatementMutation } from "@/lib/ai/quality-checks";
+import { checkArtificialPatterns, checkStatementMutation, checkClosestOptionFraud } from "@/lib/ai/quality-checks";
 import { mostSimilar } from "@/lib/ai/diversity";
 import { rateLimit } from "@/lib/ai/rate-limit";
 import { checkConsistency } from "@/lib/ai/consistency";
@@ -40,10 +40,11 @@ function validateExercise(ex: ParsedExercise): { ok: true } | { ok: false; reaso
       answersEqual(o, ex.correct_answer, "multiple_choice"),
     ).length;
     if (matchCount === 0) {
-      return { ok: false, reason: `correct_answer "${ex.correct_answer}" no coincide con ninguna opción` };
+      // El resultado correcto NO está entre las opciones → ejercicio roto.
+      return { ok: false, reason: `answer_not_in_choices: correct_answer "${ex.correct_answer}" no aparece en las opciones` };
     }
     if (matchCount > 1) {
-      return { ok: false, reason: "correct_answer coincide con varias opciones" };
+      return { ok: false, reason: "multiple_choice_integrity_failed: correct_answer coincide con varias opciones" };
     }
   }
 
@@ -74,6 +75,7 @@ function validateExercise(ex: ParsedExercise): { ok: true } | { ok: false; reaso
 // así que acá solo dejamos lo esencial. Menos input = menor tiempo al primer token.
 const BASE_SYSTEM_PROMPT = `Profesor de matemática secundaria argentina (5°-6°). Generás UN ejercicio en JSON. Notación x^2, sqrt(), pi. Sin LaTeX.
 Reglas: multiple_choice→4 opciones distintas, correct_answer EXACTO igual a una opción. true_false→correct_answer "Verdadero"/"Falso".
+MULTIPLE CHOICE: resolvé primero, después construí las opciones de modo que UNA sea EXACTAMENTE tu resultado. PROHIBIDO elegir "la opción más cercana" si ninguna coincide: en ese caso corregí las opciones para incluir tu resultado exacto. Nada de "ninguna coincide, la más cercana es…".
 correct_answer = el resultado real del cálculo de "explanation" (sin invertir ni reinterpretar). Si la consigna pide un intervalo/condición, verificá que el resultado la cumpla.
 El "statement" DEBE incluir el objeto matemático explícito: si pedís factorizar/resolver/simplificar, escribí el polinomio/ecuación/expresión EN el enunciado. Nunca "Factorizá el siguiente polinomio" sin el polinomio.
 Las cuentas y aproximaciones de "explanation" deben ser numéricamente correctas (ej: 1.732×3.646≈6.315, no 4.587).
@@ -200,6 +202,14 @@ export const generateExercise = createServerFn({ method: "POST" })
       const mutation = checkStatementMutation(ex.explanation);
       if (!mutation.ok) {
         return { ok: false, reason: `statement_mutation_attempt: "${mutation.matched}"` };
+      }
+
+      // 4c) Multiple choice: "ninguna opción coincide, la más cercana es…" = roto.
+      if (ex.type === "multiple_choice") {
+        const closest = checkClosestOptionFraud(`${ex.explanation} ${ex.statement}`);
+        if (!closest.ok) {
+          return { ok: false, reason: `multiple_choice_integrity_failed: "${closest.matched}"` };
+        }
       }
 
       // 5) Coherencia consigna ↔ respuesta + MATH > ANSWER KEY (la cuenta manda).

@@ -104,6 +104,67 @@ function inInterval(value: number, iv: Interval): boolean {
   return aboveLo && belowHi;
 }
 
+const INTERVAL_TOKEN = /([[(])\s*(-?\d+(?:[.,]\d+)?(?:\/\d+)?)\s*[;,]\s*(-?\d+(?:[.,]\d+)?(?:\/\d+)?)\s*([\])])/g;
+
+/** Todos los intervalos presentes en un texto (sin requerir la palabra "intervalo"). */
+export function findIntervals(text: string): Interval[] {
+  const out: Interval[] = [];
+  const re = new RegExp(INTERVAL_TOKEN);
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const lo = parseNumericValue(m[2]);
+    const hi = parseNumericValue(m[3]);
+    if (lo === null || hi === null) continue;
+    out.push({
+      lo: Math.min(lo, hi),
+      hi: Math.max(lo, hi),
+      loOpen: m[1] === "(",
+      hiOpen: m[4] === ")",
+    });
+  }
+  return out;
+}
+
+function intervalsEqual(a: Interval, b: Interval): boolean {
+  const tol = Math.max(1e-6, 1e-4 * Math.max(Math.abs(a.lo), Math.abs(a.hi), Math.abs(b.lo), Math.abs(b.hi), 1));
+  return (
+    Math.abs(a.lo - b.lo) <= tol &&
+    Math.abs(a.hi - b.hi) <= tol &&
+    a.loOpen === b.loOpen &&
+    a.hiOpen === b.hiOpen // x>3 ≠ x≥3: la apertura importa
+  );
+}
+
+function fmtInterval(iv: Interval): string {
+  return `${iv.loOpen ? "(" : "["}${iv.lo}, ${iv.hi}${iv.hiOpen ? ")" : "]"}`;
+}
+
+/**
+ * Coherencia de intervalos: si la answer key es un intervalo y la explicación
+ * concluye un intervalo distinto, la key es la sospechosa → mismatch.
+ * Cubre el caso MC "el resultado es [-10,17] pero marcó [-7,35]".
+ */
+export function checkIntervalAnswerKey(
+  explanation: string,
+  correctAnswer: string,
+): ConsistencyResult {
+  const keyIvs = findIntervals(correctAnswer);
+  if (keyIvs.length === 0 || !explanation) return { ok: true };
+  const keyIv = keyIvs[0];
+
+  const explIvs = findIntervals(explanation);
+  if (explIvs.length === 0) return { ok: true };
+  const concluded = explIvs[explIvs.length - 1]; // el último mencionado = la conclusión
+
+  if (!intervalsEqual(concluded, keyIv)) {
+    return {
+      ok: false,
+      reason: `answer_key_mismatch: la explicación concluye ${fmtInterval(concluded)} pero answer_key="${correctAnswer}"`,
+    };
+  }
+  return { ok: true };
+}
+
 /**
  * Verifica que, si la consigna pide que el resultado esté en un intervalo,
  * la answer key numérica efectivamente pertenezca a ese intervalo.
@@ -178,5 +239,7 @@ export function checkConsistency(
 ): ConsistencyResult {
   const interval = checkIntervalConsistency(statement, correctAnswer);
   if (!interval.ok) return interval;
-  return checkAnswerKeyConsistency(explanation, correctAnswer);
+  const numericKey = checkAnswerKeyConsistency(explanation, correctAnswer);
+  if (!numericKey.ok) return numericKey;
+  return checkIntervalAnswerKey(explanation, correctAnswer);
 }
