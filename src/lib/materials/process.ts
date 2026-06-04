@@ -68,3 +68,49 @@ export function makePreview(text: string): string {
   const clean = text.replace(/\s+/g, " ").trim();
   return clean.length > PREVIEW_LENGTH ? clean.slice(0, PREVIEW_LENGTH) + "…" : clean;
 }
+
+// ---- Soporte de ZIP: descomprimir en el browser y extraer los archivos soportados ----
+
+const MAX_ZIP_FILES = 30;
+
+export function isZip(file: File): boolean {
+  return (
+    file.type === "application/zip" ||
+    file.type === "application/x-zip-compressed" ||
+    /\.zip$/i.test(file.name)
+  );
+}
+
+function mimeForName(name: string): string {
+  const n = name.toLowerCase();
+  if (n.endsWith(".pdf")) return "application/pdf";
+  if (n.endsWith(".png")) return "image/png";
+  if (n.endsWith(".webp")) return "image/webp";
+  if (n.endsWith(".jpg") || n.endsWith(".jpeg")) return "image/jpeg";
+  return "application/octet-stream";
+}
+
+/**
+ * Descomprime un ZIP en el cliente y devuelve los PDFs/imágenes que contiene
+ * como objetos File, listos para procesar. fflate se carga con dynamic import.
+ * Ignora carpetas, archivos ocultos y la basura de macOS (__MACOSX, .DS_Store).
+ */
+export async function expandZip(file: File): Promise<File[]> {
+  const { unzipSync } = await import("fflate");
+  const buf = new Uint8Array(await file.arrayBuffer());
+  const entries = unzipSync(buf);
+
+  const out: File[] = [];
+  for (const path of Object.keys(entries)) {
+    if (path.endsWith("/")) continue; // carpeta
+    if (path.startsWith("__MACOSX/")) continue;
+    const base = path.split("/").pop() ?? path;
+    if (!base || base.startsWith(".")) continue;
+    if (!/\.(pdf|jpe?g|png|webp)$/i.test(base)) continue;
+
+    const bytes = entries[path];
+    out.push(new File([bytes], base, { type: mimeForName(base) }));
+    if (out.length >= MAX_ZIP_FILES) break;
+  }
+  return out;
+}

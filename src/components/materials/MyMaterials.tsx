@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { detectKind, extractFromFile, makePreview, type MaterialKind } from "@/lib/materials/process";
+import { detectKind, extractFromFile, makePreview, isZip, expandZip, type MaterialKind } from "@/lib/materials/process";
 import { classifyMaterial } from "@/lib/materials/classify";
 
 interface Material {
@@ -61,7 +61,7 @@ export function MyMaterials() {
 
   const refetch = () => queryClient.invalidateQueries({ queryKey: ["materials", user?.id] });
 
-  const processFile = async (file: File) => {
+  const processSingleFile = async (file: File) => {
     if (!user) return;
     const kind = detectKind(file);
     if (!kind) {
@@ -130,11 +130,31 @@ export function MyMaterials() {
     }
   };
 
+  const handleZip = async (file: File) => {
+    if (file.size > 60 * 1024 * 1024) {
+      toast.error("El ZIP supera los 60 MB.");
+      return;
+    }
+    let inner: File[] = [];
+    try {
+      inner = await expandZip(file);
+    } catch {
+      toast.error(`No se pudo abrir "${file.name}".`);
+      return;
+    }
+    if (inner.length === 0) {
+      toast.error(`"${file.name}" no contiene PDFs ni imágenes.`);
+      return;
+    }
+    toast.success(`${inner.length} archivo${inner.length === 1 ? "" : "s"} del ZIP, procesando…`);
+    for (const f of inner) await processSingleFile(f);
+  };
+
   const handleFiles = (files: FileList | null) => {
     if (!files) return;
-    // Procesamos secuencialmente (OCR es pesado) sin bloquear la UI.
+    // Procesamos secuencialmente (OCR/unzip pesados) sin bloquear la UI.
     Array.from(files).reduce(
-      (chain, file) => chain.then(() => processFile(file)),
+      (chain, file) => chain.then(() => (isZip(file) ? handleZip(file) : processSingleFile(file))),
       Promise.resolve(),
     );
   };
@@ -170,11 +190,11 @@ export function MyMaterials() {
           <Upload className="h-5 w-5 text-white" />
         </div>
         <p className="text-sm font-medium">Arrastrá un archivo o hacé click para subir</p>
-        <p className="text-xs text-muted-foreground">PDF o imágenes (JPG, PNG, WEBP) · hasta 15 MB</p>
+        <p className="text-xs text-muted-foreground">PDF, imágenes (JPG, PNG, WEBP) o ZIP · hasta 15 MB (60 MB el ZIP)</p>
         <input
           ref={inputRef}
           type="file"
-          accept="application/pdf,image/jpeg,image/png,image/webp"
+          accept="application/pdf,image/jpeg,image/png,image/webp,application/zip,.zip"
           multiple
           className="hidden"
           onChange={(e) => { handleFiles(e.target.files); e.target.value = ""; }}
