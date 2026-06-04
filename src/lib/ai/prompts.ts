@@ -1,6 +1,43 @@
 import type { DifficultyLevel } from "./types";
 import type { TopicScope } from "@/lib/curriculum";
 
+const NIVEL_DESC: Record<DifficultyLevel, string> = {
+  básico: "conceptos y operaciones directas",
+  intermedio: "resolución en varios pasos",
+  alto: "problemas complejos",
+};
+
+/**
+ * Genera ejercicios BASADOS en el material de estudio del usuario (RAG-lite:
+ * el texto del material va como contexto). No usa scope curricular: el material
+ * define su propio alcance.
+ */
+export function buildMaterialActivitiesPrompt(
+  materialText: string,
+  topicHint: string,
+  nivel: DifficultyLevel,
+  retryReason?: string,
+) {
+  const systemPrompt = `Profesor de matemática para secundaria argentina (5°-6°). Generás ejercicios EN JSON basados en el material de estudio que te paso.
+Los ejercicios deben usar los conceptos, datos y ejemplos del material. Notación simple: x^2, sqrt(), pi. Sin LaTeX.
+PROHIBIDO: errores intencionales, reinterpretaciones, cambiar la consigna, "la opción más cercana". El enunciado es la consigna final y debe ser resoluble con lo que aparece (si pide operar sobre una expresión, incluila en el enunciado).`;
+
+  const retryNote = retryReason ? `\nIntento anterior falló: ${retryReason}. Corregilo.` : "";
+  // Recortamos el material para no exceder el contexto.
+  const text = materialText.slice(0, 3500);
+
+  const userPrompt = `Material de estudio${topicHint ? ` (tema: ${topicHint})` : ""}:
+"""
+${text}
+"""
+Generá 3 ejercicios DISTINTOS de nivel ${nivel} (${NIVEL_DESC[nivel]}) basados en este material.
+Cada actividad ejercita un concepto distinto que aparezca en el material.
+JSON exacto: {"tema":"${topicHint || "Material propio"}","nivel":"${nivel}","actividades":[{"titulo":"Ejercicio N — nombre","enunciado":"..."}]}
+Reglas: enunciados máx 30 palabras, sin respuestas, autocontenidos.${retryNote}`;
+
+  return { systemPrompt, userPrompt };
+}
+
 export function buildGenerateActivitiesPrompt(
   tema: string,
   nivel: DifficultyLevel,

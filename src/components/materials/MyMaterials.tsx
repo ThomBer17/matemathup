@@ -1,17 +1,14 @@
 import { useRef, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Upload, FileText, Image as ImageIcon, Trash2, Loader2,
-  BookMarked, AlertCircle, Sparkles,
+  BookMarked, AlertCircle, Sparkles, ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { detectKind, extractFromFile, makePreview, type MaterialKind } from "@/lib/materials/process";
 import { classifyMaterial } from "@/lib/materials/classify";
@@ -48,7 +45,6 @@ export function MyMaterials() {
   const queryClient = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [detail, setDetail] = useState<Material | null>(null);
 
   const { data: materials = [] } = useQuery({
     queryKey: ["materials", user?.id],
@@ -150,7 +146,6 @@ export function MyMaterials() {
     }
     await supabase.from("materials").delete().eq("id", m.id);
     refetch();
-    if (detail?.id === m.id) setDetail(null);
   };
 
   return (
@@ -206,10 +201,10 @@ export function MyMaterials() {
                     <ImageIcon className="h-4 w-4 text-sky-500" />
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setDetail(m)}
-                  className="min-w-0 flex-1 text-left"
+                <Link
+                  to="/materials/$id"
+                  params={{ id: m.id }}
+                  className="group min-w-0 flex-1"
                 >
                   <p className="truncate text-sm font-medium">{m.file_name}</p>
                   <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
@@ -217,7 +212,16 @@ export function MyMaterials() {
                     {m.page_count != null && <span>· {m.page_count} pág.</span>}
                     {m.file_size != null && <span>· {formatSize(m.file_size)}</span>}
                   </div>
-                </button>
+                </Link>
+                {m.status === "ready" && (
+                  <Link
+                    to="/materials/$id"
+                    params={{ id: m.id }}
+                    className="hidden items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-primary/5 sm:flex"
+                  >
+                    Generar <ChevronRight className="h-3.5 w-3.5" />
+                  </Link>
+                )}
                 <button
                   type="button"
                   onClick={() => handleDelete(m)}
@@ -231,8 +235,6 @@ export function MyMaterials() {
           </AnimatePresence>
         </div>
       )}
-
-      <MaterialDetail material={detail} onClose={() => setDetail(null)} onDelete={handleDelete} />
     </div>
   );
 }
@@ -258,69 +260,5 @@ function StatusBadge({ status, topic }: { status: string; topic: string | null }
       <Sparkles className="h-3 w-3 text-primary" />
       {topic ? `Tema: ${topic}` : "Sin clasificar"}
     </span>
-  );
-}
-
-function MaterialDetail({
-  material,
-  onClose,
-  onDelete,
-}: {
-  material: Material | null;
-  onClose: () => void;
-  onDelete: (m: Material) => void;
-}) {
-  return (
-    <Dialog open={!!material} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-lg">
-        {material && (
-          <>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 font-display">
-                {material.file_type === "pdf" ? (
-                  <FileText className="h-4 w-4 text-rose-500" />
-                ) : (
-                  <ImageIcon className="h-4 w-4 text-sky-500" />
-                )}
-                <span className="truncate">{material.file_name}</span>
-              </DialogTitle>
-              <DialogDescription>
-                {material.detected_topic ? `Tema detectado: ${material.detected_topic}` : "Sin clasificar"}
-                {material.page_count != null && ` · ${material.page_count} páginas`}
-                {material.file_size != null && ` · ${formatSize(material.file_size)}`}
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-2">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Texto extraído
-              </p>
-              <div className="max-h-64 overflow-y-auto rounded-lg border bg-muted/20 p-3 text-xs leading-relaxed text-muted-foreground">
-                {material.extracted_text
-                  ? material.extracted_text
-                  : material.status === "error"
-                  ? "No se pudo procesar este archivo."
-                  : "No se extrajo texto de este material."}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] text-muted-foreground">
-                Subido {new Date(material.created_at).toLocaleDateString("es-AR")}
-              </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onDelete(material)}
-                className="gap-1.5 text-destructive hover:text-destructive"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Eliminar
-              </Button>
-            </div>
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
   );
 }

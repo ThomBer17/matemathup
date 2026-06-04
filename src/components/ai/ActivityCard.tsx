@@ -72,7 +72,7 @@ export function ActivityCard({
   index,
   defaultOpen = false,
 }: {
-  topicId: string;
+  topicId: string | null;
   tema: string;
   nivel: DifficultyLevel;
   activity: Activity;

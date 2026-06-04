@@ -19,6 +19,7 @@ import { Route as AuthenticatedExploreRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedTopicsIndexRouteImport } from './routes/_authenticated/topics.index'
 import { Route as AuthenticatedTopicsSlugRouteImport } from './routes/_authenticated/topics.$slug'
+import { Route as AuthenticatedMaterialsIdRouteImport } from './routes/_authenticated/materials.$id'
 import { Route as AuthenticatedAdminReportsRouteImport } from './routes/_authenticated/admin.reports'
 
 const SignupRoute = SignupRouteImport.update({
@@ -71,6 +72,12 @@ const AuthenticatedTopicsSlugRoute = AuthenticatedTopicsSlugRouteImport.update({
   path: '/topics/$slug',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedMaterialsIdRoute =
+  AuthenticatedMaterialsIdRouteImport.update({
+    id: '/materials/$id',
+    path: '/materials/$id',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminReportsRoute =
   AuthenticatedAdminReportsRouteImport.update({
     id: '/admin/reports',
@@ -87,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof AuthenticatedProfileRoute
   '/progress': typeof AuthenticatedProgressRoute
   '/admin/reports': typeof AuthenticatedAdminReportsRoute
+  '/materials/$id': typeof AuthenticatedMaterialsIdRoute
   '/topics/$slug': typeof AuthenticatedTopicsSlugRoute
   '/topics/': typeof AuthenticatedTopicsIndexRoute
 }
@@ -99,6 +107,7 @@ export interface FileRoutesByTo {
   '/profile': typeof AuthenticatedProfileRoute
   '/progress': typeof AuthenticatedProgressRoute
   '/admin/reports': typeof AuthenticatedAdminReportsRoute
+  '/materials/$id': typeof AuthenticatedMaterialsIdRoute
   '/topics/$slug': typeof AuthenticatedTopicsSlugRoute
   '/topics': typeof AuthenticatedTopicsIndexRoute
 }
@@ -113,6 +122,7 @@ export interface FileRoutesById {
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/progress': typeof AuthenticatedProgressRoute
   '/_authenticated/admin/reports': typeof AuthenticatedAdminReportsRoute
+  '/_authenticated/materials/$id': typeof AuthenticatedMaterialsIdRoute
   '/_authenticated/topics/$slug': typeof AuthenticatedTopicsSlugRoute
   '/_authenticated/topics/': typeof AuthenticatedTopicsIndexRoute
 }
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/progress'
     | '/admin/reports'
+    | '/materials/$id'
     | '/topics/$slug'
     | '/topics/'
   fileRoutesByTo: FileRoutesByTo
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/progress'
     | '/admin/reports'
+    | '/materials/$id'
     | '/topics/$slug'
     | '/topics'
   id:
@@ -152,6 +164,7 @@ export interface FileRouteTypes {
     | '/_authenticated/profile'
     | '/_authenticated/progress'
     | '/_authenticated/admin/reports'
+    | '/_authenticated/materials/$id'
     | '/_authenticated/topics/$slug'
     | '/_authenticated/topics/'
   fileRoutesById: FileRoutesById
@@ -235,6 +248,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTopicsSlugRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/materials/$id': {
+      id: '/_authenticated/materials/$id'
+      path: '/materials/$id'
+      fullPath: '/materials/$id'
+      preLoaderRoute: typeof AuthenticatedMaterialsIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/reports': {
       id: '/_authenticated/admin/reports'
       path: '/admin/reports'
@@ -251,6 +271,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedProgressRoute: typeof AuthenticatedProgressRoute
   AuthenticatedAdminReportsRoute: typeof AuthenticatedAdminReportsRoute
+  AuthenticatedMaterialsIdRoute: typeof AuthenticatedMaterialsIdRoute
   AuthenticatedTopicsSlugRoute: typeof AuthenticatedTopicsSlugRoute
   AuthenticatedTopicsIndexRoute: typeof AuthenticatedTopicsIndexRoute
 }
@@ -261,6 +282,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedProgressRoute: AuthenticatedProgressRoute,
   AuthenticatedAdminReportsRoute: AuthenticatedAdminReportsRoute,
+  AuthenticatedMaterialsIdRoute: AuthenticatedMaterialsIdRoute,
   AuthenticatedTopicsSlugRoute: AuthenticatedTopicsSlugRoute,
   AuthenticatedTopicsIndexRoute: AuthenticatedTopicsIndexRoute,
 }

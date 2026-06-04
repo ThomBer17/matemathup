@@ -5,7 +5,7 @@ export type AttemptStatus = "correct" | "partial" | "incorrect";
 export type AttemptSource = "adaptive" | "tanda";
 
 interface RecordTutorAttemptInput {
-  topicId: string;
+  topicId: string | null; // null para ejercicios de material propio (sin topic de curriculum)
   status: AttemptStatus;
   userAnswer: string;
   difficulty?: number;
@@ -27,7 +27,7 @@ export const recordTutorAttempt = createServerFn({ method: "POST" })
     const { error } = await supabase.from("exercise_attempts").insert({
       user_id: userId,
       exercise_id: null,
-      topic_id: topicId,
+      topic_id: topicId ?? null,
       user_answer: userAnswer,
       is_correct: status === "correct",
       status,
