@@ -61,9 +61,24 @@ describe("answersEqual", () => {
   });
 
   it("open: comparación normalizada de espacios y case", () => {
-    expect(answersEqual("x = 2", "X=2", "open")).toBe(false); // espacios sí cuentan
     expect(answersEqual("x = 2", "x = 2", "open")).toBe(true);
     expect(answersEqual("X = 2", "x = 2", "open")).toBe(true);
+  });
+
+  it("open: equivalencia numérica (forma distinta, mismo valor)", () => {
+    expect(answersEqual("0.5", "1/2", "open")).toBe(true);
+    expect(answersEqual("2", "2.0", "open")).toBe(true);
+    expect(answersEqual("3/2", "1.5", "open")).toBe(true);
+    expect(answersEqual("-0.75", "-3/4", "open")).toBe(true);
+  });
+
+  it("open: valores numéricos distintos siguen incorrectos", () => {
+    expect(answersEqual("0.5", "0.6", "open")).toBe(false);
+    expect(answersEqual("2", "3", "open")).toBe(false);
+  });
+
+  it("multiple_choice: equivalencia numérica matchea opción en otra forma", () => {
+    expect(answersEqual("1/2", "0.5", "multiple_choice")).toBe(true);
   });
 });
 

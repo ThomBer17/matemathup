@@ -1,3 +1,5 @@
+import { parseNumericValue } from "@/lib/ai/consistency";
+
 export type ExerciseType = "multiple_choice" | "true_false" | "open";
 
 const TRUE_FORMS = new Set([
@@ -32,7 +34,15 @@ export function answersEqual(a: string, b: string, type: ExerciseType): boolean 
     const cb = normalizeTrueFalse(b);
     if (ca && cb) return ca === cb;
   }
-  return basic(a) === basic(b);
+  if (basic(a) === basic(b)) return true;
+  // Equivalencia numérica: "0.5" == "1/2", "2" == "2.0", "50%" no aplica.
+  // Evita marcar incorrecta una respuesta correcta escrita en otra forma.
+  const na = parseNumericValue(a);
+  const nb = parseNumericValue(b);
+  if (na !== null && nb !== null) {
+    return Math.abs(na - nb) <= Math.max(1e-9, 1e-6 * Math.max(Math.abs(na), Math.abs(nb)));
+  }
+  return false;
 }
 
 /**
