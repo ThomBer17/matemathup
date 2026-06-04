@@ -154,7 +154,14 @@ export function MyMaterials() {
     if (!files) return;
     // Procesamos secuencialmente (OCR/unzip pesados) sin bloquear la UI.
     Array.from(files).reduce(
-      (chain, file) => chain.then(() => (isZip(file) ? handleZip(file) : processSingleFile(file))),
+      (chain, file) => chain.then(() => {
+        // RAR/7z/tar no se pueden descomprimir en el navegador → mensaje claro.
+        if (/\.(rar|7z|tar|gz|tgz)$/i.test(file.name)) {
+          toast.error(`No soportamos ${file.name.split(".").pop()?.toUpperCase()}. Convertilo a ZIP (o subí los PDFs sueltos).`);
+          return Promise.resolve();
+        }
+        return isZip(file) ? handleZip(file) : processSingleFile(file);
+      }),
       Promise.resolve(),
     );
   };
