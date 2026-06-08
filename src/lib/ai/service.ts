@@ -69,8 +69,10 @@ export async function callAI<T>(options: AICallOptions): Promise<T> {
         ],
         response_format: { type: "json_object" },
       };
-      // Control de razonamiento (OpenRouter ignora el campo si el modelo no es de reasoning).
-      if (options.reasoningEffort) {
+      // Control de razonamiento: el campo `reasoning` es específico de OpenRouter.
+      // Otros proveedores (Gemini OpenAI-compat, etc.) lo rechazarían, así que solo
+      // lo mandamos cuando el endpoint es OpenRouter.
+      if (options.reasoningEffort && baseUrl.includes("openrouter")) {
         body.reasoning = { effort: options.reasoningEffort };
       }
 

@@ -11,7 +11,7 @@
   "vars": {
     "SUPABASE_URL": "https://drpsplylcnhmaevqprxp.supabase.co",
     "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_4O96y-vg7H4xJy-T6On9KQ_SCvj4H6e",
-    "AI_BASE_URL": "https://openrouter.ai/api/v1/chat/completions",
-    "AI_MODEL": "openai/gpt-oss-120b:free"
+    "AI_BASE_URL": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    "AI_MODEL": "gemini-2.5-flash"
   }
 }
