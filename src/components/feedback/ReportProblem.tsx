@@ -20,6 +20,7 @@ import {
   type ReportContext,
   type ReportType,
 } from "@/lib/feedback/report-types";
+import { track, EV } from "@/lib/analytics/events";
 
 type ButtonVariant = React.ComponentProps<typeof Button>["variant"];
 type ButtonSize = React.ComponentProps<typeof Button>["size"];
@@ -66,6 +67,7 @@ export function ReportProblem({
         metadata: JSON.parse(JSON.stringify(metadata)),
       });
       if (error) throw error;
+      track(EV.reportSent, { entityType: "report", metadata: { type, topic: context.topic ?? null } });
       toast.success("¡Gracias! Recibimos tu reporte 🙌");
       reset();
       setOpen(false);

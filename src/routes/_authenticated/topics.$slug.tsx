@@ -24,6 +24,7 @@ import { MathPreview } from "@/components/math/MathPreview";
 import { answersEqual, displayCorrectAnswer, normalizeTrueFalse, trueFalseLabel } from "@/lib/answer-normalize";
 import { PaywallDialog } from "@/components/billing/PaywallDialog";
 import { isFreemiumLimitError } from "@/lib/billing/plans";
+import { track, EV } from "@/lib/analytics/events";
 import type { DifficultyLevel } from "@/lib/ai/types";
 
 export const Route = createFileRoute("/_authenticated/topics/$slug")({
@@ -152,6 +153,7 @@ function TopicPage() {
         throw new Error("No pudimos generar un ejercicio válido. Reintentá.");
       }
       setExercise(ex);
+      track(EV.exerciseGenerated, { entityType: "exercise", entityId: ex.id, metadata: { topic: topic.name, difficulty } });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Error al generar el ejercicio";
       // Límite freemium → paywall amable, no error técnico.
@@ -178,8 +180,12 @@ function TopicPage() {
     const correct = answersEqual(a, exercise.correct_answer, exercise.type);
     setIsCorrect(correct);
     setRevealed(true);
+    const evMeta = { topic: topic?.name, difficulty, exercise_type: exercise.type };
+    track(EV.exerciseAnswered, { entityType: "exercise", entityId: exercise.id, metadata: evMeta });
+    track(correct ? EV.exerciseCorrect : EV.exerciseIncorrect, { entityType: "exercise", entityId: exercise.id, metadata: evMeta });
     if (correct) {
       const xpGain = 10 + difficulty * 2;
+      track(EV.xpGained, { metadata: { amount: xpGain, source: "adaptive" } });
       toast.success(`¡Correcto! +${xpGain} XP`);
     } else {
       toast.error("Casi. Mirá la explicación.");
@@ -247,6 +253,9 @@ function TopicPage() {
       const xpGain = correct ? 10 + difficulty * 2 : 2;
       const newXp = (prof.xp ?? 0) + xpGain;
       const newLevel = 1 + Math.floor(newXp / 100);
+      if (newLevel > (prof.level ?? 1)) {
+        track(EV.levelUp, { metadata: { level: newLevel } });
+      }
       await supabase.from("profiles").update({
         current_streak: streak,
         longest_streak: Math.max(prof.longest_streak ?? 0, streak),
@@ -272,6 +281,7 @@ function TopicPage() {
     if (!exercise) return;
     const next = Math.min(hintIndex + 1, (exercise.hints?.length ?? 1) - 1);
     setHintIndex(next);
+    track(EV.hintRequested, { entityType: "exercise", entityId: exercise.id, metadata: { topic: topic?.name } });
   };
 
   const diffLabel = useMemo(

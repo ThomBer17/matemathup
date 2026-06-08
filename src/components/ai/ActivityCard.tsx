@@ -23,6 +23,7 @@ import { evaluateAnswer } from "@/lib/ai/evaluate";
 import { giveHint } from "@/lib/ai/hints";
 import { recordTutorAttempt } from "@/lib/progress/attempts";
 import { ReportProblem } from "@/components/feedback/ReportProblem";
+import { track, EV } from "@/lib/analytics/events";
 import type { Activity, DifficultyLevel, EvaluationResult, EvaluationStatus } from "@/lib/ai/types";
 
 const NIVEL_TO_DIFFICULTY: Record<DifficultyLevel, number> = {
@@ -103,6 +104,7 @@ export function ActivityCard({
       });
       setEvaluation(result);
       setShowExplicacion(result.estado !== "correcta");
+      track(EV.tandaAnswered, { entityType: "tanda", metadata: { topic: tema, estado: result.estado } });
 
       void recordFn({
         data: {

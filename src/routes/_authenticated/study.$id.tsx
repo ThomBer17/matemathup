@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { computePlanProgress, daysUntil, todayArgentina, replanTasks, type TaskKind } from "@/lib/study/plan";
+import { track, EV } from "@/lib/analytics/events";
 
 export const Route = createFileRoute("/_authenticated/study/$id")({
   component: StudyPlanDetail,
@@ -107,6 +108,8 @@ function StudyPlanDetail() {
       await supabase.from("profiles").update({ xp: newXp, level: 1 + Math.floor(newXp / 100) }).eq("id", user.id);
       queryClient.invalidateQueries({ queryKey: ["profile-mini", user.id] });
     }
+    track(EV.taskCompleted, { entityType: "task", entityId: task.id, metadata: { kind: task.kind, topic: task.topic_name } });
+    track(EV.xpGained, { metadata: { amount: xpGain, source: "study_task" } });
     toast.success(`¡Tarea completada! +${xpGain} XP`);
     refetch();
   };
@@ -121,6 +124,7 @@ function StudyPlanDetail() {
     for (const u of updates) {
       await supabase.from("study_plan_tasks").update({ date: u.date }).eq("id", u.id);
     }
+    track(EV.replanUsed, { entityType: "plan", entityId: id });
     toast.success("Plan replanificado. Redistribuimos lo que quedaba.");
     refetch();
   };
@@ -252,6 +256,7 @@ function TaskCard({ task, isPast, onComplete }: { task: Task; isPast: boolean; o
         <Link
           to="/topics/$slug"
           params={{ slug: task.topic_slug }}
+          onClick={() => track(EV.taskStarted, { entityType: "task", entityId: task.id, metadata: { kind: task.kind, topic: task.topic_name } })}
           className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
         >
           <Play className="h-3 w-3" /> Comenzar

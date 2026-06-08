@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import {
   generatePlan, daysUntil, todayArgentina, STUDY_TOPICS,
 } from "@/lib/study/plan";
+import { track, EV } from "@/lib/analytics/events";
 
 export const Route = createFileRoute("/_authenticated/study/")({
   component: StudyPage,
@@ -195,6 +196,7 @@ function CreatePlanDialog({
       );
       if (tErr) throw new Error(tErr.message);
 
+      track(EV.planCreated, { entityType: "plan", entityId: plan.id, metadata: { topics: topics.length, daily_minutes: dailyMinutes, tasks: tasks.length } });
       toast.success("¡Plan creado! 🎯");
       onCreated(plan.id);
       setName(""); setExamDate(""); setTopics([]); setDailyMinutes(30);

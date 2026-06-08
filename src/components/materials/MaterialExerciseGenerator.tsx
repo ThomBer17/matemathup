@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Sparkles, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ActivityCard } from "@/components/ai/ActivityCard";
 import { PaywallDialog } from "@/components/billing/PaywallDialog";
 import { isFreemiumLimitError } from "@/lib/billing/plans";
+import { track, EV } from "@/lib/analytics/events";
 import type { DifficultyLevel, GeneratedActivities } from "@/lib/ai/types";
 
 const LEVELS: { value: DifficultyLevel; label: string }[] = [
@@ -32,6 +33,11 @@ export function MaterialExerciseGenerator({
 
   const tema = topicHint || "tu material";
 
+  useEffect(() => {
+    track(EV.materialSessionStarted, { entityType: "material", entityId: materialId });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [materialId]);
+
   const generate = async () => {
     if (loading) return;
     setLoading(true);
@@ -40,6 +46,7 @@ export function MaterialExerciseGenerator({
       const data = await genFn({ data: { materialId, nivel } });
       setResult(data);
       setBatchKey((k) => k + 1);
+      track(EV.materialExerciseGenerated, { entityType: "material", entityId: materialId, metadata: { nivel, count: data.actividades.length } });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Error al generar ejercicios";
       if (isFreemiumLimitError(msg) === "tanda") setPaywallOpen(true);

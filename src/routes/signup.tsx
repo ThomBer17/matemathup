@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { track, EV } from "@/lib/analytics/events";
 import { AuthShell } from "./login";
 
 export const Route = createFileRoute("/signup")({
@@ -45,6 +46,7 @@ function SignupPage() {
       toast.error(error.message);
       return;
     }
+    track(EV.signup, { entityType: "user" });
     toast.success("Cuenta creada. ¡Empecemos!");
     navigate({ to: "/dashboard" });
   };

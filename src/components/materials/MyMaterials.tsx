@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { detectKind, extractFromFile, makePreview, isZip, expandZip, type MaterialKind } from "@/lib/materials/process";
 import { classifyMaterial } from "@/lib/materials/classify";
+import { track, EV } from "@/lib/analytics/events";
 
 interface Material {
   id: string;
@@ -92,6 +93,7 @@ export function MyMaterials() {
       return;
     }
     const id = inserted.id as string;
+    track(EV.materialUploaded, { entityType: "material", entityId: id, metadata: { file_type: kind } });
     refetch();
 
     try {
@@ -122,6 +124,7 @@ export function MyMaterials() {
           status: "ready",
         })
         .eq("id", id);
+      track(EV.materialProcessed, { entityType: "material", entityId: id, metadata: { topic: classification.topic, is_math: classification.isMath } });
       refetch();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Error al procesar";
@@ -172,6 +175,7 @@ export function MyMaterials() {
       await supabase.storage.from("materials").remove([m.storage_path]).catch(() => {});
     }
     await supabase.from("materials").delete().eq("id", m.id);
+    track(EV.materialDeleted, { entityType: "material", entityId: m.id });
     refetch();
   };
 

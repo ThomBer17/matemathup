@@ -1,4 +1,4 @@
--- Material propio: biblioteca de estudio del usuario.
+ -- Material propio: biblioteca de estudio del usuario.
 -- v1: upload + extracción de texto + clasificación + almacenamiento. (Sin generación IA todavía.)
 
 CREATE TABLE IF NOT EXISTS public.materials (

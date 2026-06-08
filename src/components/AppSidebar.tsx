@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { LayoutDashboard, BookOpen, User, LogOut, GraduationCap, LineChart, TrendingUp, Flag, CalendarDays } from "lucide-react";
+import { LayoutDashboard, BookOpen, User, LogOut, GraduationCap, LineChart, TrendingUp, Flag, CalendarDays, BarChart3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Sidebar,
@@ -76,14 +76,24 @@ export function AppSidebar() {
                 );
               })}
               {isAdmin && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={path.startsWith("/admin")}>
-                    <Link to="/admin/reports" className="flex items-center gap-2">
-                      <Flag className="h-4 w-4" />
-                      <span>Reportes</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                <>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={path === "/admin/reports"}>
+                      <Link to="/admin/reports" className="flex items-center gap-2">
+                        <Flag className="h-4 w-4" />
+                        <span>Reportes</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={path === "/admin/analytics"}>
+                      <Link to="/admin/analytics" className="flex items-center gap-2">
+                        <BarChart3 className="h-4 w-4" />
+                        <span>Analytics</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </>
               )}
             </SidebarMenu>
           </SidebarGroupContent>

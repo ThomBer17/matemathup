@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ActivityCard } from "./ActivityCard";
 import { PaywallDialog } from "@/components/billing/PaywallDialog";
 import { isFreemiumLimitError } from "@/lib/billing/plans";
+import { track, EV } from "@/lib/analytics/events";
 import type { DifficultyLevel, GeneratedActivities } from "@/lib/ai/types";
 
 const DIFFICULTY_OPTIONS: { value: DifficultyLevel; label: string; desc: string }[] = [
@@ -66,6 +67,7 @@ export function ActivityGenerator({
       const data = await genFn({ data: { tema: topicName, nivel, force } });
       setResult(data);
       setBatchKey((k) => k + 1);
+      track(EV.tandaGenerated, { entityType: "tanda", metadata: { topic: topicName, nivel, count: data.actividades.length } });
       queryClient.invalidateQueries({ queryKey: ["usage-status"] });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Error al generar las actividades";

@@ -23,6 +23,7 @@ import { Route as AuthenticatedTopicsSlugRouteImport } from './routes/_authentic
 import { Route as AuthenticatedStudyIdRouteImport } from './routes/_authenticated/study.$id'
 import { Route as AuthenticatedMaterialsIdRouteImport } from './routes/_authenticated/materials.$id'
 import { Route as AuthenticatedAdminReportsRouteImport } from './routes/_authenticated/admin.reports'
+import { Route as AuthenticatedAdminAnalyticsRouteImport } from './routes/_authenticated/admin.analytics'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -96,6 +97,12 @@ const AuthenticatedAdminReportsRoute =
     path: '/admin/reports',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminAnalyticsRoute =
+  AuthenticatedAdminAnalyticsRouteImport.update({
+    id: '/admin/analytics',
+    path: '/admin/analytics',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -105,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/explore': typeof AuthenticatedExploreRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/progress': typeof AuthenticatedProgressRoute
+  '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/materials/$id': typeof AuthenticatedMaterialsIdRoute
   '/study/$id': typeof AuthenticatedStudyIdRoute
@@ -120,6 +128,7 @@ export interface FileRoutesByTo {
   '/explore': typeof AuthenticatedExploreRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/progress': typeof AuthenticatedProgressRoute
+  '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/materials/$id': typeof AuthenticatedMaterialsIdRoute
   '/study/$id': typeof AuthenticatedStudyIdRoute
@@ -137,6 +146,7 @@ export interface FileRoutesById {
   '/_authenticated/explore': typeof AuthenticatedExploreRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/progress': typeof AuthenticatedProgressRoute
+  '/_authenticated/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/_authenticated/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/_authenticated/materials/$id': typeof AuthenticatedMaterialsIdRoute
   '/_authenticated/study/$id': typeof AuthenticatedStudyIdRoute
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
     | '/explore'
     | '/profile'
     | '/progress'
+    | '/admin/analytics'
     | '/admin/reports'
     | '/materials/$id'
     | '/study/$id'
@@ -169,6 +180,7 @@ export interface FileRouteTypes {
     | '/explore'
     | '/profile'
     | '/progress'
+    | '/admin/analytics'
     | '/admin/reports'
     | '/materials/$id'
     | '/study/$id'
@@ -185,6 +197,7 @@ export interface FileRouteTypes {
     | '/_authenticated/explore'
     | '/_authenticated/profile'
     | '/_authenticated/progress'
+    | '/_authenticated/admin/analytics'
     | '/_authenticated/admin/reports'
     | '/_authenticated/materials/$id'
     | '/_authenticated/study/$id'
@@ -300,6 +313,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminReportsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/analytics': {
+      id: '/_authenticated/admin/analytics'
+      path: '/admin/analytics'
+      fullPath: '/admin/analytics'
+      preLoaderRoute: typeof AuthenticatedAdminAnalyticsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
@@ -308,6 +328,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedExploreRoute: typeof AuthenticatedExploreRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedProgressRoute: typeof AuthenticatedProgressRoute
+  AuthenticatedAdminAnalyticsRoute: typeof AuthenticatedAdminAnalyticsRoute
   AuthenticatedAdminReportsRoute: typeof AuthenticatedAdminReportsRoute
   AuthenticatedMaterialsIdRoute: typeof AuthenticatedMaterialsIdRoute
   AuthenticatedStudyIdRoute: typeof AuthenticatedStudyIdRoute
@@ -321,6 +342,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedExploreRoute: AuthenticatedExploreRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedProgressRoute: AuthenticatedProgressRoute,
+  AuthenticatedAdminAnalyticsRoute: AuthenticatedAdminAnalyticsRoute,
   AuthenticatedAdminReportsRoute: AuthenticatedAdminReportsRoute,
   AuthenticatedMaterialsIdRoute: AuthenticatedMaterialsIdRoute,
   AuthenticatedStudyIdRoute: AuthenticatedStudyIdRoute,
