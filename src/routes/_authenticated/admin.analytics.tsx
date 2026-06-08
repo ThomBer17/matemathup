@@ -6,10 +6,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import {
   filterSince, countOf, distinctActiveUsers, topByMetadataKey,
-  funnel, retention, type AnalyticsEvent,
+  funnel, retention, sessionize, sessionMetrics, abandonmentByTopic,
+  globalAbandonment, accuracyByTopic, activityByHour, buildAlerts,
+  type AnalyticsEvent,
 } from "@/lib/analytics/compute";
 import { EV } from "@/lib/analytics/events";
 import { cn } from "@/lib/utils";
+import { AlertTriangle, Clock } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/analytics")({
   component: AdminAnalyticsPage,
@@ -63,6 +66,19 @@ function AdminAnalyticsPage() {
     const activeUsers = distinctActiveUsers(inWin);
     const answered = countOf(inWin, EV.exerciseAnswered) + countOf(inWin, EV.tandaAnswered);
 
+    const sessions = sessionMetrics(sessionize(inWin));
+    const abandonment = abandonmentByTopic(inWin);
+    const accuracyTopics = accuracyByTopic(inWin);
+    const featureCounts =
+      activeUsers >= 5
+        ? [
+            { feature: "tanda", label: "Tanda IA", count: countOf(inWin, EV.tandaGenerated) },
+            { feature: "material", label: "Material propio", count: countOf(inWin, EV.materialUploaded) },
+            { feature: "plan", label: "Plan de estudio", count: countOf(inWin, EV.planCreated) },
+          ]
+        : [];
+    const alerts = buildAlerts({ abandonment, accuracy: accuracyTopics, featureCounts });
+
     return {
       activeUsers,
       exercisesGenerated: countOf(inWin, EV.exerciseGenerated),
@@ -75,6 +91,11 @@ function AdminAnalyticsPage() {
       perUser: activeUsers > 0 ? Math.round(answered / activeUsers) : 0,
       topTopics: topByMetadataKey(inWin, EV.exerciseAnswered, "topic"),
       reportTypes: topByMetadataKey(inWin, EV.reportSent, "type"),
+      sessions,
+      abandonment,
+      globalAbandon: globalAbandonment(inWin),
+      hours: activityByHour(inWin),
+      alerts,
     };
   }, [events, win]);
 
@@ -142,6 +163,18 @@ function AdminAnalyticsPage() {
         </div>
       ) : (
         <>
+          {/* Alertas automáticas */}
+          {view.alerts.length > 0 && (
+            <div className="mt-6 space-y-2">
+              {view.alerts.map((a, i) => (
+                <div key={i} className="flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  {a.text}
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* KPIs */}
           <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
             <Kpi icon={Users} label="Usuarios activos" value={view.activeUsers} />
@@ -154,6 +187,14 @@ function AdminAnalyticsPage() {
             <Kpi label="Reportes" value={view.reports} />
           </div>
 
+          {/* Sesiones + abandono global */}
+          <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+            <Kpi icon={Clock} label="Duración prom. sesión" value={`${view.sessions.avgDurationMin} min`} />
+            <Kpi label="Ejercicios por sesión" value={view.sessions.avgExercises} />
+            <Kpi label="Sesiones por usuario" value={view.sessions.sessionsPerUser} />
+            <Kpi label="Abandono global" value={view.globalAbandon == null ? "—" : `${view.globalAbandon}%`} />
+          </div>
+
           <div className="mt-3 grid gap-4 md:grid-cols-2">
             <Panel title="Temas más practicados">
               <RankList items={view.topTopics} empty="Sin datos en el período." />
@@ -161,6 +202,64 @@ function AdminAnalyticsPage() {
             <Panel title="Reportes por tipo">
               <RankList items={view.reportTypes} empty="Sin reportes en el período." />
             </Panel>
+          </div>
+
+          {/* Abandono por tema */}
+          <h2 className="mt-10 flex items-center gap-2 font-display text-xl font-bold">
+            <TrendingDown className="h-5 w-5 text-muted-foreground" /> Temas con mayor abandono
+          </h2>
+          <p className="text-xs text-muted-foreground">Ejercicios generados que no se completaron, peor a mejor.</p>
+          <div className="mt-3 overflow-hidden rounded-2xl border bg-card shadow-soft">
+            {view.abandonment.length === 0 ? (
+              <p className="p-4 text-xs text-muted-foreground">Sin datos suficientes en el período.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="border-b bg-muted/30 text-xs text-muted-foreground">
+                  <tr>
+                    <th className="p-2.5 text-left font-medium">Tema</th>
+                    <th className="p-2.5 text-right font-medium">Iniciados</th>
+                    <th className="p-2.5 text-right font-medium">Completados</th>
+                    <th className="p-2.5 text-right font-medium">Abandono</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {view.abandonment.map((a) => (
+                    <tr key={a.topic} className="border-b last:border-0">
+                      <td className="p-2.5">{a.topic}</td>
+                      <td className="p-2.5 text-right tabular-nums">{a.generated}</td>
+                      <td className="p-2.5 text-right tabular-nums">{a.completed}</td>
+                      <td className="p-2.5 text-right">
+                        <span className={cn(
+                          "rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums",
+                          a.abandonPct > 50 ? "bg-rose-500/15 text-rose-600 dark:text-rose-400"
+                            : a.abandonPct > 25 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                            : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+                        )}>
+                          {a.abandonPct}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* Actividad por hora */}
+          <h2 className="mt-10 flex items-center gap-2 font-display text-xl font-bold">
+            <Clock className="h-5 w-5 text-muted-foreground" /> Actividad por hora del día
+          </h2>
+          <p className="text-xs text-muted-foreground">Cuándo estudian los usuarios (horario de Argentina).</p>
+          <div className="mt-3 flex items-end gap-1 rounded-2xl border bg-card p-4 shadow-soft" style={{ height: 140 }}>
+            {(() => {
+              const max = Math.max(...view.hours, 1);
+              return view.hours.map((h, hour) => (
+                <div key={hour} className="flex flex-1 flex-col items-center gap-1" title={`${hour}:00 — ${h} eventos`}>
+                  <div className="w-full rounded-t bg-primary/70" style={{ height: `${(h / max) * 100}%`, minHeight: h > 0 ? 2 : 0 }} />
+                  {hour % 3 === 0 && <span className="text-[8px] text-muted-foreground">{hour}</span>}
+                </div>
+              ));
+            })()}
           </div>
 
           {/* Funnel (todo el período de 90 días) */}
