@@ -13,6 +13,7 @@ import { recommendNext } from "@/lib/progress/recommendations";
 import { computeBadges, badgeStats } from "@/lib/gamification/badges";
 import { ReportProblem } from "@/components/feedback/ReportProblem";
 import { MyMaterials } from "@/components/materials/MyMaterials";
+import { NextExamWidget } from "@/components/study/NextExamWidget";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -172,13 +173,18 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Recomendación */}
-      {!isNewUser && recommendation && (
-        <div className="mt-8">
-          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Recomendado para hoy
-          </h2>
-          <RecommendedCard rec={recommendation} />
+      {/* Próximo examen + recomendación */}
+      {!isNewUser && (
+        <div className="mt-8 grid gap-4 md:grid-cols-2">
+          <NextExamWidget />
+          {recommendation && (
+            <div>
+              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Recomendado para hoy
+              </h2>
+              <RecommendedCard rec={recommendation} />
+            </div>
+          )}
         </div>
       )}
 

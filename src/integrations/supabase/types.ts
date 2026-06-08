@@ -14,6 +14,90 @@ export type Database = {
   }
   public: {
     Tables: {
+      study_plans: {
+        Row: {
+          created_at: string
+          daily_minutes: number
+          exam_date: string
+          id: string
+          name: string
+          status: string
+          topics: string[]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          daily_minutes?: number
+          exam_date: string
+          id?: string
+          name: string
+          status?: string
+          topics?: string[]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          daily_minutes?: number
+          exam_date?: string
+          id?: string
+          name?: string
+          status?: string
+          topics?: string[]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      study_plan_tasks: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          date: string
+          id: string
+          kind: string
+          minutes: number
+          objective: string | null
+          order_index: number
+          plan_id: string
+          status: string
+          title: string
+          topic_name: string | null
+          topic_slug: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          date: string
+          id?: string
+          kind: string
+          minutes?: number
+          objective?: string | null
+          order_index?: number
+          plan_id: string
+          status?: string
+          title: string
+          topic_name?: string | null
+          topic_slug?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          kind?: string
+          minutes?: number
+          objective?: string | null
+          order_index?: number
+          plan_id?: string
+          status?: string
+          title?: string
+          topic_name?: string | null
+          topic_slug?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       materials: {
         Row: {
           created_at: string

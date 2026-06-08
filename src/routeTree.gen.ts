@@ -18,7 +18,9 @@ import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedExploreRouteImport } from './routes/_authenticated/explore'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedTopicsIndexRouteImport } from './routes/_authenticated/topics.index'
+import { Route as AuthenticatedStudyIndexRouteImport } from './routes/_authenticated/study.index'
 import { Route as AuthenticatedTopicsSlugRouteImport } from './routes/_authenticated/topics.$slug'
+import { Route as AuthenticatedStudyIdRouteImport } from './routes/_authenticated/study.$id'
 import { Route as AuthenticatedMaterialsIdRouteImport } from './routes/_authenticated/materials.$id'
 import { Route as AuthenticatedAdminReportsRouteImport } from './routes/_authenticated/admin.reports'
 
@@ -67,9 +69,19 @@ const AuthenticatedTopicsIndexRoute =
     path: '/topics/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedStudyIndexRoute = AuthenticatedStudyIndexRouteImport.update({
+  id: '/study/',
+  path: '/study/',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedTopicsSlugRoute = AuthenticatedTopicsSlugRouteImport.update({
   id: '/topics/$slug',
   path: '/topics/$slug',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedStudyIdRoute = AuthenticatedStudyIdRouteImport.update({
+  id: '/study/$id',
+  path: '/study/$id',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedMaterialsIdRoute =
@@ -95,7 +107,9 @@ export interface FileRoutesByFullPath {
   '/progress': typeof AuthenticatedProgressRoute
   '/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/materials/$id': typeof AuthenticatedMaterialsIdRoute
+  '/study/$id': typeof AuthenticatedStudyIdRoute
   '/topics/$slug': typeof AuthenticatedTopicsSlugRoute
+  '/study/': typeof AuthenticatedStudyIndexRoute
   '/topics/': typeof AuthenticatedTopicsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -108,7 +122,9 @@ export interface FileRoutesByTo {
   '/progress': typeof AuthenticatedProgressRoute
   '/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/materials/$id': typeof AuthenticatedMaterialsIdRoute
+  '/study/$id': typeof AuthenticatedStudyIdRoute
   '/topics/$slug': typeof AuthenticatedTopicsSlugRoute
+  '/study': typeof AuthenticatedStudyIndexRoute
   '/topics': typeof AuthenticatedTopicsIndexRoute
 }
 export interface FileRoutesById {
@@ -123,7 +139,9 @@ export interface FileRoutesById {
   '/_authenticated/progress': typeof AuthenticatedProgressRoute
   '/_authenticated/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/_authenticated/materials/$id': typeof AuthenticatedMaterialsIdRoute
+  '/_authenticated/study/$id': typeof AuthenticatedStudyIdRoute
   '/_authenticated/topics/$slug': typeof AuthenticatedTopicsSlugRoute
+  '/_authenticated/study/': typeof AuthenticatedStudyIndexRoute
   '/_authenticated/topics/': typeof AuthenticatedTopicsIndexRoute
 }
 export interface FileRouteTypes {
@@ -138,7 +156,9 @@ export interface FileRouteTypes {
     | '/progress'
     | '/admin/reports'
     | '/materials/$id'
+    | '/study/$id'
     | '/topics/$slug'
+    | '/study/'
     | '/topics/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -151,7 +171,9 @@ export interface FileRouteTypes {
     | '/progress'
     | '/admin/reports'
     | '/materials/$id'
+    | '/study/$id'
     | '/topics/$slug'
+    | '/study'
     | '/topics'
   id:
     | '__root__'
@@ -165,7 +187,9 @@ export interface FileRouteTypes {
     | '/_authenticated/progress'
     | '/_authenticated/admin/reports'
     | '/_authenticated/materials/$id'
+    | '/_authenticated/study/$id'
     | '/_authenticated/topics/$slug'
+    | '/_authenticated/study/'
     | '/_authenticated/topics/'
   fileRoutesById: FileRoutesById
 }
@@ -241,11 +265,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTopicsIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/study/': {
+      id: '/_authenticated/study/'
+      path: '/study'
+      fullPath: '/study/'
+      preLoaderRoute: typeof AuthenticatedStudyIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/topics/$slug': {
       id: '/_authenticated/topics/$slug'
       path: '/topics/$slug'
       fullPath: '/topics/$slug'
       preLoaderRoute: typeof AuthenticatedTopicsSlugRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/study/$id': {
+      id: '/_authenticated/study/$id'
+      path: '/study/$id'
+      fullPath: '/study/$id'
+      preLoaderRoute: typeof AuthenticatedStudyIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/materials/$id': {
@@ -272,7 +310,9 @@ interface AuthenticatedRouteChildren {
   AuthenticatedProgressRoute: typeof AuthenticatedProgressRoute
   AuthenticatedAdminReportsRoute: typeof AuthenticatedAdminReportsRoute
   AuthenticatedMaterialsIdRoute: typeof AuthenticatedMaterialsIdRoute
+  AuthenticatedStudyIdRoute: typeof AuthenticatedStudyIdRoute
   AuthenticatedTopicsSlugRoute: typeof AuthenticatedTopicsSlugRoute
+  AuthenticatedStudyIndexRoute: typeof AuthenticatedStudyIndexRoute
   AuthenticatedTopicsIndexRoute: typeof AuthenticatedTopicsIndexRoute
 }
 
@@ -283,7 +323,9 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedProgressRoute: AuthenticatedProgressRoute,
   AuthenticatedAdminReportsRoute: AuthenticatedAdminReportsRoute,
   AuthenticatedMaterialsIdRoute: AuthenticatedMaterialsIdRoute,
+  AuthenticatedStudyIdRoute: AuthenticatedStudyIdRoute,
   AuthenticatedTopicsSlugRoute: AuthenticatedTopicsSlugRoute,
+  AuthenticatedStudyIndexRoute: AuthenticatedStudyIndexRoute,
   AuthenticatedTopicsIndexRoute: AuthenticatedTopicsIndexRoute,
 }
 
