@@ -108,3 +108,50 @@ export function checkClosestOptionFraud(
   }
   return { ok: true };
 }
+
+/**
+ * RACIONALIZACIÓN MATEMÁTICA: la IA calcula bien (ej. 43.55 m), ve que la answer
+ * key / las opciones dicen otra cosa (43.59 m) y, en lugar de invalidar el ejercicio,
+ * intenta "negociar con la matemática": ajusta/modifica las opciones, asume un error,
+ * back-solvea una constante (tan(40°)) o justifica la respuesta incorrecta.
+ *
+ * LA MATEMÁTICA MANDA: si resultado ≠ explicación ≠ answer key, el ejercicio es
+ * INVÁLIDO y debe regenerarse. Nunca mostrar al alumno este tipo de explicación.
+ *
+ * Detecta tanto español como inglés (el modelo a veces razona en inglés: "recalculating
+ * and adjusting options"). Se ancla a "opciones"/"respuesta" para no falsear positivos
+ * con usos legítimos de "ajustar" (ej. ajustar una recta por regresión).
+ */
+const MATH_RATIONALIZATION_PATTERNS: ArtifactPattern[] = [
+  // --- Manipular las opciones para que encajen con el resultado (o viceversa) ---
+  { pattern: /\b(ajust|reajust|modific|cambi|corrij|adapt|reescrib|recalcul)\w*\b[^.]{0,30}\b(las\s+)?opci[oó]n(es)?\b/i, label: "ajustar/modificar las opciones" },
+  { pattern: /\bgenerar\s+(una\s+)?opci[oó]n\s+correcta\b/i, label: "generar una opción correcta" },
+  { pattern: /\blas\s+opci[oó]n(es)?\s+originales?\b/i, label: "las opciones originales" },
+  { pattern: /\bopci[oó]n(es)?\s+(no\s+(parecen|son)\s+(precisas|exactas|correctas)|imprecisas)\b/i, label: "las opciones no son precisas" },
+  { pattern: /\bpara\s+que\s+(la\s+)?(respuesta|opci[oó]n)\s+\w*\s*(correcta|sea|coincida|cuadre)\b/i, label: "para que la respuesta/opción sea correcta" },
+
+  // --- Asumir errores / cambiar parámetros del problema para salvar la inconsistencia ---
+  { pattern: /\bsi\s+asumimos\s+(un\s+|que\s+hay\s+un\s+)?error\b/i, label: "si asumimos un error" },
+  { pattern: /\bsi\s+(usamos|us[aá]ramos|tomamos|tom[aá]ramos)\s+(otro|un\s+(valor\s+)?(diferente|distinto))\b/i, label: "si usamos otro valor" },
+  { pattern: /\b(valor\s+)?(diferente|distinto)\s+de\s+(sen|cos|tan|tg|sin|cot|sec|csc|log|ln)\b/i, label: "back-solving de una función (valor distinto de tan/sen…)" },
+  { pattern: /\b(necesito|debo|tengo\s+que|hay\s+que|deber[ií]a)\s+ajustar\b/i, label: "necesito/debo ajustar" },
+
+  // --- Elegir la más cercana (también cubierto en closest, pero acá aplica a todo tipo) ---
+  { pattern: /\b(opci[oó]n|respuesta|alternativa)\s+m[aá]s\s+(cercana|parecida|pr[oó]xima|similar)\b/i, label: "opción más cercana/parecida" },
+
+  // --- Inglés: el modelo a veces razona/escribe en inglés ---
+  { pattern: /\b(recalculat\w+|adjust\w+|modify\w*|chang\w+|regenerat\w+)\b[^.]{0,30}\b(the\s+)?options?\b/i, label: "adjusting options (en)" },
+  { pattern: /\bclosest\s+(option|answer|match|value)\b/i, label: "closest option (en)" },
+  { pattern: /\bif\s+we\s+assume\s+(an?\s+|there\s+is\s+an?\s+)?error\b/i, label: "if we assume an error (en)" },
+];
+
+export function checkMathematicalRationalization(
+  text: string,
+): { ok: true } | { ok: false; matched: string } {
+  for (const { pattern, label } of MATH_RATIONALIZATION_PATTERNS) {
+    if (pattern.test(text)) {
+      return { ok: false, matched: label };
+    }
+  }
+  return { ok: true };
+}

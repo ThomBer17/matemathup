@@ -4,7 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { callAI, getAIConfig } from "@/lib/ai/service";
 import { answersEqual, normalizeTrueFalse } from "@/lib/answer-normalize";
 import { getTopicScope, validateInScope, type TopicScope } from "@/lib/curriculum";
-import { checkArtificialPatterns, checkStatementMutation, checkClosestOptionFraud } from "@/lib/ai/quality-checks";
+import { checkArtificialPatterns, checkStatementMutation, checkClosestOptionFraud, checkMathematicalRationalization } from "@/lib/ai/quality-checks";
 import { mostSimilar } from "@/lib/ai/diversity";
 import { rateLimit } from "@/lib/ai/rate-limit";
 import { checkConsistency } from "@/lib/ai/consistency";
@@ -82,6 +82,7 @@ correct_answer = el resultado real del cálculo de "explanation" (sin invertir n
 El "statement" DEBE incluir el objeto matemático explícito: si pedís factorizar/resolver/simplificar, escribí el polinomio/ecuación/expresión EN el enunciado. Nunca "Factorizá el siguiente polinomio" sin el polinomio.
 Las cuentas y aproximaciones de "explanation" deben ser numéricamente correctas (ej: 1.732×3.646≈6.315, no 4.587).
 LA MATEMÁTICA MANDA: resolvé el problema TAL CUAL está dado. Si tu cálculo da un resultado, ESE es el correct_answer. PROHIBIDO cambiar el divisor, el signo, los datos o la consigna para que coincida con una respuesta esperada. Nada de "la respuesta esperada era X, usemos Y en vez de Z". La consigna es inmutable.
+NUNCA adaptes la matemática a las opciones. Orden obligatorio: 1) resolvé el ejercicio, 2) recién después generá las opciones de modo que UNA sea EXACTAMENTE tu resultado. Si ninguna opción coincide exacto con el resultado obtenido, el ejercicio está ROTO: corregí las opciones para incluir tu resultado exacto ANTES de responder. PROHIBIDO en la explicación: "la opción más cercana", "ajustar/modificar las opciones", "si asumimos un error", "las opciones originales", "para que la opción correcta sea…", "si usamos otro valor de tan/sen/cos". No justifiques ni muestres una respuesta incorrecta: la respuesta debe derivarse de la matemática, no la matemática de la respuesta.
 DIFICULTAD = profundidad dentro del tema, nunca cambiar de tema.`;
 
 function buildUserPrompt(
@@ -219,6 +220,15 @@ export const generateExercise = createServerFn({ method: "POST" })
         if (!closest.ok) {
           return { ok: false, reason: `multiple_choice_integrity_failed: "${closest.matched}"` };
         }
+      }
+
+      // 4d) Racionalización matemática: el modelo calcula bien pero "negocia" con la
+      //     respuesta — ajusta opciones, asume un error, back-solvea una constante.
+      //     LA MATEMÁTICA MANDA: si no coincide exacto, es inválido → regenerar.
+      //     Aplica a TODO tipo (no solo MC); la racionalización vive en la explicación.
+      const rationalization = checkMathematicalRationalization(`${ex.explanation} ${ex.statement}`);
+      if (!rationalization.ok) {
+        return { ok: false, reason: `mathematical_rationalization_detected: "${rationalization.matched}"` };
       }
 
       // 5) Coherencia consigna ↔ respuesta + MATH > ANSWER KEY (la cuenta manda).

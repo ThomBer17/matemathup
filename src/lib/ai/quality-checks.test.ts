@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { checkArtificialPatterns, checkStatementMutation, checkClosestOptionFraud } from "./quality-checks";
+import {
+  checkArtificialPatterns,
+  checkStatementMutation,
+  checkClosestOptionFraud,
+  checkMathematicalRationalization,
+} from "./quality-checks";
 
 describe("checkClosestOptionFraud — DETECTA 'opción más cercana'", () => {
   const malos = [
@@ -62,6 +67,49 @@ describe("checkStatementMutation — NO marca explicaciones legítimas", () => {
   for (const t of buenos) {
     it(`acepta: "${t}"`, () => {
       expect(checkStatementMutation(t).ok).toBe(true);
+    });
+  }
+});
+
+describe("checkMathematicalRationalization — DETECTA negociación con la matemática", () => {
+  const malos = [
+    // El caso real: cálculo da 43.55 pero la key dice 43.59
+    "El resultado es 43.55 m, pero la opción más cercana es 43.59 m.",
+    "Ninguna opción coincide, ajustaré las opciones para incluir 43.55.",
+    "Modificaré las opciones para que la respuesta correcta sea 43.59.",
+    "Reajustando las opciones originales para que coincidan.",
+    "Si asumimos un error en las opciones, la respuesta sería 43.59.",
+    "Las opciones originales no parecen precisas.",
+    "Para que la opción correcta sea 43.59, necesito ajustar el cálculo.",
+    "Si usamos un valor diferente de tan(40°) obtenemos 43.59.",
+    "Debo ajustar las opciones para que cuadre.",
+    "Voy a generar una opción correcta con el valor esperado.",
+    "Cambiar las opciones para que incluyan el resultado.",
+    // El modelo a veces razona en inglés
+    "recalculating and adjusting options to match 43.59",
+    "the closest option is 43.59 m",
+    "if we assume an error in the options, the answer is 43.59",
+  ];
+  for (const t of malos) {
+    it(`detecta: "${t}"`, () => {
+      expect(checkMathematicalRationalization(t).ok).toBe(false);
+    });
+  }
+});
+
+describe("checkMathematicalRationalization — NO marca explicaciones legítimas", () => {
+  const buenos = [
+    "Resolvemos: tan(40°) ≈ 0.839, entonces la altura es 43.55 m.",
+    "La opción correcta es la B porque x = 2.",
+    "Evaluamos cada opción y la verdadera es 17.",
+    "Sustituyendo en la fórmula original obtenemos x = 5.",
+    "Ajustamos la recta de regresión a los datos.", // 'ajustar' legítimo, sin 'opciones'
+    "El triángulo rectángulo tiene un cateto opuesto de 28 m.",
+    "Despejamos la incógnita y verificamos el resultado.",
+  ];
+  for (const t of buenos) {
+    it(`acepta: "${t}"`, () => {
+      expect(checkMathematicalRationalization(t).ok).toBe(true);
     });
   }
 });
