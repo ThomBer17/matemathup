@@ -69,11 +69,16 @@ export async function callAI<T>(options: AICallOptions): Promise<T> {
         ],
         response_format: { type: "json_object" },
       };
-      // Control de razonamiento: el campo `reasoning` es específico de OpenRouter.
-      // Otros proveedores (Gemini OpenAI-compat, etc.) lo rechazarían, así que solo
-      // lo mandamos cuando el endpoint es OpenRouter.
+      // Control de razonamiento. El campo `reasoning` es específico de OpenRouter.
       if (options.reasoningEffort && baseUrl.includes("openrouter")) {
         body.reasoning = { effort: options.reasoningEffort };
+      }
+      // Gemini 2.5 Flash es un modelo "thinking": razona antes de responder, lo que
+      // consume el presupuesto de salida (deja el JSON truncado → "formato inválido")
+      // y agrega latencia. Lo desactivamos y damos margen de tokens para el JSON.
+      if (baseUrl.includes("generativelanguage.googleapis.com")) {
+        body.reasoning_effort = "none";
+        body.max_tokens = 2048;
       }
 
       const res = await fetch(baseUrl, {
