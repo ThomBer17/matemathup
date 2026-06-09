@@ -75,10 +75,11 @@ export async function callAI<T>(options: AICallOptions): Promise<T> {
       }
       // Gemini 2.5 Flash es un modelo "thinking": razona antes de responder, lo que
       // consume el presupuesto de salida (deja el JSON truncado → "formato inválido")
-      // y agrega latencia. Lo desactivamos y damos margen de tokens para el JSON.
+      // y agrega latencia. Lo desactivamos y damos MARGEN AMPLIO de tokens: si el
+      // thinking igual consume algo, 4096 evita que se trunque el JSON del ejercicio.
       if (baseUrl.includes("generativelanguage.googleapis.com")) {
         body.reasoning_effort = "none";
-        body.max_tokens = 2048;
+        body.max_tokens = 4096;
       }
 
       const res = await fetch(baseUrl, {
@@ -105,18 +106,37 @@ export async function callAI<T>(options: AICallOptions): Promise<T> {
 
       const json = await res.json();
       const content = json.choices?.[0]?.message?.content ?? "";
+      const finishReason = json.choices?.[0]?.finish_reason ?? "?";
       const elapsed = Date.now() - start;
       console.log(
-        `[AI:${tag}] attempt ${attempt}/${maxAttempts} · ${elapsed}ms · model=${model} · in≈${inputTokensEst}tok · out=${content.length}ch`,
+        `[AI:${tag}] attempt ${attempt}/${maxAttempts} · ${elapsed}ms · model=${model} · in≈${inputTokensEst}tok · out=${content.length}ch · finish=${finishReason}`,
       );
+
+      // Respuesta vacía (a veces Gemini devuelve content "" con finish="length"
+      // porque el thinking consumió todo el presupuesto) → reintentamos.
+      if (!content.trim()) {
+        lastError = new Error("Respuesta vacía de la IA");
+        console.warn(`[AI:${tag}] content vacío en intento ${attempt} · finish=${finishReason}`);
+        await backoff(attempt, maxAttempts);
+        continue;
+      }
 
       try {
         return JSON.parse(extractJson(content)) as T;
       } catch {
-        lastError = new Error("Respuesta no parseable");
-        console.warn(`[AI:${tag}] parse falló en intento ${attempt}, contenido:`, content.slice(0, 200));
-        await backoff(attempt, maxAttempts);
-        continue;
+        // Segundo intento: reparar JSON truncado/con comas colgantes (típico cuando
+        // finish_reason="length"). Si aún falla, reintentamos la llamada.
+        try {
+          return JSON.parse(repairJson(extractJson(content))) as T;
+        } catch {
+          lastError = new Error("Respuesta no parseable");
+          console.warn(
+            `[AI:${tag}] parse falló en intento ${attempt} · finish=${finishReason} · contenido:`,
+            content.slice(0, 200),
+          );
+          await backoff(attempt, maxAttempts);
+          continue;
+        }
       }
     } catch (e) {
       if (e instanceof FatalAIError) throw e;
@@ -143,7 +163,7 @@ function backoff(attempt: number, maxAttempts: number): Promise<void> {
  * Algunos modelos devuelven JSON envuelto en fences markdown o con texto preámbulo.
  * Recortamos al primer { o [ y al último } o ] que cierra.
  */
-function extractJson(raw: string): string {
+export function extractJson(raw: string): string {
   let s = raw.trim();
   // strip markdown fences
   s = s.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
@@ -156,4 +176,38 @@ function extractJson(raw: string): string {
   const end = s.lastIndexOf(close);
   if (end === -1 || end < start) return s.slice(start);
   return s.slice(start, end + 1);
+}
+
+/**
+ * Repara JSON casi-válido: quita comas colgantes y cierra strings/llaves/corchetes
+ * que quedaron abiertos por truncado (finish_reason="length"). Best-effort: si el
+ * corte fue muy profundo igual puede fallar y caemos al reintento de la llamada.
+ */
+export function repairJson(raw: string): string {
+  let s = raw.trim();
+  // Comas colgantes antes de } o ]: {"a":1,} → {"a":1}
+  s = s.replace(/,\s*([}\]])/g, "$1");
+
+  // Recorrido para detectar string sin cerrar y profundidad de llaves/corchetes.
+  const stack: string[] = [];
+  let inString = false;
+  let escaped = false;
+  for (const ch of s) {
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') inString = true;
+    else if (ch === "{" || ch === "[") stack.push(ch);
+    else if (ch === "}" || ch === "]") stack.pop();
+  }
+  if (inString) s += '"'; // cerramos el string truncado
+  // Quitamos una posible coma final tras cerrar el string y cerramos contenedores.
+  s = s.replace(/,\s*$/, "");
+  while (stack.length) {
+    s += stack.pop() === "{" ? "}" : "]";
+  }
+  return s;
 }
