@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { callAI, getAIConfig } from "./service";
 import { buildGenerateActivitiesPrompt } from "./prompts";
+import { sanitizeMathText } from "./sanitize-text";
 import { getTopicScope, validateInScope } from "@/lib/curriculum";
 import { checkArtificialPatterns, checkStatementMutation } from "./quality-checks";
 import { checkRequiredExpression } from "./structural";
@@ -99,7 +100,13 @@ async function generateOnce(
     userPrompt,
     label: retryReason ? "generateActivities:retry" : "generateActivities",
   });
-  return GeneratedActivitiesSchema.parse(raw);
+  const parsed = GeneratedActivitiesSchema.parse(raw);
+  // Limpiar LaTeX que el modelo a veces emite (ej. $\alpha$ → α) antes de validar/cachear.
+  parsed.actividades = parsed.actividades.map((a) => ({
+    titulo: sanitizeMathText(a.titulo),
+    enunciado: sanitizeMathText(a.enunciado),
+  }));
+  return parsed;
 }
 
 export const generateActivities = createServerFn({ method: "POST" })

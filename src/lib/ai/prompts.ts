@@ -8,6 +8,13 @@ const NIVEL_DESC: Record<DifficultyLevel, string> = {
 };
 
 /**
+ * Regla de notación común a todos los prompts: el texto se muestra en texto plano,
+ * así que NADA de LaTeX. Letras griegas y símbolos van como unicode directo.
+ */
+const NOTATION_RULE = `NOTACIÓN (CRÍTICO): texto plano, PROHIBIDO LaTeX. No uses signos $ ni \\comandos (nada de $\\alpha$, \\frac, \\sqrt, \\pi).
+Escribí los símbolos directos: α β γ θ π √ ≤ ≥ ≠ ± ° · × ÷ ∞. Potencias x^2 o x², fracciones a/b, raíz √(x).`;
+
+/**
  * Genera ejercicios BASADOS en el material de estudio del usuario (RAG-lite:
  * el texto del material va como contexto). No usa scope curricular: el material
  * define su propio alcance.
@@ -19,7 +26,7 @@ export function buildMaterialActivitiesPrompt(
   retryReason?: string,
 ) {
   const systemPrompt = `Profesor de matemática para secundaria argentina (5°-6°). Generás ejercicios EN JSON basados en el material de estudio que te paso.
-Los ejercicios deben usar los conceptos, datos y ejemplos del material. Notación simple: x^2, sqrt(), pi. Sin LaTeX.
+Los ejercicios deben usar los conceptos, datos y ejemplos del material. ${NOTATION_RULE}
 PROHIBIDO: errores intencionales, reinterpretaciones, cambiar la consigna, "la opción más cercana". El enunciado es la consigna final y debe ser resoluble con lo que aparece (si pide operar sobre una expresión, incluila en el enunciado).`;
 
   const retryNote = retryReason ? `\nIntento anterior falló: ${retryReason}. Corregilo.` : "";
@@ -45,7 +52,7 @@ export function buildGenerateActivitiesPrompt(
   avoid: string[] = [],
   retryReason?: string,
 ) {
-  const systemPrompt = `Profesor de matemática para secundaria argentina (5°-6°). Generás ejercicios en JSON válido. Notación simple: x^2, sqrt(), pi.
+  const systemPrompt = `Profesor de matemática para secundaria argentina (5°-6°). Generás ejercicios en JSON válido. ${NOTATION_RULE}
 DIFICULTAD = profundidad DENTRO del tema, NUNCA cambiar de tema ni saltar a temas avanzados fuera del programa.
 PROHIBIDO: enunciados con "errores intencionales", reinterpretaciones, cambios de consigna, giros narrativos que contradigan el cálculo. El enunciado es la consigna final, sin trucos.`;
 
@@ -75,6 +82,7 @@ export function buildEvaluateAnswerPrompt(
   const systemPrompt = `Eres un tutor de matemática argentino, paciente y empático, especializado en alumnos de secundaria (5to-6to año).
 Evaluás respuestas con rigor matemático pero feedback constructivo.
 SIEMPRE respondés en JSON válido.
+${NOTATION_RULE}
 
 Reglas de evaluación:
 - Considerá equivalentes respuestas en distintas formas: 1/2 = 0.5 = 50%, x = ±2 = {-2, 2}, 2π/3 ≈ 2.09, etc.
@@ -106,6 +114,7 @@ export function buildHintPrompt(
   const systemPrompt = `Eres un tutor de matemática que da pistas progresivas a alumnos de secundaria.
 Una buena pista orienta el primer paso o el concepto clave SIN revelar la respuesta ni el método completo.
 SIEMPRE respondés en JSON válido.
+${NOTATION_RULE}
 
 Reglas:
 - Máx 2 oraciones.

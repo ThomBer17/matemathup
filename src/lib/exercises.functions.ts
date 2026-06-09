@@ -8,6 +8,7 @@ import { checkArtificialPatterns, checkStatementMutation, checkClosestOptionFrau
 import { mostSimilar } from "@/lib/ai/diversity";
 import { rateLimit } from "@/lib/ai/rate-limit";
 import { checkConsistency } from "@/lib/ai/consistency";
+import { sanitizeMathText } from "@/lib/ai/sanitize-text";
 import { checkNumericSanity } from "@/lib/ai/numeric-sanity";
 import { validateStructure } from "@/lib/ai/structural";
 import { assertWithinFreemiumLimit } from "@/lib/billing/usage";
@@ -73,7 +74,8 @@ function validateExercise(ex: ParsedExercise): { ok: true } | { ok: false; reaso
 // System prompt minimalista. Las reglas de consistencia/narrativa se enforce-an
 // con validadores deterministas (validateExercise, checkConsistency, checkArtificialPatterns),
 // así que acá solo dejamos lo esencial. Menos input = menor tiempo al primer token.
-const BASE_SYSTEM_PROMPT = `Profesor de matemática secundaria argentina (5°-6°). Generás UN ejercicio en JSON. Notación x^2, sqrt(), pi. Sin LaTeX.
+const BASE_SYSTEM_PROMPT = `Profesor de matemática secundaria argentina (5°-6°). Generás UN ejercicio en JSON.
+NOTACIÓN (CRÍTICO): texto plano, PROHIBIDO LaTeX. No uses $ ni \\comandos (nada de $\\alpha$, \\frac, \\sqrt, \\pi). Símbolos directos: α β θ π √ ≤ ≥ ≠ ± ° · ×. Potencias x^2, fracciones a/b.
 Reglas: multiple_choice→4 opciones distintas, correct_answer EXACTO igual a una opción. true_false→correct_answer "Verdadero"/"Falso".
 MULTIPLE CHOICE: resolvé primero, después construí las opciones de modo que UNA sea EXACTAMENTE tu resultado. PROHIBIDO elegir "la opción más cercana" si ninguna coincide: en ese caso corregí las opciones para incluir tu resultado exacto. Nada de "ninguna coincide, la más cercana es…".
 correct_answer = el resultado real del cálculo de "explanation" (sin invertir ni reinterpretar). Si la consigna pide un intervalo/condición, verificá que el resultado la cumpla.
@@ -122,7 +124,14 @@ async function generateOnce(
     reasoningEffort: "low", // clave: acelera mucho en modelos de reasoning
     maxAttempts: 2, // fallar rápido en vez de 3 intentos lentos
   });
-  return ExerciseSchema.parse(raw);
+  const parsed = ExerciseSchema.parse(raw);
+  // Limpiar LaTeX que el modelo a veces emite (ej. $\alpha$ → α).
+  parsed.statement = sanitizeMathText(parsed.statement);
+  parsed.explanation = sanitizeMathText(parsed.explanation);
+  parsed.correct_answer = sanitizeMathText(parsed.correct_answer);
+  parsed.options = parsed.options?.map(sanitizeMathText);
+  parsed.hints = parsed.hints.map(sanitizeMathText);
+  return parsed;
 }
 
 function combinedScopeText(ex: ParsedExercise): string {
