@@ -21,6 +21,7 @@ import { MathWorkspace } from "@/components/workspace/MathWorkspace";
 import { ReportProblem } from "@/components/feedback/ReportProblem";
 import { MathInputHelper } from "@/components/math/MathInputHelper";
 import { MathPreview } from "@/components/math/MathPreview";
+import { StepByStepExplanation } from "@/components/math/StepByStepExplanation";
 import { answersEqual, displayCorrectAnswer, normalizeTrueFalse, trueFalseLabel } from "@/lib/answer-normalize";
 import { PaywallDialog } from "@/components/billing/PaywallDialog";
 import { isFreemiumLimitError } from "@/lib/billing/plans";
@@ -542,9 +543,10 @@ function TopicPage() {
                     {isCorrect ? <Check className="h-4 w-4 text-success" /> : <X className="h-4 w-4 text-destructive" />}
                     {isCorrect ? "¡Bien hecho!" : `Respuesta correcta: ${displayCorrectAnswer(exercise.correct_answer, exercise.type)}`}
                   </div>
-                  <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">
-                    {exercise.explanation}
-                  </p>
+                  <StepByStepExplanation
+                    text={exercise.explanation}
+                    className="mt-3"
+                  />
                 </motion.div>
               )}
 

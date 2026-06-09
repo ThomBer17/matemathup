@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { MathInputHelper } from "@/components/math/MathInputHelper";
 import { MathPreview } from "@/components/math/MathPreview";
+import { StepByStepExplanation, MathText } from "@/components/math/StepByStepExplanation";
 import { evaluateAnswer } from "@/lib/ai/evaluate";
 import { giveHint } from "@/lib/ai/hints";
 import { recordTutorAttempt } from "@/lib/progress/attempts";
@@ -312,9 +313,10 @@ export function ActivityCard({
                       })()}
                       {STATUS_META[evaluation.estado].label}
                     </div>
-                    <p className="mt-2 text-sm leading-relaxed">
-                      {evaluation.feedback}
-                    </p>
+                    <MathText
+                      text={evaluation.feedback}
+                      className="mt-2 block text-[15px] leading-[1.7]"
+                    />
 
                     <div className="mt-3 flex items-center justify-between">
                       <button
@@ -339,9 +341,10 @@ export function ActivityCard({
                           exit={{ height: 0, opacity: 0 }}
                           className="overflow-hidden"
                         >
-                          <p className="mt-3 whitespace-pre-line border-t pt-3 text-xs leading-relaxed text-muted-foreground">
-                            {evaluation.explicacion}
-                          </p>
+                          <StepByStepExplanation
+                            text={evaluation.explicacion}
+                            className="mt-3 border-t pt-3"
+                          />
                         </motion.div>
                       )}
                     </AnimatePresence>
