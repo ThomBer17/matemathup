@@ -121,23 +121,25 @@ export async function callAI<T>(options: AICallOptions): Promise<T> {
         continue;
       }
 
-      try {
-        return JSON.parse(extractJson(content)) as T;
-      } catch {
-        // Segundo intento: reparar JSON truncado/con comas colgantes (típico cuando
-        // finish_reason="length"). Si aún falla, reintentamos la llamada.
+      const slice = extractJson(content);
+      const escaped = fixJsonBackslashes(slice);
+      // Intentos de parseo. Probamos PRIMERO la versión con backslashes escapados, porque
+      // el LaTeX crudo ($\frac) puede "parsear" sin error pero corrompe el texto en silencio
+      // (\f = form-feed). Si eso fallara, caemos al crudo y luego a reparar truncado.
+      for (const candidate of [escaped, slice, repairJson(escaped)]) {
         try {
-          return JSON.parse(repairJson(extractJson(content))) as T;
+          return JSON.parse(candidate) as T;
         } catch {
-          lastError = new Error("Respuesta no parseable");
-          console.warn(
-            `[AI:${tag}] parse falló en intento ${attempt} · finish=${finishReason} · contenido:`,
-            content.slice(0, 200),
-          );
-          await backoff(attempt, maxAttempts);
-          continue;
+          /* probamos la siguiente variante */
         }
       }
+      lastError = new Error("Respuesta no parseable");
+      console.warn(
+        `[AI:${tag}] parse falló en intento ${attempt} · finish=${finishReason} · contenido:`,
+        content.slice(0, 200),
+      );
+      await backoff(attempt, maxAttempts);
+      continue;
     } catch (e) {
       if (e instanceof FatalAIError) throw e;
       // Error de red u otro → reintentamos.
@@ -183,6 +185,26 @@ export function extractJson(raw: string): string {
  * que quedaron abiertos por truncado (finish_reason="length"). Best-effort: si el
  * corte fue muy profundo igual puede fallar y caemos al reintento de la llamada.
  */
+/**
+ * Escapa los backslashes que NO forman un escape JSON válido. Necesario porque el modelo
+ * escribe LaTeX ($\frac{1}{2}$, $\theta$) dentro de strings JSON sin duplicar el backslash,
+ * lo que rompe JSON.parse ("\f", "\t" se interpretan mal y "\s" es inválido directamente).
+ *
+ * Conserva los escapes válidos (\\ \" \/ \b \f \n \r \t \uXXXX ya correctos) y duplica el
+ * resto: $\frac$ → $\\frac$, que parsea de vuelta a $\frac$.
+ */
+export function fixJsonBackslashes(raw: string): string {
+  return raw.replace(/\\(u[0-9a-fA-F]{4}|.)?/g, (m, g: string | undefined) => {
+    if (g === undefined) return "\\\\"; // backslash suelto al final
+    const c = g[0];
+    // Ya es un escape JSON estructural válido → lo dejamos.
+    if (c === '"' || c === "\\" || c === "/") return m;
+    if (g.length === 5 && g[0] === "u") return m; // \uXXXX
+    // Resto (incluye \frac, \theta, \, \;): en nuestro contenido es LaTeX → escapamos.
+    return "\\\\" + g;
+  });
+}
+
 export function repairJson(raw: string): string {
   let s = raw.trim();
   // Comas colgantes antes de } o ]: {"a":1,} → {"a":1}

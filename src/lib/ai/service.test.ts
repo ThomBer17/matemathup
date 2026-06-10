@@ -1,5 +1,30 @@
 import { describe, it, expect } from "vitest";
-import { extractJson, repairJson } from "./service";
+import { extractJson, repairJson, fixJsonBackslashes } from "./service";
+
+describe("fixJsonBackslashes", () => {
+  it("escapa LaTeX con \\s (inválido) → parseable", () => {
+    // contenido real del modelo: {"s":"$\sqrt{2}$"} (un solo backslash, JSON inválido)
+    const raw = '{"s":"$\\sqrt{2}$"}';
+    expect(() => JSON.parse(raw)).toThrow();
+    expect(JSON.parse(fixJsonBackslashes(raw))).toEqual({ s: "$\\sqrt{2}$" });
+  });
+
+  it("corrige \\frac (que sin escapar corrompe a form-feed)", () => {
+    // {"s":"$\frac{1}{2}$"} → con \f sin escapar, JSON.parse mete un form-feed.
+    const raw = '{"s":"$\\frac{1}{2}$"}';
+    expect(JSON.parse(fixJsonBackslashes(raw))).toEqual({ s: "$\\frac{1}{2}$" });
+  });
+
+  it("conserva escapes JSON válidos (\\\\, \\\", \\uXXXX)", () => {
+    expect(JSON.parse(fixJsonBackslashes('{"s":"a\\\\b"}'))).toEqual({ s: "a\\b" });
+    expect(JSON.parse(fixJsonBackslashes('{"s":"a\\"b"}'))).toEqual({ s: 'a"b' });
+    expect(JSON.parse(fixJsonBackslashes('{"s":"\\u00e9"}'))).toEqual({ s: "é" });
+  });
+
+  it("JSON sin backslashes queda intacto", () => {
+    expect(JSON.parse(fixJsonBackslashes('{"a":1,"b":"hola"}'))).toEqual({ a: 1, b: "hola" });
+  });
+});
 
 describe("extractJson", () => {
   it("saca fences markdown", () => {
