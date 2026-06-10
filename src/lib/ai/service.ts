@@ -207,23 +207,58 @@ export function extractJson(raw: string): string {
  * corte fue muy profundo igual puede fallar y caemos al reintento de la llamada.
  */
 /**
- * Escapa los backslashes que NO forman un escape JSON válido. Necesario porque el modelo
- * escribe LaTeX ($\frac{1}{2}$, $\theta$) dentro de strings JSON sin duplicar el backslash,
- * lo que rompe JSON.parse ("\f", "\t" se interpretan mal y "\s" es inválido directamente).
- *
- * Conserva los escapes válidos (\\ \" \/ \b \f \n \r \t \uXXXX ya correctos) y duplica el
- * resto: $\frac$ → $\\frac$, que parsea de vuelta a $\frac$.
+ * Hace parseable el JSON que devuelve el modelo cuando incrusta LaTeX y matemática.
+ * Recorre el texto con una máquina de estados (sabe cuándo está DENTRO de un string) y,
+ * dentro de los strings, corrige las dos fuentes típicas de "JSON inválido":
+ *   1) Backslashes de LaTeX sin duplicar: $\frac{1}{2}$, $\theta$ → "\f"/"\t" se interpretan
+ *      mal y "\s" es directamente inválido. Se duplican: $\frac$ → $\\frac$.
+ *   2) Caracteres de control crudos (saltos de línea/tabs reales dentro de un string), que
+ *      el display $$...$$ a veces genera y que JSON.parse rechaza → se escapan a \n/\t/\r.
+ * Conserva los escapes válidos (\\ \" \/ \uXXXX).
  */
 export function fixJsonBackslashes(raw: string): string {
-  return raw.replace(/\\(u[0-9a-fA-F]{4}|.)?/g, (m, g: string | undefined) => {
-    if (g === undefined) return "\\\\"; // backslash suelto al final
-    const c = g[0];
-    // Ya es un escape JSON estructural válido → lo dejamos.
-    if (c === '"' || c === "\\" || c === "/") return m;
-    if (g.length === 5 && g[0] === "u") return m; // \uXXXX
-    // Resto (incluye \frac, \theta, \, \;): en nuestro contenido es LaTeX → escapamos.
-    return "\\\\" + g;
-  });
+  let out = "";
+  let inStr = false;
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i];
+    if (!inStr) {
+      out += ch;
+      if (ch === '"') inStr = true;
+      continue;
+    }
+    // --- dentro de un string ---
+    if (ch === '"') {
+      out += ch;
+      inStr = false;
+      continue;
+    }
+    if (ch === "\\") {
+      const next = raw[i + 1];
+      if (next === undefined) {
+        out += "\\\\";
+        continue;
+      }
+      // Escapes JSON estructurales válidos → se conservan tal cual.
+      if (next === '"' || next === "\\" || next === "/") {
+        out += ch + next;
+        i++;
+        continue;
+      }
+      if (next === "u" && /^[0-9a-fA-F]{4}$/.test(raw.slice(i + 2, i + 6))) {
+        out += ch; // \uXXXX: dejamos pasar el resto normalmente
+        continue;
+      }
+      // Cualquier otra cosa (\frac, \theta, \,, \;, \( ...): es LaTeX → duplicamos.
+      out += "\\\\";
+      continue;
+    }
+    // Caracteres de control crudos dentro del string → escaparlos.
+    if (ch === "\n") { out += "\\n"; continue; }
+    if (ch === "\r") { out += "\\r"; continue; }
+    if (ch === "\t") { out += "\\t"; continue; }
+    out += ch;
+  }
+  return out;
 }
 
 export function repairJson(raw: string): string {

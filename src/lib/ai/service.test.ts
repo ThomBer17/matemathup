@@ -24,6 +24,18 @@ describe("fixJsonBackslashes", () => {
   it("JSON sin backslashes queda intacto", () => {
     expect(JSON.parse(fixJsonBackslashes('{"a":1,"b":"hola"}'))).toEqual({ a: 1, b: "hola" });
   });
+
+  it("escapa saltos de línea crudos dentro de strings", () => {
+    // {"s":"linea1<LF>linea2"} con un salto de línea REAL → JSON.parse lo rechaza.
+    const raw = '{"s":"linea1\nlinea2"}';
+    expect(() => JSON.parse(raw)).toThrow();
+    expect(JSON.parse(fixJsonBackslashes(raw))).toEqual({ s: "linea1\nlinea2" });
+  });
+
+  it("no toca llaves/saltos fuera de strings", () => {
+    const raw = '{\n  "a": 1,\n  "b": "$\\theta$"\n}';
+    expect(JSON.parse(fixJsonBackslashes(raw))).toEqual({ a: 1, b: "$\\theta$" });
+  });
 });
 
 describe("extractJson", () => {
