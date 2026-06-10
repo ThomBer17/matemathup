@@ -248,7 +248,15 @@ export function fixJsonBackslashes(raw: string): string {
         out += ch; // \uXXXX: dejamos pasar el resto normalmente
         continue;
       }
-      // Cualquier otra cosa (\frac, \theta, \,, \;, \( ...): es LaTeX → duplicamos.
+      // "\n" como SALTO DE LÍNEA (lo más común en explicaciones): la IA lo pega al
+      // texto siguiente ("\nAhora"). Lo tratamos como salto salvo que sea un comando
+      // LaTeX que empieza con n y minúscula (\neq, \nu, \nabla) → eso va como LaTeX.
+      if (next === "n" && !/[a-z]/.test(raw[i + 2] ?? "")) {
+        out += "\\n"; // escape JSON válido → JSON.parse lo vuelve un salto real
+        i++;
+        continue;
+      }
+      // Cualquier otra cosa (\frac, \theta, \neq, \,, \( ...): es LaTeX → duplicamos.
       out += "\\\\";
       continue;
     }

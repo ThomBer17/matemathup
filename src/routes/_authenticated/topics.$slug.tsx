@@ -576,7 +576,7 @@ function TopicPage() {
                     <span className="text-sm font-semibold">
                       {isCorrect
                         ? "¡Bien hecho!"
-                        : <>Respuesta correcta: <span className="text-foreground">{displayCorrectAnswer(exercise.correct_answer, exercise.type)}</span></>}
+                        : <>Respuesta correcta: <MathRich text={displayCorrectAnswer(exercise.correct_answer, exercise.type)} className="text-foreground" /></>}
                     </span>
                   </div>
                   <StepByStepExplanation

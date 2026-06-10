@@ -123,6 +123,9 @@ export function plainMathToLatex(input: string): string {
   s = s.replace(/\b(sen|tg|cotg|cosec)\b/gi, "\\operatorname{$1}");
   s = s.replace(/\bpi\b/gi, "\\pi ");
 
+  // Multiplicación explícita * → \cdot (se ve mejor que el asterisco).
+  s = s.replace(/\s*\*\s*/g, " \\cdot ");
+
   // Fracciones simples num/num → \frac
   s = s.replace(/(\d+)\s*\/\s*(\d+)/g, "\\frac{$1}{$2}");
 

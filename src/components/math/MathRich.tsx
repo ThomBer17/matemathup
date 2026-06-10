@@ -54,8 +54,10 @@ function renderProse(text: string, keyBase: string): ReactNode[] {
   });
 }
 
-function render(text: string): ReactNode[] {
-  if (!text) return [];
+function render(input: string): ReactNode[] {
+  if (!input) return [];
+  // Limpia "\n"/"\t"/"\r" literales sobrantes (no LaTeX: van seguidos de no-minúscula).
+  const text = input.replace(/\\[nrt](?![a-z])/g, " ");
   const out: ReactNode[] = [];
   let last = 0;
   let m: RegExpExecArray | null;

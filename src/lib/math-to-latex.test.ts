@@ -69,6 +69,13 @@ describe("plainMathToLatex — notación plana/unicode → LaTeX", () => {
     expect(plainMathToLatex("x ≤ 3")).toContain("\\leq");
     expect(plainMathToLatex("30°")).toBe("30^{\\circ}");
   });
+
+  it("respuesta tipeable 3*sqrt(3) → 3·√3", () => {
+    const r = plainMathToLatex("3*sqrt(3)");
+    expect(r).toContain("\\cdot");
+    expect(r).toContain("\\sqrt{3}");
+    expect(r).not.toContain("sqrt(");
+  });
 });
 
 describe("isRenderableMath", () => {

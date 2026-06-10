@@ -70,6 +70,10 @@ const CONNECTOR_RE = new RegExp(
 function splitIntoSegments(raw: string): string[] {
   let s = raw.replace(/\r\n/g, "\n").trim();
 
+  // "\n" literal (backslash+n) que pudo quedar de contenido viejo → tratar como salto.
+  // Solo si NO es un comando LaTeX (\theta, \neq van seguidos de minúscula).
+  s = s.replace(/\\[nrt](?![a-z])/g, "\n");
+
   // Saltos de línea explícitos → corte.
   s = s.replace(/\n+/g, SENTINEL);
 

@@ -36,6 +36,19 @@ describe("fixJsonBackslashes", () => {
     const raw = '{\n  "a": 1,\n  "b": "$\\theta$"\n}';
     expect(JSON.parse(fixJsonBackslashes(raw))).toEqual({ a: 1, b: "$\\theta$" });
   });
+
+  it("\\n pegado a texto = salto de línea real, no literal", () => {
+    // {"s":"fin.\nAhora $\sqrt2$"} → \n es salto, \sqrt es LaTeX
+    const raw = '{"s":"fin.\\nAhora $\\sqrt2$"}';
+    const parsed = JSON.parse(fixJsonBackslashes(raw)) as { s: string };
+    expect(parsed.s).toBe("fin.\nAhora $\\sqrt2$"); // salto real + LaTeX intacto
+    expect(parsed.s).not.toContain("\\n"); // no queda el \n literal
+  });
+
+  it("\\neq y \\nu se preservan como LaTeX (no como salto)", () => {
+    const raw = '{"s":"$a\\neq b$ y $\\nu$"}';
+    expect(JSON.parse(fixJsonBackslashes(raw))).toEqual({ s: "$a\\neq b$ y $\\nu$" });
+  });
 });
 
 describe("extractJson", () => {
