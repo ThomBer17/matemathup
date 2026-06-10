@@ -207,6 +207,82 @@ export function generatePlan(input: GeneratePlanInput): PlanTask[] {
   );
 }
 
+// ---- Integridad: auto-completado por estudio real ----
+
+/**
+ * Cuántos ejercicios CORRECTOS hacen falta para auto-completar una tarea.
+ * Tareas con tema puntual piden menos; repaso general/simulacro piden más
+ * (abarcan varios temas).
+ */
+export function taskTarget(kind: string): number {
+  switch (kind) {
+    case "general_review":
+      return 5;
+    case "simulacro":
+      return 8;
+    default: // practice / review
+      return 3;
+  }
+}
+
+export type TaskViewState =
+  | "upcoming" // fecha futura: no se puede completar
+  | "pending" // de hoy o atrasada, sin progreso
+  | "in_progress" // de hoy o atrasada, con progreso parcial
+  | "done_auto" // completada por estudio real (dio XP)
+  | "done_manual"; // marcada a mano (sin XP)
+
+export interface TaskStateInput {
+  date: string; // 'YYYY-MM-DD'
+  status: string; // 'pending' | 'done'
+  completion_type?: string | null; // 'auto' | 'manual' | null
+  kind: string;
+}
+
+/** Deriva el estado visual de una tarea a partir de su fila + progreso real. */
+export function deriveTaskState(
+  task: TaskStateInput,
+  today: string,
+  correctCount: number,
+): { state: TaskViewState; target: number; progress: number } {
+  const target = taskTarget(task.kind);
+  if (task.status === "done") {
+    return {
+      state: task.completion_type === "auto" ? "done_auto" : "done_manual",
+      target,
+      progress: target,
+    };
+  }
+  if (task.date > today) {
+    return { state: "upcoming", target, progress: 0 };
+  }
+  const progress = Math.min(correctCount, target);
+  return { state: progress > 0 ? "in_progress" : "pending", target, progress };
+}
+
+/** Solo se pueden completar (auto o manual) tareas de hoy o atrasadas, nunca futuras. */
+export function canCompleteTask(date: string, today: string): boolean {
+  return date <= today;
+}
+
+/** ¿El estudio real alcanza para auto-completar? (y la tarea no es futura). */
+export function shouldAutoComplete(
+  task: TaskStateInput,
+  today: string,
+  correctCount: number,
+): boolean {
+  return (
+    task.status !== "done" &&
+    canCompleteTask(task.date, today) &&
+    correctCount >= taskTarget(task.kind)
+  );
+}
+
+/** Fecha local de Argentina (UTC-3) de un timestamp ISO, como 'YYYY-MM-DD'. */
+export function toArgentinaDate(iso: string): string {
+  return new Date(new Date(iso).getTime() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
 export function computePlanProgress(tasks: { status: string }[]): {
   done: number;
   total: number;

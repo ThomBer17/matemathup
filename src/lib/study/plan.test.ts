@@ -6,7 +6,60 @@ import {
   replanTasks,
   daysUntil,
   addDays,
+  taskTarget,
+  deriveTaskState,
+  shouldAutoComplete,
+  canCompleteTask,
+  toArgentinaDate,
 } from "./plan";
+
+describe("integridad de tareas — umbrales y estado", () => {
+  const TODAY = "2026-06-10";
+
+  it("taskTarget según tipo", () => {
+    expect(taskTarget("practice")).toBe(3);
+    expect(taskTarget("review")).toBe(3);
+    expect(taskTarget("general_review")).toBe(5);
+    expect(taskTarget("simulacro")).toBe(8);
+  });
+
+  it("tarea futura → upcoming (no completable)", () => {
+    const t = { date: "2026-06-12", status: "pending", completion_type: null, kind: "practice" };
+    expect(deriveTaskState(t, TODAY, 5).state).toBe("upcoming");
+    expect(canCompleteTask(t.date, TODAY)).toBe(false);
+    expect(shouldAutoComplete(t, TODAY, 99)).toBe(false); // nunca auto-completa futuras
+  });
+
+  it("tarea de hoy: pending → in_progress según progreso", () => {
+    const t = { date: TODAY, status: "pending", completion_type: null, kind: "practice" };
+    expect(deriveTaskState(t, TODAY, 0).state).toBe("pending");
+    const ip = deriveTaskState(t, TODAY, 2);
+    expect(ip.state).toBe("in_progress");
+    expect(ip.progress).toBe(2);
+    expect(ip.target).toBe(3);
+  });
+
+  it("auto-completa al alcanzar el umbral (hoy o atrasada)", () => {
+    const hoy = { date: TODAY, status: "pending", completion_type: null, kind: "practice" };
+    expect(shouldAutoComplete(hoy, TODAY, 3)).toBe(true);
+    const atrasada = { date: "2026-06-08", status: "pending", completion_type: null, kind: "practice" };
+    expect(canCompleteTask(atrasada.date, TODAY)).toBe(true);
+    expect(shouldAutoComplete(atrasada, TODAY, 3)).toBe(true);
+    expect(shouldAutoComplete(atrasada, TODAY, 2)).toBe(false);
+  });
+
+  it("tarea hecha → done_auto vs done_manual", () => {
+    expect(deriveTaskState({ date: TODAY, status: "done", completion_type: "auto", kind: "practice" }, TODAY, 0).state).toBe("done_auto");
+    expect(deriveTaskState({ date: TODAY, status: "done", completion_type: "manual", kind: "practice" }, TODAY, 0).state).toBe("done_manual");
+    // ya hecha no se vuelve a auto-completar
+    expect(shouldAutoComplete({ date: TODAY, status: "done", completion_type: "auto", kind: "practice" }, TODAY, 9)).toBe(false);
+  });
+
+  it("toArgentinaDate corre la medianoche UTC al día anterior (UTC-3)", () => {
+    expect(toArgentinaDate("2026-06-10T01:00:00Z")).toBe("2026-06-09");
+    expect(toArgentinaDate("2026-06-10T12:00:00Z")).toBe("2026-06-10");
+  });
+});
 
 const TOPICS = [
   { slug: "funciones", name: "Funciones", mastery: 92 },

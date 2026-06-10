@@ -80,6 +80,7 @@ export type Database = {
       study_plan_tasks: {
         Row: {
           completed_at: string | null
+          completion_type: string | null
           created_at: string
           date: string
           id: string
@@ -96,6 +97,7 @@ export type Database = {
         }
         Insert: {
           completed_at?: string | null
+          completion_type?: string | null
           created_at?: string
           date: string
           id?: string
@@ -112,6 +114,7 @@ export type Database = {
         }
         Update: {
           completed_at?: string | null
+          completion_type?: string | null
           created_at?: string
           date?: string
           id?: string

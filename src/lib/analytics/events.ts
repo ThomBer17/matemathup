@@ -26,7 +26,8 @@ export const EV = {
   // Plan de estudio
   planCreated: "plan_created",
   taskStarted: "task_started",
-  taskCompleted: "task_completed",
+  taskAutoCompleted: "task_auto_completed",
+  taskManualCompleted: "task_manual_completed",
   replanUsed: "replan_used",
   // Gamificación
   xpGained: "xp_gained",
