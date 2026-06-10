@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -35,6 +36,7 @@ function AuthenticatedLayout() {
             <span className="font-display text-sm font-medium text-muted-foreground">
               MateUp
             </span>
+            <ThemeToggle className="ml-auto" />
           </header>
           <main className="flex-1">
             <Outlet />
