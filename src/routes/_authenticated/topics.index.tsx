@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Progress } from "@/components/ui/progress";
 import { getTopicIcon, topicGradient } from "@/lib/topic-icons";
+import { TopicGridSkeleton } from "@/components/CardSkeletons";
 
 export const Route = createFileRoute("/_authenticated/topics/")({
   component: TopicsPage,
@@ -13,7 +14,7 @@ export const Route = createFileRoute("/_authenticated/topics/")({
 
 function TopicsPage() {
   const { user } = useAuth();
-  const { data: topics = [] } = useQuery({
+  const { data: topics = [], isPending } = useQuery({
     queryKey: ["topics"],
     queryFn: async () => {
       const { data } = await supabase.from("topics").select("*").order("order_index");
@@ -35,6 +36,11 @@ function TopicsPage() {
       <h1 className="font-display text-3xl font-bold">Unidades</h1>
       <p className="mt-1 text-sm text-muted-foreground">Elegí un tema y empezá a practicar.</p>
 
+      {isPending ? (
+        <div className="mt-8">
+          <TopicGridSkeleton count={6} />
+        </div>
+      ) : (
       <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {topics.map((t, i) => {
           const Icon = getTopicIcon(t.icon);
@@ -73,6 +79,7 @@ function TopicsPage() {
           );
         })}
       </div>
+      )}
     </div>
   );
 }

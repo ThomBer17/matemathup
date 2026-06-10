@@ -14,6 +14,8 @@ import { computeBadges, badgeStats } from "@/lib/gamification/badges";
 import { ReportProblem } from "@/components/feedback/ReportProblem";
 import { MyMaterials } from "@/components/materials/MyMaterials";
 import { NextExamWidget } from "@/components/study/NextExamWidget";
+import { StatCardsSkeleton, TopicGridSkeleton } from "@/components/CardSkeletons";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -31,7 +33,7 @@ function Dashboard() {
     },
   });
 
-  const { data: topics = [] } = useQuery({
+  const { data: topics = [], isPending: topicsPending } = useQuery({
     queryKey: ["topics"],
     queryFn: async () => {
       const { data } = await supabase.from("topics").select("*").order("order_index");
@@ -48,7 +50,7 @@ function Dashboard() {
     },
   });
 
-  const { data: attempts = [] } = useQuery({
+  const { data: attempts = [], isLoading: attemptsLoading } = useQuery({
     queryKey: ["my-attempts-dash", user?.id],
     enabled: !!user,
     queryFn: async () => {
@@ -61,6 +63,8 @@ function Dashboard() {
       return (data ?? []) as AttemptRow[];
     },
   });
+
+  const loadingCore = topicsPending || attemptsLoading;
 
   const { recommendation, badgeCount, recentTopicAggs } = useMemo(() => {
     const metaById = new Map(
@@ -108,17 +112,30 @@ function Dashboard() {
         animate={{ opacity: 1, y: 0 }}
         className="flex items-start justify-between gap-4"
       >
-        <div>
-          <p className="text-sm text-muted-foreground">Hola{isNewUser ? "" : " de nuevo"},</p>
-          <h1 className="font-display text-3xl font-bold md:text-4xl">
-            {isNewUser ? `Bienvenido/a, ${firstName}` : `¿Qué resolvemos hoy, ${firstName}?`}
-          </h1>
+        <div className="min-w-0">
+          {loadingCore ? (
+            <>
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="mt-2 h-9 w-72 max-w-full" />
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">Hola{isNewUser ? "" : " de nuevo"},</p>
+              <h1 className="font-display text-3xl font-bold md:text-4xl">
+                {isNewUser ? `Bienvenido/a, ${firstName}` : `¿Qué resolvemos hoy, ${firstName}?`}
+              </h1>
+            </>
+          )}
         </div>
         <ReportProblem variant="outline" className="shrink-0" />
       </motion.div>
 
-      {/* Onboarding card para users sin actividad */}
-      {isNewUser ? (
+      {/* Carga inicial: skeletons en vez de flash de contenido vacío */}
+      {loadingCore ? (
+        <div className="mt-8">
+          <StatCardsSkeleton />
+        </div>
+      ) : isNewUser ? (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -227,6 +244,11 @@ function Dashboard() {
         </Link>
       </div>
 
+      {topicsPending ? (
+        <div className="mt-4">
+          <TopicGridSkeleton count={6} />
+        </div>
+      ) : (
       <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {topics.map((t, i) => {
           const Icon = getTopicIcon(t.icon);
@@ -261,6 +283,7 @@ function Dashboard() {
           );
         })}
       </div>
+      )}
 
       {/* Mi Material */}
       <div className="mt-12">
