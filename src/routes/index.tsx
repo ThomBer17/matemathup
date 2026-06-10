@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "motion/react";
 import { Sparkles, Brain, Target, Flame, ArrowRight, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -32,6 +33,7 @@ function Landing() {
           MateUp
         </Link>
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           <Link to="/login">
             <Button variant="ghost">Ingresar</Button>
           </Link>
@@ -52,7 +54,7 @@ function Landing() {
             <Sparkles className="h-3.5 w-3.5 text-primary" />
             Ejercicios generados con IA · adaptados a tu nivel
           </span>
-          <h1 className="mt-6 font-display text-5xl font-bold tracking-tight md:text-6xl">
+          <h1 className="mt-6 font-display text-5xl font-bold leading-[1.05] tracking-tight md:text-6xl">
             Aprobá matemática <br />
             <span className="text-gradient-brand">a tu ritmo.</span>
           </h1>
@@ -72,6 +74,9 @@ function Landing() {
               </Button>
             </Link>
           </div>
+          <p className="mt-4 text-xs text-muted-foreground">
+            Gratis para empezar · sin tarjeta · cancelás cuando quieras
+          </p>
         </motion.div>
 
         <motion.div
@@ -90,12 +95,12 @@ function Landing() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 + i * 0.1 }}
-              className="rounded-2xl border bg-card p-6 shadow-soft"
+              className="rounded-2xl border bg-card p-6 text-left shadow-soft transition hover:-translate-y-0.5 hover:shadow-glow"
             >
               <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary-soft text-primary">
                 <f.icon className="h-5 w-5" />
               </div>
-              <h3 className="mt-4 font-display text-lg font-semibold">{f.title}</h3>
+              <h3 className="mt-4 font-display text-lg font-semibold tracking-tight">{f.title}</h3>
               <p className="mt-1 text-sm text-muted-foreground">{f.desc}</p>
             </motion.div>
           ))}
