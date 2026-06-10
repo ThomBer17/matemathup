@@ -27,7 +27,10 @@ import { answersEqual, displayCorrectAnswer, normalizeTrueFalse, trueFalseLabel 
 import { PaywallDialog } from "@/components/billing/PaywallDialog";
 import { isFreemiumLimitError } from "@/lib/billing/plans";
 import { track, EV } from "@/lib/analytics/events";
+import { cn } from "@/lib/utils";
 import type { DifficultyLevel } from "@/lib/ai/types";
+
+const LETTERS = ["A", "B", "C", "D", "E", "F"];
 
 export const Route = createFileRoute("/_authenticated/topics/$slug")({
   component: TopicPage,
@@ -416,10 +419,11 @@ function TopicPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
             >
-              <div className="text-xs font-medium uppercase tracking-wide text-primary">
-                Ejercicio · nivel {difficulty}
-              </div>
-              <h2 className="mt-2 font-display text-xl font-semibold leading-snug md:text-2xl">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                Nivel {difficulty} · {diffLabel}
+              </span>
+              <h2 className="mt-3 font-display text-xl font-semibold leading-snug tracking-tight md:text-[1.6rem]">
                 <MathRich text={exercise.statement} />
               </h2>
 
@@ -451,22 +455,35 @@ function TopicPage() {
               })()}
 
 
-              <div className="mt-6 space-y-2">
-                {exercise.type === "multiple_choice" && exercise.options?.map((opt) => {
+              <div className="mt-7 space-y-2.5">
+                {exercise.type === "multiple_choice" && exercise.options?.map((opt, i) => {
                   const isPicked = answer === opt;
                   const isRight = revealed && answersEqual(opt, exercise.correct_answer, "multiple_choice");
                   const isWrong = revealed && isPicked && !isRight;
+                  const dim = revealed && !isRight && !isWrong;
                   return (
                     <button
                       key={opt}
                       disabled={revealed}
                       onClick={() => { setAnswer(opt); checkAnswer(opt); }}
-                      className={`w-full rounded-xl border bg-background p-4 text-left text-sm transition hover:border-primary hover:bg-primary-soft/40
-                        ${isRight ? "border-success bg-success/10" : ""}
-                        ${isWrong ? "border-destructive bg-destructive/10" : ""}
-                        ${isPicked && !revealed ? "border-primary" : ""}`}
+                      className={cn(
+                        "group flex w-full items-center gap-3 rounded-xl border bg-background p-3.5 text-left text-sm transition-all",
+                        !revealed && "hover:border-primary/60 hover:bg-primary-soft/30 hover:shadow-soft",
+                        isPicked && !revealed && "border-primary ring-2 ring-primary/20",
+                        isRight && "border-success bg-success/10",
+                        isWrong && "border-destructive bg-destructive/10",
+                        dim && "opacity-55",
+                      )}
                     >
-                      <MathRich text={opt} />
+                      <span className={cn(
+                        "grid h-7 w-7 shrink-0 place-items-center rounded-lg border text-xs font-bold transition-colors",
+                        isRight && "border-success bg-success text-success-foreground",
+                        isWrong && "border-destructive bg-destructive text-destructive-foreground",
+                        !isRight && !isWrong && "border-border bg-muted/50 text-muted-foreground group-hover:border-primary/40 group-hover:text-primary",
+                      )}>
+                        {isRight ? <Check className="h-4 w-4" /> : isWrong ? <X className="h-4 w-4" /> : LETTERS[i] ?? i + 1}
+                      </span>
+                      <span className="min-w-0 flex-1"><MathRich text={opt} /></span>
                     </button>
                   );
                 })}
@@ -474,21 +491,29 @@ function TopicPage() {
                 {exercise.type === "true_false" && (() => {
                   const correctCanonical = normalizeTrueFalse(exercise.correct_answer);
                   return (
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-2.5">
                       {(["true", "false"] as const).map((v) => {
                         const label = trueFalseLabel(v);
                         const isPicked = answer === v;
                         const isRight = revealed && correctCanonical === v;
                         const isWrong = revealed && isPicked && !isRight;
+                        const dim = revealed && !isRight && !isWrong;
                         return (
                           <button
                             key={v}
                             disabled={revealed}
                             onClick={() => { setAnswer(v); checkAnswer(v); }}
-                            className={`rounded-xl border bg-background p-4 text-sm font-medium transition hover:border-primary
-                              ${isRight ? "border-success bg-success/10" : ""}
-                              ${isWrong ? "border-destructive bg-destructive/10" : ""}`}
+                            className={cn(
+                              "flex items-center justify-center gap-2 rounded-xl border bg-background p-4 text-sm font-semibold transition-all",
+                              !revealed && "hover:border-primary/60 hover:bg-primary-soft/30 hover:shadow-soft",
+                              isPicked && !revealed && "border-primary ring-2 ring-primary/20",
+                              isRight && "border-success bg-success/10 text-success",
+                              isWrong && "border-destructive bg-destructive/10 text-destructive",
+                              dim && "opacity-55",
+                            )}
                           >
+                            {isRight && <Check className="h-4 w-4" />}
+                            {isWrong && <X className="h-4 w-4" />}
                             {label}
                           </button>
                         );
@@ -536,17 +561,27 @@ function TopicPage() {
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`mt-6 rounded-xl border p-4 ${
-                    isCorrect ? "border-success/30 bg-success/5" : "border-destructive/30 bg-destructive/5"
-                  }`}
+                  className={cn(
+                    "mt-6 rounded-2xl border p-5",
+                    isCorrect ? "border-success/30 bg-success/5" : "border-destructive/30 bg-destructive/5",
+                  )}
                 >
-                  <div className="flex items-center gap-2 text-sm font-semibold">
-                    {isCorrect ? <Check className="h-4 w-4 text-success" /> : <X className="h-4 w-4 text-destructive" />}
-                    {isCorrect ? "¡Bien hecho!" : `Respuesta correcta: ${displayCorrectAnswer(exercise.correct_answer, exercise.type)}`}
+                  <div className="flex items-center gap-2.5">
+                    <span className={cn(
+                      "grid h-7 w-7 shrink-0 place-items-center rounded-full",
+                      isCorrect ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive",
+                    )}>
+                      {isCorrect ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                    </span>
+                    <span className="text-sm font-semibold">
+                      {isCorrect
+                        ? "¡Bien hecho!"
+                        : <>Respuesta correcta: <span className="text-foreground">{displayCorrectAnswer(exercise.correct_answer, exercise.type)}</span></>}
+                    </span>
                   </div>
                   <StepByStepExplanation
                     text={exercise.explanation}
-                    className="mt-3"
+                    className="mt-4 border-t pt-4"
                   />
                 </motion.div>
               )}
