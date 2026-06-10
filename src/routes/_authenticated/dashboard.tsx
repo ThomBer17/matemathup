@@ -161,13 +161,13 @@ function Dashboard() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 * i }}
-              className="rounded-2xl border bg-card p-5 shadow-soft"
+              className="rounded-2xl border bg-card p-5 shadow-soft transition-shadow hover:shadow-glow"
             >
               <div className={`grid h-9 w-9 place-items-center rounded-lg ${s.color}`}>
                 <s.icon className="h-4 w-4" />
               </div>
-              <p className="mt-4 text-2xl font-bold font-display">{s.value}</p>
-              <p className="text-xs text-muted-foreground">{s.label}</p>
+              <p className="mt-4 font-display text-2xl font-bold tabular-nums tracking-tight">{s.value}</p>
+              <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{s.label}</p>
             </motion.div>
           ))}
         </div>
@@ -175,7 +175,7 @@ function Dashboard() {
 
       {/* Próximo examen + recomendación */}
       {!isNewUser && (
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
+        <div className="mt-10 grid gap-4 md:grid-cols-2">
           <NextExamWidget />
           {recommendation && (
             <div>
@@ -190,7 +190,7 @@ function Dashboard() {
 
       {/* Resumen de temas en progreso (top 3) */}
       {!isNewUser && recentTopicAggs.length > 0 && (
-        <div className="mt-10">
+        <div className="mt-12">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-xl font-bold">Más practicados últimamente</h2>
             <Link to="/progress" className="text-sm font-medium text-primary hover:underline">
@@ -208,9 +208,9 @@ function Dashboard() {
                 <p className="text-sm font-semibold">{agg.topic.name}</p>
                 <div className="mt-2 flex items-center gap-2">
                   <Progress value={agg.accuracy} className="h-1.5 flex-1" />
-                  <span className="text-xs font-medium text-muted-foreground">{agg.accuracy}%</span>
+                  <span className="text-xs font-medium tabular-nums text-muted-foreground">{agg.accuracy}%</span>
                 </div>
-                <p className="mt-2 text-[11px] text-muted-foreground">
+                <p className="mt-2 text-[11px] tabular-nums text-muted-foreground">
                   {agg.totalAttempts} intentos · nivel {agg.estimatedLevel}/5
                 </p>
               </Link>
@@ -220,7 +220,7 @@ function Dashboard() {
       )}
 
       {/* Todos los temas */}
-      <div className="mt-10 flex items-center justify-between">
+      <div className="mt-12 flex items-center justify-between">
         <h2 className="font-display text-xl font-bold">Todas las unidades</h2>
         <Link to="/topics" className="text-sm font-medium text-primary hover:underline">
           Ver todas →
@@ -254,7 +254,7 @@ function Dashboard() {
                 <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{t.description}</p>
                 <div className="mt-4 flex items-center gap-3">
                   <Progress value={mastery} className="h-2" />
-                  <span className="text-xs font-medium text-muted-foreground">{mastery}%</span>
+                  <span className="text-xs font-medium tabular-nums text-muted-foreground">{mastery}%</span>
                 </div>
               </Link>
             </motion.div>
@@ -263,7 +263,7 @@ function Dashboard() {
       </div>
 
       {/* Mi Material */}
-      <div className="mt-10">
+      <div className="mt-12">
         <MyMaterials />
       </div>
 
@@ -271,7 +271,7 @@ function Dashboard() {
       {!isNewUser && badgeCount.earned > 0 && (
         <Link
           to="/progress"
-          className="mt-10 flex items-center justify-between rounded-2xl border bg-card p-5 shadow-soft transition hover:-translate-y-0.5 hover:shadow-glow"
+          className="mt-12 flex items-center justify-between rounded-2xl border bg-card p-5 shadow-soft transition hover:-translate-y-0.5 hover:shadow-glow"
         >
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-amber-500/25 to-amber-600/10 ring-1 ring-amber-500/40">
