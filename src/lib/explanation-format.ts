@@ -235,6 +235,25 @@ function splitChainedEquations(run: string): string[] {
   return groups.map((g) => g.join(" ").trim()).filter(Boolean);
 }
 
+/** Un paso con su texto crudo (incluye LaTeX $...$ para renderizar con KaTeX). */
+export interface RawStep {
+  /** Número 1-based si la explicación es estructurada; null si es un párrafo suelto. */
+  n: number | null;
+  text: string;
+}
+
+/**
+ * Segmenta la explicación en pasos numerados conservando el texto CRUDO de cada uno
+ * (con su LaTeX intacto). Lo usa el render con KaTeX, que tipografía las expresiones.
+ */
+export function parseSteps(raw: string): RawStep[] {
+  const trimmed = (raw ?? "").trim();
+  if (!trimmed) return [];
+  const segments = splitIntoSegments(trimmed);
+  const structured = segments.length > 1;
+  return segments.map((text, i) => ({ n: structured ? i + 1 : null, text }));
+}
+
 /** Parsea una explicación cruda de la IA en pasos legibles. */
 export function parseExplanation(raw: string): FormattedExplanation {
   const trimmed = (raw ?? "").trim();

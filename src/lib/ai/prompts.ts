@@ -8,11 +8,13 @@ const NIVEL_DESC: Record<DifficultyLevel, string> = {
 };
 
 /**
- * Regla de notación común a todos los prompts: el texto se muestra en texto plano,
- * así que NADA de LaTeX. Letras griegas y símbolos van como unicode directo.
+ * Regla de notación común a los prompts cuyo texto SE MUESTRA (enunciados, explicaciones,
+ * feedback, pistas): se renderiza con KaTeX, así que la matemática va en LaTeX entre $...$.
  */
-const NOTATION_RULE = `NOTACIÓN (CRÍTICO): texto plano, PROHIBIDO LaTeX. No uses signos $ ni \\comandos (nada de $\\alpha$, \\frac, \\sqrt, \\pi).
-Escribí los símbolos directos: α β γ θ π √ ≤ ≥ ≠ ± ° · × ÷ ∞. Potencias x^2 o x², fracciones a/b, raíz √(x).`;
+const NOTATION_RULE = `NOTACIÓN (CRÍTICO): escribí TODA expresión matemática en LaTeX entre signos $...$, porque se renderiza con KaTeX.
+Ejemplos inline: $\\frac{1}{2}$, $\\sqrt{16}$, $x^2$, $\\theta$, $\\sin(\\alpha)$, $\\pm\\frac{3}{4}$, $30^\\circ$.
+Para un paso/resultado clave podés usar display centrado: $$\\cos(\\theta)=\\frac{4}{5}$$.
+NO dejes LaTeX fuera de $...$ (nada de \\frac suelto) ni mezcles notación a medias.`;
 
 /**
  * Genera ejercicios BASADOS en el material de estudio del usuario (RAG-lite:

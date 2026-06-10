@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { MathInputHelper } from "@/components/math/MathInputHelper";
 import { MathPreview } from "@/components/math/MathPreview";
 import { StepByStepExplanation, MathText } from "@/components/math/StepByStepExplanation";
+import { MathRich } from "@/components/math/MathRich";
 import { evaluateAnswer } from "@/lib/ai/evaluate";
 import { giveHint } from "@/lib/ai/hints";
 import { recordTutorAttempt } from "@/lib/progress/attempts";
@@ -202,7 +203,7 @@ export function ActivityCard({
             <div className="space-y-4 border-t px-4 py-4">
               {/* Enunciado */}
               <p className="text-sm leading-relaxed text-foreground">
-                {activity.enunciado}
+                <MathRich text={activity.enunciado} />
               </p>
 
               {/* Hint */}
@@ -216,7 +217,7 @@ export function ActivityCard({
                   >
                     <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
                     <p className="text-xs leading-relaxed text-yellow-900 dark:text-yellow-100">
-                      {hint}
+                      <MathRich text={hint} />
                     </p>
                   </motion.div>
                 )}

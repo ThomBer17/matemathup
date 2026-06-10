@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseExplanation, splitMathFragments } from "./explanation-format";
+import { parseExplanation, parseSteps, splitMathFragments } from "./explanation-format";
 
 function plain(frags: { text: string; math: boolean }[]): string {
   return frags.map((f) => f.text).join("");
@@ -100,5 +100,25 @@ describe("parseExplanation — formato por pasos", () => {
   it("entrada vacía → sin pasos", () => {
     expect(parseExplanation("").steps).toEqual([]);
     expect(parseExplanation("   ").steps).toEqual([]);
+  });
+});
+
+describe("parseSteps — segmenta conservando el texto crudo (con LaTeX)", () => {
+  it("numera los pasos y preserva el LaTeX $...$", () => {
+    const steps = parseSteps("Sabemos que $\\csc(\\theta)=\\frac{1}{\\sin\\theta}$. Entonces $\\sin\\theta=-3/5$.");
+    expect(steps.length).toBe(2);
+    expect(steps[0].n).toBe(1);
+    expect(steps[0].text).toContain("$\\csc(\\theta)=\\frac{1}{\\sin\\theta}$");
+    expect(steps[1].text).toContain("$\\sin\\theta=-3/5$");
+  });
+
+  it("sin estructura → un solo paso sin numerar", () => {
+    const steps = parseSteps("El resultado es $x=2$.");
+    expect(steps.length).toBe(1);
+    expect(steps[0].n).toBeNull();
+  });
+
+  it("entrada vacía → []", () => {
+    expect(parseSteps("")).toEqual([]);
   });
 });

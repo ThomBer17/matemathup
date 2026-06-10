@@ -26,8 +26,12 @@ const SYMBOLS: Record<string, string> = {
 
 const SUPERSCRIPT: Record<string, string> = { "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" };
 
-export function sanitizeMathText(input: string): string {
+export function sanitizeMathText(
+  input: string,
+  opts: { trim?: boolean } = {},
+): string {
   if (!input) return input;
+  const trim = opts.trim ?? true;
   let s = input;
 
   // \frac{a}{b} y \dfrac{a}{b} → (a)/(b)
@@ -58,7 +62,8 @@ export function sanitizeMathText(input: string): string {
   s = s.replace(/\\[()[\]]/g, ""); // \(, \), \[, \]
   s = s.replace(/[{}]/g, "");
   // Espacios LaTeX y limpieza final.
-  s = s.replace(/\\[,;: ]/g, " ").replace(/\s{2,}/g, " ").trim();
+  s = s.replace(/\\[,;: ]/g, " ");
+  if (trim) s = s.replace(/\s{2,}/g, " ").trim();
 
   return s;
 }

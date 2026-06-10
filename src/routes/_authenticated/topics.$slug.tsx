@@ -22,6 +22,7 @@ import { ReportProblem } from "@/components/feedback/ReportProblem";
 import { MathInputHelper } from "@/components/math/MathInputHelper";
 import { MathPreview } from "@/components/math/MathPreview";
 import { StepByStepExplanation } from "@/components/math/StepByStepExplanation";
+import { MathRich } from "@/components/math/MathRich";
 import { answersEqual, displayCorrectAnswer, normalizeTrueFalse, trueFalseLabel } from "@/lib/answer-normalize";
 import { PaywallDialog } from "@/components/billing/PaywallDialog";
 import { isFreemiumLimitError } from "@/lib/billing/plans";
@@ -419,7 +420,7 @@ function TopicPage() {
                 Ejercicio · nivel {difficulty}
               </div>
               <h2 className="mt-2 font-display text-xl font-semibold leading-snug md:text-2xl">
-                {exercise.statement}
+                <MathRich text={exercise.statement} />
               </h2>
 
               {(() => {
@@ -465,7 +466,7 @@ function TopicPage() {
                         ${isWrong ? "border-destructive bg-destructive/10" : ""}
                         ${isPicked && !revealed ? "border-primary" : ""}`}
                     >
-                      {opt}
+                      <MathRich text={opt} />
                     </button>
                   );
                 })}
@@ -527,7 +528,7 @@ function TopicPage() {
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                   className="mt-4 flex gap-2 rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm">
                   <Lightbulb className="h-4 w-4 shrink-0 text-warning-foreground/80" />
-                  <span>{exercise.hints[hintIndex]}</span>
+                  <MathRich text={exercise.hints[hintIndex]} />
                 </motion.div>
               )}
 

@@ -75,7 +75,8 @@ function validateExercise(ex: ParsedExercise): { ok: true } | { ok: false; reaso
 // con validadores deterministas (validateExercise, checkConsistency, checkArtificialPatterns),
 // así que acá solo dejamos lo esencial. Menos input = menor tiempo al primer token.
 const BASE_SYSTEM_PROMPT = `Profesor de matemática secundaria argentina (5°-6°). Generás UN ejercicio en JSON.
-NOTACIÓN (CRÍTICO): texto plano, PROHIBIDO LaTeX. No uses $ ni \\comandos (nada de $\\alpha$, \\frac, \\sqrt, \\pi). Símbolos directos: α β θ π √ ≤ ≥ ≠ ± ° · ×. Potencias x^2, fracciones a/b.
+NOTACIÓN (CRÍTICO): en "statement", "explanation" y "hints" escribí la matemática en LaTeX entre $...$ (se renderiza con KaTeX): $\\frac{a}{b}$, $\\sqrt{x}$, $x^2$, $\\theta$, $\\sin(\\alpha)$, $30^\\circ$. Display $$...$$ para un resultado clave.
+PERO "correct_answer" y cada "options" van en notación SIMPLE tipeable, SIN $ ni LaTeX (ej: -3/4, x^2, sqrt(2), pi, 30) para poder compararlas con lo que tipea el alumno.
 Reglas: multiple_choice→4 opciones distintas, correct_answer EXACTO igual a una opción. true_false→correct_answer "Verdadero"/"Falso".
 MULTIPLE CHOICE: resolvé primero, después construí las opciones de modo que UNA sea EXACTAMENTE tu resultado. PROHIBIDO elegir "la opción más cercana" si ninguna coincide: en ese caso corregí las opciones para incluir tu resultado exacto. Nada de "ninguna coincide, la más cercana es…".
 correct_answer = el resultado real del cálculo de "explanation" (sin invertir ni reinterpretar). Si la consigna pide un intervalo/condición, verificá que el resultado la cumpla.
@@ -126,12 +127,13 @@ async function generateOnce(
     maxAttempts: 2, // fallar rápido en vez de 3 intentos lentos
   });
   const parsed = ExerciseSchema.parse(raw);
-  // Limpiar LaTeX que el modelo a veces emite (ej. $\alpha$ → α).
-  parsed.statement = sanitizeMathText(parsed.statement);
-  parsed.explanation = sanitizeMathText(parsed.explanation);
+  // statement/explanation/hints conservan su LaTeX $...$ (se renderizan con KaTeX).
+  // correct_answer y options deben ser tipeables/comparables → si la IA metió LaTeX,
+  // lo bajamos a texto plano (ej: $\frac{3}{4}$ → (3)/(4)).
   parsed.correct_answer = sanitizeMathText(parsed.correct_answer);
-  parsed.options = parsed.options?.map(sanitizeMathText);
-  parsed.hints = parsed.hints.map(sanitizeMathText);
+  parsed.options = parsed.options?.map((o) => sanitizeMathText(o));
+  // graph_expressions las consume el graficador (y=...), deben ir en texto plano.
+  parsed.graph_expressions = parsed.graph_expressions.map((g) => sanitizeMathText(g));
   return parsed;
 }
 
@@ -185,7 +187,16 @@ export const generateExercise = createServerFn({ method: "POST" })
       }
     }
 
-    const checkCore = (ex: ParsedExercise): { ok: true } | { ok: false; reason: string } => {
+    const checkCore = (exRaw: ParsedExercise): { ok: true } | { ok: false; reason: string } => {
+      // Los validadores son heurísticos sobre texto plano; el statement/explanation/hints
+      // ahora traen LaTeX $...$ (para KaTeX). Validamos sobre una copia saneada a texto
+      // plano, sin tocar el objeto que se muestra.
+      const ex: ParsedExercise = {
+        ...exRaw,
+        statement: sanitizeMathText(exRaw.statement),
+        explanation: sanitizeMathText(exRaw.explanation),
+        hints: exRaw.hints.map((h) => sanitizeMathText(h)),
+      };
       // 1) Estructura básica (tipo/opciones/answer key)
       const structuralBasic = validateExercise(ex);
       if (!structuralBasic.ok) return structuralBasic;

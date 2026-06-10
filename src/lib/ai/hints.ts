@@ -4,7 +4,6 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { callAI } from "./service";
 import { rateLimit } from "./rate-limit";
 import { buildHintPrompt } from "./prompts";
-import { sanitizeMathText } from "./sanitize-text";
 import type { HintResult } from "./types";
 
 const HintSchema = z.object({
@@ -33,9 +32,8 @@ export const giveHint = createServerFn({ method: "POST" })
     });
 
     try {
-      const parsed = HintSchema.parse(raw);
-      parsed.pista = sanitizeMathText(parsed.pista);
-      return parsed;
+      // pista conserva su LaTeX $...$ (se renderiza con KaTeX).
+      return HintSchema.parse(raw);
     } catch (e) {
       console.error("[giveHint] validation error", e, raw);
       throw new Error("La IA devolvió un formato inválido. Probá de nuevo.");

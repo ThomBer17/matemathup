@@ -41,7 +41,13 @@ function cacheKey(tema: string, nivel: DifficultyLevel) {
 }
 
 function validateCore(parsed: Parsed, scope: ReturnType<typeof getTopicScope>) {
-  for (const act of parsed.actividades) {
+  for (const actRaw of parsed.actividades) {
+    // El enunciado trae LaTeX $...$ (para KaTeX); los validadores son heurísticos
+    // sobre texto plano, así que validamos una copia saneada.
+    const act = {
+      titulo: sanitizeMathText(actRaw.titulo),
+      enunciado: sanitizeMathText(actRaw.enunciado),
+    };
     const combined = `${act.titulo} ${act.enunciado}`;
     const scopeRes = validateInScope(combined, scope);
     if (!scopeRes.inScope) {
@@ -100,13 +106,8 @@ async function generateOnce(
     userPrompt,
     label: retryReason ? "generateActivities:retry" : "generateActivities",
   });
-  const parsed = GeneratedActivitiesSchema.parse(raw);
-  // Limpiar LaTeX que el modelo a veces emite (ej. $\alpha$ → α) antes de validar/cachear.
-  parsed.actividades = parsed.actividades.map((a) => ({
-    titulo: sanitizeMathText(a.titulo),
-    enunciado: sanitizeMathText(a.enunciado),
-  }));
-  return parsed;
+  // titulo/enunciado conservan su LaTeX $...$ (se renderizan con KaTeX en la UI).
+  return GeneratedActivitiesSchema.parse(raw);
 }
 
 export const generateActivities = createServerFn({ method: "POST" })

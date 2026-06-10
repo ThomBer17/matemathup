@@ -32,7 +32,12 @@ const NIVEL_TO_DIFFICULTY: Record<DifficultyLevel, number> = {
  * PERO sin scope curricular (el material define su propio alcance).
  */
 function validateMaterialBatch(parsed: Parsed) {
-  for (const act of parsed.actividades) {
+  for (const actRaw of parsed.actividades) {
+    // enunciado con LaTeX $...$ → validamos copia saneada a texto plano.
+    const act = {
+      titulo: sanitizeMathText(actRaw.titulo),
+      enunciado: sanitizeMathText(actRaw.enunciado),
+    };
     const combined = `${act.titulo} ${act.enunciado}`;
     const artifact = checkArtificialPatterns(combined);
     if (!artifact.ok) return { ok: false as const, reason: `patrón artificial "${artifact.matched}"` };
@@ -58,13 +63,8 @@ async function generateOnce(
     userPrompt,
     label: retryReason ? "generateFromMaterial:retry" : "generateFromMaterial",
   });
-  const parsed = ResultSchema.parse(raw);
-  // Limpiar LaTeX que el modelo a veces emite (ej. $\alpha$ → α) antes de validar.
-  parsed.actividades = parsed.actividades.map((a) => ({
-    titulo: sanitizeMathText(a.titulo),
-    enunciado: sanitizeMathText(a.enunciado),
-  }));
-  return parsed;
+  // titulo/enunciado conservan su LaTeX $...$ (se renderizan con KaTeX en la UI).
+  return ResultSchema.parse(raw);
 }
 
 export const generateFromMaterial = createServerFn({ method: "POST" })

@@ -4,7 +4,6 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { callAI } from "./service";
 import { rateLimit } from "./rate-limit";
 import { buildEvaluateAnswerPrompt } from "./prompts";
-import { sanitizeMathText } from "./sanitize-text";
 import type { EvaluationResult } from "./types";
 
 const EvaluationSchema = z.object({
@@ -42,10 +41,8 @@ export const evaluateAnswer = createServerFn({ method: "POST" })
     });
 
     try {
-      const parsed = EvaluationSchema.parse(raw);
-      parsed.feedback = sanitizeMathText(parsed.feedback);
-      parsed.explicacion = sanitizeMathText(parsed.explicacion);
-      return parsed;
+      // feedback/explicacion conservan su LaTeX $...$ (se renderizan con KaTeX).
+      return EvaluationSchema.parse(raw);
     } catch (e) {
       console.error("[evaluateAnswer] validation error", e, raw);
       throw new Error("La IA devolvió un formato inválido. Probá de nuevo.");
