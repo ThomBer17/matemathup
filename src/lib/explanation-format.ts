@@ -84,10 +84,39 @@ function splitIntoSegments(raw: string): string[] {
   // Conectores → corte antes (conservando la palabra conectora en el segmento siguiente).
   s = s.replace(CONNECTOR_RE, `${SENTINEL}$1`);
 
-  return s
+  const segs = s
     .split(SENTINEL)
     .map((seg) => stripStepMarker(seg.trim()))
     .filter((seg) => seg.length > 0);
+
+  return mergeTinySegments(segs);
+}
+
+/**
+ * Une fragmentos "colgantes" al siguiente segmento: cláusulas cortas que NO terminan en
+ * puntuación de cierre (ej. "Primero,"), típicas de cuando un conector aparece muy
+ * temprano y parte una oración en dos pasos feos. Un paso corto pero COMPLETO
+ * ("Verificamos.", "Segunda idea.") se respeta.
+ */
+function mergeTinySegments(segs: string[]): string[] {
+  const out: string[] = [];
+  let buffer = "";
+  for (const seg of segs) {
+    const merged = buffer ? `${buffer} ${seg}` : seg;
+    const words = seg.split(/\s+/).filter(Boolean).length;
+    const dangling = words <= 3 && !/[.!?:]$/.test(seg) && !MATH_SIGNAL.test(seg);
+    if (dangling) {
+      buffer = merged;
+      continue;
+    }
+    out.push(merged);
+    buffer = "";
+  }
+  if (buffer) {
+    if (out.length) out[out.length - 1] += ` ${buffer}`;
+    else out.push(buffer);
+  }
+  return out;
 }
 
 /** Quita el marcador original del paso ("1)", "Paso 2:") ya que renumeramos nosotros. */

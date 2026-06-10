@@ -77,6 +77,7 @@ function validateExercise(ex: ParsedExercise): { ok: true } | { ok: false; reaso
 const BASE_SYSTEM_PROMPT = `Profesor de matemática secundaria argentina (5°-6°). Generás UN ejercicio en JSON.
 NOTACIÓN (CRÍTICO): en "statement", "explanation" y "hints" escribí la matemática en LaTeX entre $...$ (se renderiza con KaTeX): $\\frac{a}{b}$, $\\sqrt{x}$, $x^2$, $\\theta$, $\\sin(\\alpha)$, $30^\\circ$. Display $$...$$ para un resultado clave.
 PERO "correct_answer" y cada "options" van en notación SIMPLE tipeable, SIN $ ni LaTeX (ej: -3/4, x^2, sqrt(2), pi, 30) para poder compararlas con lo que tipea el alumno.
+En "explanation": cada igualdad encadenada completa en UN $...$ (no la partas), y en nombres usá palabras normales sin guion bajo ("cateto adyacente", no "cateto_adyacente").
 Reglas: multiple_choice→4 opciones distintas, correct_answer EXACTO igual a una opción. true_false→correct_answer "Verdadero"/"Falso".
 MULTIPLE CHOICE: resolvé primero, después construí las opciones de modo que UNA sea EXACTAMENTE tu resultado. PROHIBIDO elegir "la opción más cercana" si ninguna coincide: en ese caso corregí las opciones para incluir tu resultado exacto. Nada de "ninguna coincide, la más cercana es…".
 correct_answer = el resultado real del cálculo de "explanation" (sin invertir ni reinterpretar). Si la consigna pide un intervalo/condición, verificá que el resultado la cumpla.

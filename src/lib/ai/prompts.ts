@@ -14,7 +14,8 @@ const NIVEL_DESC: Record<DifficultyLevel, string> = {
 const NOTATION_RULE = `NOTACIÓN (CRÍTICO): escribí TODA expresión matemática en LaTeX entre signos $...$, porque se renderiza con KaTeX.
 Ejemplos inline: $\\frac{1}{2}$, $\\sqrt{16}$, $x^2$, $\\theta$, $\\sin(\\alpha)$, $\\pm\\frac{3}{4}$, $30^\\circ$.
 Para un paso/resultado clave podés usar display centrado: $$\\cos(\\theta)=\\frac{4}{5}$$.
-NO dejes LaTeX fuera de $...$ (nada de \\frac suelto) ni mezcles notación a medias.`;
+NO dejes LaTeX fuera de $...$ (nada de \\frac suelto) ni mezcles notación a medias.
+NO partas una fórmula en varias partes: cada igualdad encadenada va completa en UN solo $...$ (ej. $\\sqrt{15^2-9^2}=\\sqrt{144}=12$). En nombres usá palabras normales, NO guion bajo (escribí "cateto adyacente", no "cateto_adyacente").`;
 
 /**
  * Genera ejercicios BASADOS en el material de estudio del usuario (RAG-lite:

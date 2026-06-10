@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mathToLatex } from "./math-to-latex";
+import { mathToLatex, plainMathToLatex, isRenderableMath } from "./math-to-latex";
 
 describe("mathToLatex", () => {
   it("string vacío → vacío", () => {
@@ -49,5 +49,36 @@ describe("mathToLatex", () => {
     const result = mathToLatex("sqrt(pi/2)");
     expect(result).toContain("\\sqrt");
     expect(result).toContain("\\pi");
+  });
+});
+
+describe("plainMathToLatex — notación plana/unicode → LaTeX", () => {
+  it("raíces unicode", () => {
+    expect(plainMathToLatex("√(15² - 9²)")).toBe("\\sqrt{15^{2} - 9^{2}}");
+    expect(plainMathToLatex("√144")).toBe("\\sqrt{144}");
+  });
+
+  it("griegas, funciones y fracciones", () => {
+    const r = plainMathToLatex("cos(θ)=4/5");
+    expect(r).toContain("\\cos");
+    expect(r).toContain("\\theta");
+    expect(r).toContain("\\frac{4}{5}");
+  });
+
+  it("símbolos y grados", () => {
+    expect(plainMathToLatex("x ≤ 3")).toContain("\\leq");
+    expect(plainMathToLatex("30°")).toBe("30^{\\circ}");
+  });
+});
+
+describe("isRenderableMath", () => {
+  it("acepta expresiones compactas", () => {
+    expect(isRenderableMath("√(15² - 9²)")).toBe(true);
+    expect(isRenderableMath("cos(θ)=4/5")).toBe(true);
+  });
+
+  it("rechaza prosa con palabras largas", () => {
+    expect(isRenderableMath("cateto_adyacente / hipotenusa = 0.8")).toBe(false);
+    expect(isRenderableMath("cos(ángulo)=12/15")).toBe(false);
   });
 });
