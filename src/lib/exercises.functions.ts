@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { callAI, getAIConfig } from "@/lib/ai/service";
+import { callAI, getAIConfig, FatalAIError } from "@/lib/ai/service";
 import { answersEqual, normalizeTrueFalse } from "@/lib/answer-normalize";
 import { getTopicScope, validateInScope, type TopicScope } from "@/lib/curriculum";
 import { checkArtificialPatterns, checkStatementMutation, checkClosestOptionFraud, checkMathematicalRationalization } from "@/lib/ai/quality-checks";
@@ -171,6 +171,8 @@ export const generateExercise = createServerFn({ method: "POST" })
     try {
       parsed = await generateOnce(topicName, diffLabel, difficulty, scope, avoid);
     } catch (e) {
+      // Errores de credenciales/config no se arreglan reintentando: propagamos el mensaje real.
+      if (e instanceof FatalAIError) throw e;
       // Parse/schema falló en el primer intento — reintentamos UNA vez con instrucción explícita
       console.warn("[generateExercise] parse error (first attempt), retrying", e);
       try {
@@ -183,6 +185,7 @@ export const generateExercise = createServerFn({ method: "POST" })
           "JSON inválido o campos faltantes — devolvé el objeto exacto del schema",
         );
       } catch (e2) {
+        if (e2 instanceof FatalAIError) throw e2;
         console.error("AI parse error (after retry)", e2);
         throw new Error("La IA devolvió un formato inválido. Probá de nuevo.");
       }
@@ -296,6 +299,7 @@ export const generateExercise = createServerFn({ method: "POST" })
       try {
         parsed = await generateOnce(topicName, retryDiffLabel, retryDifficulty, scope, avoid, validation.reason);
       } catch (e) {
+        if (e instanceof FatalAIError) throw e;
         console.error("AI parse error (retry)", e);
         throw new Error("La IA devolvió un formato inválido. Probá de nuevo.");
       }

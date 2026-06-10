@@ -91,11 +91,32 @@ export async function callAI<T>(options: AICallOptions): Promise<T> {
         body: JSON.stringify(body),
       });
 
-      // Errores no recuperables: cortamos de inmediato.
-      if (res.status === 401) throw new FatalAIError("Credenciales de IA inválidas. Revisá AI_API_KEY.");
-      if (res.status === 402) throw new FatalAIError("Sin créditos de IA disponibles.");
-
       if (!res.ok) {
+        // Leemos el cuerpo del error para diagnosticar (Gemini devuelve 400 con
+        // "Please pass a valid API key" cuando la key está mal/vencida).
+        const errBody = await res.text().catch(() => "");
+        const lower = errBody.toLowerCase();
+        console.warn(`[AI:${tag}] HTTP ${res.status} · ${errBody.slice(0, 300)}`);
+
+        // No recuperables (no sirve reintentar): credenciales / permisos / sin crédito.
+        const isAuth =
+          res.status === 401 ||
+          res.status === 403 ||
+          lower.includes("api key") ||
+          lower.includes("api_key") ||
+          lower.includes("permission") ||
+          lower.includes("unauthenticated");
+        if (isAuth) {
+          throw new FatalAIError(
+            "Credenciales de IA inválidas o sin permisos. Revisá AI_API_KEY (en Cloudflare es un Secret).",
+          );
+        }
+        if (res.status === 402) throw new FatalAIError("Sin créditos de IA disponibles.");
+        // Otros 400 (request mal formado) tampoco se arreglan reintentando.
+        if (res.status === 400) {
+          throw new FatalAIError(`La IA rechazó la solicitud (400). ${errBody.slice(0, 200)}`);
+        }
+
         // 429 y 5xx son transitorios → reintentamos con backoff.
         lastError = new Error(
           res.status === 429 ? "Límite de uso alcanzado." : `Error de IA (${res.status})`,
@@ -153,7 +174,7 @@ export async function callAI<T>(options: AICallOptions): Promise<T> {
   throw new Error("La IA no respondió correctamente. Probá de nuevo en unos segundos.");
 }
 
-class FatalAIError extends Error {}
+export class FatalAIError extends Error {}
 
 /** Espera incremental entre reintentos: 0ms (1er retry), 400ms, 800ms. */
 function backoff(attempt: number, maxAttempts: number): Promise<void> {
