@@ -57,17 +57,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "MateUp — Matemática adaptativa para secundaria" },
+      { title: "MatemathUp — Matemática adaptativa" },
       {
         name: "description",
         content:
-          "Plataforma educativa con ejercicios adaptativos y explicaciones paso a paso para 5to y 6to año de secundaria.",
+          "Plataforma educativa con ejercicios adaptativos y explicaciones paso a paso de matemática.",
       },
-      { property: "og:title", content: "MateUp — Matemática adaptativa para secundaria" },
+      { property: "og:title", content: "MatemathUp — Matemática adaptativa" },
       { property: "og:description", content: "Math Mastery Path is an adaptive web platform for secondary math students to master concepts through interactive exercises and progress tracking." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "MateUp — Matemática adaptativa para secundaria" },
+      { name: "twitter:title", content: "MatemathUp — Matemática adaptativa" },
       { name: "description", content: "Math Mastery Path is an adaptive web platform for secondary math students to master concepts through interactive exercises and progress tracking." },
       { name: "twitter:description", content: "Math Mastery Path is an adaptive web platform for secondary math students to master concepts through interactive exercises and progress tracking." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4a1e7178-b270-43c7-925f-001b0db81591/id-preview-3c4fa331--a80b3842-b982-40b4-96fc-dace7fc752df.lovable.app-1779905095292.png" },

@@ -34,7 +34,7 @@ function AuthenticatedLayout() {
           <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur">
             <SidebarTrigger />
             <span className="font-display text-sm font-medium text-muted-foreground">
-              MateUp
+              MatemathUp
             </span>
             <ThemeToggle className="ml-auto" />
           </header>

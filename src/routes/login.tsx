@@ -72,7 +72,7 @@ export function AuthShell({ title, subtitle, children }: { title: string; subtit
           <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground">
             <GraduationCap className="h-4 w-4" />
           </div>
-          MateUp
+          MatemathUp
         </Link>
         <div className="rounded-2xl border bg-card p-8 shadow-soft">
           <h1 className="font-display text-2xl font-bold">{title}</h1>

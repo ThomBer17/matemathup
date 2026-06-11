@@ -149,7 +149,7 @@ function Dashboard() {
           <h2 className="mt-2 font-display text-2xl font-bold">Practicá tu primer ejercicio</h2>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
             En MatemathUp resolvés ejercicios generados por IA, adaptados a tu nivel. Empezá por
-            un tema cualquiera del programa de 5° o 6° año. La dificultad sube cuando vas bien y baja
+            un tema cualquiera del programa. La dificultad sube cuando vas bien y baja
             si te trabás. Cada respuesta te suma XP, rachas y desbloquea logros.
           </p>
           <div className="mt-5 flex flex-wrap gap-3">

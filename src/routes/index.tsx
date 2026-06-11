@@ -8,7 +8,7 @@ export const Route = createFileRoute("/")({
   component: Landing,
   head: () => ({
     meta: [
-      { title: "MateUp — Matemática adaptativa para 5to y 6to año" },
+      { title: "MatemathUp — Matemática adaptativa" },
       {
         name: "description",
         content:
@@ -30,7 +30,7 @@ function Landing() {
           <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground shadow-soft">
             <GraduationCap className="h-5 w-5" />
           </div>
-          MateUp
+          MatemathUp
         </Link>
         <div className="flex items-center gap-2">
           <ThemeToggle />
@@ -60,7 +60,6 @@ function Landing() {
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-base text-muted-foreground md:text-lg">
             Ejercicios adaptativos, explicaciones paso a paso y seguimiento de tu progreso.
-            Diseñado para 5to y 6to año.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link to="/signup">
@@ -108,7 +107,7 @@ function Landing() {
       </main>
 
       <footer className="relative z-10 border-t bg-card/40 py-6 text-center text-xs text-muted-foreground">
-        MateUp · Hecho con cariño para estudiantes de secundaria
+        MatemathUp · Hecho con cariño para estudiantes
       </footer>
     </div>
   );

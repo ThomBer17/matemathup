@@ -54,7 +54,7 @@ export function AppSidebar() {
             <GraduationCap className="h-4 w-4" />
           </div>
           <span className="font-display text-base font-bold group-data-[collapsible=icon]:hidden">
-            MateUp
+            MatemathUp
           </span>
         </Link>
       </SidebarHeader>
