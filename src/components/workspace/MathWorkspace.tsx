@@ -58,6 +58,29 @@ export function MathWorkspace({ storageKey }: { storageKey: string }) {
   const [hydrated, setHydrated] = useState(false);
   const [copied, setCopied] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+
+  // Cerrar con Esc o clickeando afuera (excepto en otros paneles flotantes como la
+  // calculadora, para que sigan conviviendo). Evita tener que ir siempre a la X.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    const onPointer = (e: PointerEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      if (panelRef.current?.contains(target)) return; // dentro del workspace
+      if (target.closest("[data-floating-panel]")) return; // calculadora u otro panel
+      setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointer);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointer);
+    };
+  }, [open]);
 
   // Cargar desde localStorage al montar / cambiar de tema (client-only → en effect).
   useEffect(() => {
@@ -159,6 +182,7 @@ export function MathWorkspace({ storageKey }: { storageKey: string }) {
       <AnimatePresence>
         {open && (
           <motion.aside
+            ref={panelRef}
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
@@ -166,6 +190,7 @@ export function MathWorkspace({ storageKey }: { storageKey: string }) {
             className="fixed right-0 top-0 z-50 flex h-full w-[88vw] max-w-[420px] flex-col border-l bg-card shadow-2xl lg:w-[32%] lg:max-w-[480px]"
             role="dialog"
             aria-label="Workspace Matemático"
+            data-floating-panel
           >
             {/* Header */}
             <div className="flex items-center justify-between border-b px-4 py-3">

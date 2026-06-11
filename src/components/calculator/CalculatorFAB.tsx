@@ -31,6 +31,7 @@ export function CalculatorFAB() {
             )}
             role="dialog"
             aria-label="Calculadora"
+            data-floating-panel
           >
             <Calculator onClose={() => setOpen(false)} />
           </motion.div>
@@ -47,6 +48,7 @@ export function CalculatorFAB() {
           "fixed bottom-4 z-50 grid h-12 w-12 place-items-center rounded-full bg-primary text-primary-foreground shadow-glow transition-all hover:scale-105 active:scale-95 md:bottom-6",
           offset,
         )}
+        data-floating-panel
       >
         <motion.span
           key={open ? "open" : "closed"}
