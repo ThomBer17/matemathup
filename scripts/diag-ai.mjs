@@ -68,7 +68,7 @@ const body = {
   messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
   response_format: { type: "json_object" },
   reasoning_effort: "none",
-  max_tokens: 4096,
+  max_tokens: 8192,
 };
 
 for (let i = 1; i <= 3; i++) {

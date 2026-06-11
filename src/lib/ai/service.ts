@@ -75,11 +75,12 @@ export async function callAI<T>(options: AICallOptions): Promise<T> {
       }
       // Gemini 2.5 Flash es un modelo "thinking": razona antes de responder, lo que
       // consume el presupuesto de salida (deja el JSON truncado → "formato inválido")
-      // y agrega latencia. Lo desactivamos y damos MARGEN AMPLIO de tokens: si el
-      // thinking igual consume algo, 4096 evita que se trunque el JSON del ejercicio.
+      // y agrega latencia. Lo desactivamos, pero a veces igual razona algo; el JSON del
+      // ejercicio es chico (<1k tokens), así que damos MUCHO margen para que nunca se
+      // trunque aunque el thinking consuma parte del presupuesto.
       if (baseUrl.includes("generativelanguage.googleapis.com")) {
         body.reasoning_effort = "none";
-        body.max_tokens = 4096;
+        body.max_tokens = 8192;
       }
 
       const res = await fetch(baseUrl, {
