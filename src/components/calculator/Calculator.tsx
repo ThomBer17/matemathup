@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 type AngleMode = "deg" | "rad";
+type ResultMode = "dec" | "frac";
 
 interface HistoryEntry {
   expr: string;
@@ -12,6 +13,7 @@ interface HistoryEntry {
 }
 
 const DEG_TO_RAD = Math.PI / 180;
+const RAD_TO_DEG = 180 / Math.PI;
 
 function evaluateExpression(input: string, mode: AngleMode): number {
   if (!input.trim()) throw new Error("vacío");
@@ -19,6 +21,10 @@ function evaluateExpression(input: string, mode: AngleMode): number {
   const sinFn = mode === "deg" ? `((x)=>Math.sin(x*${DEG_TO_RAD}))` : `Math.sin`;
   const cosFn = mode === "deg" ? `((x)=>Math.cos(x*${DEG_TO_RAD}))` : `Math.cos`;
   const tanFn = mode === "deg" ? `((x)=>Math.tan(x*${DEG_TO_RAD}))` : `Math.tan`;
+  // Inversas: en grados, convertimos el resultado (que sale en radianes) a grados.
+  const asinFn = mode === "deg" ? `((x)=>Math.asin(x)*${RAD_TO_DEG})` : `Math.asin`;
+  const acosFn = mode === "deg" ? `((x)=>Math.acos(x)*${RAD_TO_DEG})` : `Math.acos`;
+  const atanFn = mode === "deg" ? `((x)=>Math.atan(x)*${RAD_TO_DEG})` : `Math.atan`;
 
   let expr = input
     .replace(/×/g, "*")
@@ -28,14 +34,28 @@ function evaluateExpression(input: string, mode: AngleMode): number {
     .replace(/\^/g, "**")
     .replace(/√\(/g, "Math.sqrt(")
     .replace(/√/g, "Math.sqrt")
+    // Inversas → placeholders (en MAYÚSCULA) para que el reemplazo de sin/cos/tan
+    // de abajo no toque el "sin" de "asin", etc.
+    .replace(/arcs(?:en|in)\(/g, "@ASIN@(")
+    .replace(/asin\(/g, "@ASIN@(")
+    .replace(/arccos\(/g, "@ACOS@(")
+    .replace(/acos\(/g, "@ACOS@(")
+    .replace(/arctan\(/g, "@ATAN@(")
+    .replace(/atan\(/g, "@ATAN@(")
+    // Directas
     .replace(/sin\(/g, `${sinFn}(`)
+    .replace(/sen\(/g, `${sinFn}(`)
     .replace(/cos\(/g, `${cosFn}(`)
     .replace(/tan\(/g, `${tanFn}(`)
     .replace(/ln\(/g, "Math.log(")
-    .replace(/log\(/g, "Math.log10(");
+    .replace(/log\(/g, "Math.log10(")
+    // Placeholders de inversas → funciones reales (después de sin/cos/tan)
+    .replace(/@ASIN@\(/g, `${asinFn}(`)
+    .replace(/@ACOS@\(/g, `${acosFn}(`)
+    .replace(/@ATAN@\(/g, `${atanFn}(`);
 
   const stripped = expr
-    .replace(/Math\.(PI|sqrt|sin|cos|tan|log10|log)/g, "")
+    .replace(/Math\.(PI|sqrt|asin|acos|atan|sin|cos|tan|log10|log)/g, "")
     .replace(/\(\(x\)=>[^)]+\)/g, "")
     .replace(/[0-9+\-*/().\sx>=,]/g, "");
   if (stripped.length > 0) throw new Error("Expresión inválida");
@@ -48,7 +68,40 @@ function evaluateExpression(input: string, mode: AngleMode): number {
   return value;
 }
 
-function formatResult(n: number): string {
+/**
+ * Convierte un decimal a fracción exacta por fracciones continuas. Devuelve null si
+ * el número es esencialmente irracional (no hay fracción "limpia" con denominador
+ * razonable), para no mostrar fracciones gigantes en √2, π, etc.
+ */
+function decimalToFraction(value: number): { num: number; den: number } | null {
+  if (!isFinite(value)) return null;
+  if (Number.isInteger(value)) return { num: value, den: 1 };
+  const sign = value < 0 ? -1 : 1;
+  const x = Math.abs(value);
+  const maxDen = 10000;
+  let prevNum = 0, num = 1, prevDen = 1, den = 0;
+  let rem = x;
+  for (let i = 0; i < 64; i++) {
+    const intPart = Math.floor(rem);
+    const nextNum = intPart * num + prevNum;
+    const nextDen = intPart * den + prevDen;
+    if (nextDen > maxDen) break;
+    prevNum = num; num = nextNum;
+    prevDen = den; den = nextDen;
+    if (Math.abs(x - num / den) < 1e-12) break;
+    const frac = rem - intPart;
+    if (frac < 1e-12) break;
+    rem = 1 / frac;
+  }
+  if (den === 0 || Math.abs(x - num / den) > 1e-9) return null;
+  return { num: sign * num, den };
+}
+
+function formatResult(n: number, resultMode: ResultMode = "dec"): string {
+  if (resultMode === "frac" && !Number.isInteger(n)) {
+    const f = decimalToFraction(n);
+    if (f && f.den !== 1) return `${f.num}/${f.den}`;
+  }
   if (Number.isInteger(n)) return n.toString();
   const rounded = Math.round(n * 1e10) / 1e10;
   return rounded.toString();
@@ -63,17 +116,18 @@ const BTN_EQ = "bg-primary text-primary-foreground hover:bg-primary/90 font-bold
 export function Calculator({ onClose }: { onClose?: () => void }) {
   const [expr, setExpr] = useState("");
   const [angleMode, setAngleMode] = useState<AngleMode>("deg");
+  const [resultMode, setResultMode] = useState<ResultMode>("dec");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [showHistory, setShowHistory] = useState(false);
 
   const preview = useMemo(() => {
     if (!expr.trim()) return null;
     try {
-      return formatResult(evaluateExpression(expr, angleMode));
+      return formatResult(evaluateExpression(expr, angleMode), resultMode);
     } catch {
       return null;
     }
-  }, [expr, angleMode]);
+  }, [expr, angleMode, resultMode]);
 
   const append = (s: string) => setExpr((e) => e + s);
   const backspace = () => setExpr((e) => e.slice(0, -1));
@@ -82,7 +136,7 @@ export function Calculator({ onClose }: { onClose?: () => void }) {
   const equals = () => {
     if (!expr.trim()) return;
     try {
-      const result = formatResult(evaluateExpression(expr, angleMode));
+      const result = formatResult(evaluateExpression(expr, angleMode), resultMode);
       setHistory((h) => [{ expr, result }, ...h].slice(0, 5));
       setExpr(result);
     } catch (e: unknown) {
@@ -150,23 +204,45 @@ export function Calculator({ onClose }: { onClose?: () => void }) {
   return (
     <div className="flex flex-col gap-3">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1 rounded-lg border bg-background p-0.5 text-[10px] font-semibold">
-          {(["deg", "rad"] as AngleMode[]).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setAngleMode(m)}
-              className={cn(
-                "rounded-md px-2 py-0.5 uppercase tracking-wide transition-colors",
-                angleMode === m
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {m}
-            </button>
-          ))}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          {/* Ángulo: grados / radianes */}
+          <div className="flex items-center gap-1 rounded-lg border bg-background p-0.5 text-[10px] font-semibold">
+            {(["deg", "rad"] as AngleMode[]).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setAngleMode(m)}
+                className={cn(
+                  "rounded-md px-2 py-0.5 uppercase tracking-wide transition-colors",
+                  angleMode === m
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+          {/* Resultado: decimal / fracción */}
+          <div className="flex items-center gap-1 rounded-lg border bg-background p-0.5 text-[10px] font-semibold">
+            {([["dec", "0.5"], ["frac", "½"]] as [ResultMode, string][]).map(([m, label]) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setResultMode(m)}
+                title={m === "dec" ? "Resultado en decimales" : "Resultado en fracción"}
+                className={cn(
+                  "rounded-md px-2 py-0.5 transition-colors",
+                  resultMode === m
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="flex items-center gap-1">
           <button
@@ -246,6 +322,24 @@ export function Calculator({ onClose }: { onClose?: () => void }) {
             {preview ?? <span className="text-muted-foreground/40">—</span>}
           </div>
         </div>
+      </div>
+
+      {/* Funciones inversas */}
+      <div className="grid grid-cols-3 gap-1.5">
+        {[
+          { label: "sin⁻¹", token: "asin(" },
+          { label: "cos⁻¹", token: "acos(" },
+          { label: "tan⁻¹", token: "atan(" },
+        ].map((b) => (
+          <button
+            key={b.label}
+            type="button"
+            onClick={() => append(b.token)}
+            className={cn("h-9 rounded-lg transition-colors active:scale-95", BTN_FN)}
+          >
+            {b.label}
+          </button>
+        ))}
       </div>
 
       {/* Keypad */}
