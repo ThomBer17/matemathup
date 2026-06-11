@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { setWorkspaceOpen } from "./panel-store";
 
 /**
  * Workspace Matemático: panel lateral derecho para que el alumno haga cuentas,
@@ -68,6 +69,12 @@ export function MathWorkspace({ storageKey }: { storageKey: string }) {
     }
     setHydrated(true);
   }, [storageKey]);
+
+  // Publica el estado abierto/cerrado para que la Calculadora se reubique.
+  useEffect(() => {
+    setWorkspaceOpen(open);
+    return () => setWorkspaceOpen(false);
+  }, [open]);
 
   // Auto-guardar.
   useEffect(() => {

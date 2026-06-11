@@ -2,9 +2,18 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Calculator as CalcIcon } from "lucide-react";
 import { Calculator } from "./Calculator";
+import { useWorkspaceOpen } from "@/components/workspace/panel-store";
+import { cn } from "@/lib/utils";
 
 export function CalculatorFAB() {
   const [open, setOpen] = useState(false);
+  const workspaceOpen = useWorkspaceOpen();
+
+  // Con el Workspace abierto (cajón derecho), la calculadora se corre para no quedar
+  // tapada: en desktop, a la izquierda del panel; en pantallas chicas, abajo a la izquierda.
+  const offset = workspaceOpen
+    ? "right-auto left-4 md:left-6 lg:left-auto lg:right-[calc(480px_+_1.5rem)]"
+    : "right-4 md:right-6";
 
   return (
     <>
@@ -16,7 +25,10 @@ export function CalculatorFAB() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.96 }}
             transition={{ duration: 0.18 }}
-            className="fixed bottom-20 right-4 z-50 w-[min(320px,calc(100vw-2rem))] rounded-2xl border bg-card p-3 shadow-2xl md:right-6 md:bottom-24"
+            className={cn(
+              "fixed bottom-20 z-50 w-[min(320px,calc(100vw-2rem))] rounded-2xl border bg-card p-3 shadow-2xl md:bottom-24",
+              offset,
+            )}
             role="dialog"
             aria-label="Calculadora"
           >
@@ -31,7 +43,10 @@ export function CalculatorFAB() {
         onClick={() => setOpen((s) => !s)}
         aria-label={open ? "Cerrar calculadora" : "Abrir calculadora"}
         aria-expanded={open}
-        className="fixed bottom-4 right-4 z-50 grid h-12 w-12 place-items-center rounded-full bg-primary text-primary-foreground shadow-glow transition-all hover:scale-105 active:scale-95 md:bottom-6 md:right-6"
+        className={cn(
+          "fixed bottom-4 z-50 grid h-12 w-12 place-items-center rounded-full bg-primary text-primary-foreground shadow-glow transition-all hover:scale-105 active:scale-95 md:bottom-6",
+          offset,
+        )}
       >
         <motion.span
           key={open ? "open" : "closed"}
