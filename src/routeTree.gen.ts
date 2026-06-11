@@ -18,8 +18,10 @@ import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedExploreRouteImport } from './routes/_authenticated/explore'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedTopicsIndexRouteImport } from './routes/_authenticated/topics.index'
+import { Route as AuthenticatedTheoryIndexRouteImport } from './routes/_authenticated/theory.index'
 import { Route as AuthenticatedStudyIndexRouteImport } from './routes/_authenticated/study.index'
 import { Route as AuthenticatedTopicsSlugRouteImport } from './routes/_authenticated/topics.$slug'
+import { Route as AuthenticatedTheorySlugRouteImport } from './routes/_authenticated/theory.$slug'
 import { Route as AuthenticatedStudyIdRouteImport } from './routes/_authenticated/study.$id'
 import { Route as AuthenticatedMaterialsIdRouteImport } from './routes/_authenticated/materials.$id'
 import { Route as AuthenticatedAdminReportsRouteImport } from './routes/_authenticated/admin.reports'
@@ -70,6 +72,12 @@ const AuthenticatedTopicsIndexRoute =
     path: '/topics/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedTheoryIndexRoute =
+  AuthenticatedTheoryIndexRouteImport.update({
+    id: '/theory/',
+    path: '/theory/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedStudyIndexRoute = AuthenticatedStudyIndexRouteImport.update({
   id: '/study/',
   path: '/study/',
@@ -78,6 +86,11 @@ const AuthenticatedStudyIndexRoute = AuthenticatedStudyIndexRouteImport.update({
 const AuthenticatedTopicsSlugRoute = AuthenticatedTopicsSlugRouteImport.update({
   id: '/topics/$slug',
   path: '/topics/$slug',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedTheorySlugRoute = AuthenticatedTheorySlugRouteImport.update({
+  id: '/theory/$slug',
+  path: '/theory/$slug',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedStudyIdRoute = AuthenticatedStudyIdRouteImport.update({
@@ -116,8 +129,10 @@ export interface FileRoutesByFullPath {
   '/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/materials/$id': typeof AuthenticatedMaterialsIdRoute
   '/study/$id': typeof AuthenticatedStudyIdRoute
+  '/theory/$slug': typeof AuthenticatedTheorySlugRoute
   '/topics/$slug': typeof AuthenticatedTopicsSlugRoute
   '/study/': typeof AuthenticatedStudyIndexRoute
+  '/theory/': typeof AuthenticatedTheoryIndexRoute
   '/topics/': typeof AuthenticatedTopicsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -132,8 +147,10 @@ export interface FileRoutesByTo {
   '/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/materials/$id': typeof AuthenticatedMaterialsIdRoute
   '/study/$id': typeof AuthenticatedStudyIdRoute
+  '/theory/$slug': typeof AuthenticatedTheorySlugRoute
   '/topics/$slug': typeof AuthenticatedTopicsSlugRoute
   '/study': typeof AuthenticatedStudyIndexRoute
+  '/theory': typeof AuthenticatedTheoryIndexRoute
   '/topics': typeof AuthenticatedTopicsIndexRoute
 }
 export interface FileRoutesById {
@@ -150,8 +167,10 @@ export interface FileRoutesById {
   '/_authenticated/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/_authenticated/materials/$id': typeof AuthenticatedMaterialsIdRoute
   '/_authenticated/study/$id': typeof AuthenticatedStudyIdRoute
+  '/_authenticated/theory/$slug': typeof AuthenticatedTheorySlugRoute
   '/_authenticated/topics/$slug': typeof AuthenticatedTopicsSlugRoute
   '/_authenticated/study/': typeof AuthenticatedStudyIndexRoute
+  '/_authenticated/theory/': typeof AuthenticatedTheoryIndexRoute
   '/_authenticated/topics/': typeof AuthenticatedTopicsIndexRoute
 }
 export interface FileRouteTypes {
@@ -168,8 +187,10 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/materials/$id'
     | '/study/$id'
+    | '/theory/$slug'
     | '/topics/$slug'
     | '/study/'
+    | '/theory/'
     | '/topics/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -184,8 +205,10 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/materials/$id'
     | '/study/$id'
+    | '/theory/$slug'
     | '/topics/$slug'
     | '/study'
+    | '/theory'
     | '/topics'
   id:
     | '__root__'
@@ -201,8 +224,10 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/reports'
     | '/_authenticated/materials/$id'
     | '/_authenticated/study/$id'
+    | '/_authenticated/theory/$slug'
     | '/_authenticated/topics/$slug'
     | '/_authenticated/study/'
+    | '/_authenticated/theory/'
     | '/_authenticated/topics/'
   fileRoutesById: FileRoutesById
 }
@@ -278,6 +303,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTopicsIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/theory/': {
+      id: '/_authenticated/theory/'
+      path: '/theory'
+      fullPath: '/theory/'
+      preLoaderRoute: typeof AuthenticatedTheoryIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/study/': {
       id: '/_authenticated/study/'
       path: '/study'
@@ -290,6 +322,13 @@ declare module '@tanstack/react-router' {
       path: '/topics/$slug'
       fullPath: '/topics/$slug'
       preLoaderRoute: typeof AuthenticatedTopicsSlugRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/theory/$slug': {
+      id: '/_authenticated/theory/$slug'
+      path: '/theory/$slug'
+      fullPath: '/theory/$slug'
+      preLoaderRoute: typeof AuthenticatedTheorySlugRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/study/$id': {
@@ -332,8 +371,10 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminReportsRoute: typeof AuthenticatedAdminReportsRoute
   AuthenticatedMaterialsIdRoute: typeof AuthenticatedMaterialsIdRoute
   AuthenticatedStudyIdRoute: typeof AuthenticatedStudyIdRoute
+  AuthenticatedTheorySlugRoute: typeof AuthenticatedTheorySlugRoute
   AuthenticatedTopicsSlugRoute: typeof AuthenticatedTopicsSlugRoute
   AuthenticatedStudyIndexRoute: typeof AuthenticatedStudyIndexRoute
+  AuthenticatedTheoryIndexRoute: typeof AuthenticatedTheoryIndexRoute
   AuthenticatedTopicsIndexRoute: typeof AuthenticatedTopicsIndexRoute
 }
 
@@ -346,8 +387,10 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminReportsRoute: AuthenticatedAdminReportsRoute,
   AuthenticatedMaterialsIdRoute: AuthenticatedMaterialsIdRoute,
   AuthenticatedStudyIdRoute: AuthenticatedStudyIdRoute,
+  AuthenticatedTheorySlugRoute: AuthenticatedTheorySlugRoute,
   AuthenticatedTopicsSlugRoute: AuthenticatedTopicsSlugRoute,
   AuthenticatedStudyIndexRoute: AuthenticatedStudyIndexRoute,
+  AuthenticatedTheoryIndexRoute: AuthenticatedTheoryIndexRoute,
   AuthenticatedTopicsIndexRoute: AuthenticatedTopicsIndexRoute,
 }
 

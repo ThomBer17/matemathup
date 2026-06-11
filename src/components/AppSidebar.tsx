@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { LayoutDashboard, BookOpen, User, LogOut, GraduationCap, LineChart, TrendingUp, Flag, CalendarDays, BarChart3 } from "lucide-react";
+import { LayoutDashboard, BookOpen, User, LogOut, GraduationCap, LineChart, TrendingUp, Flag, CalendarDays, BarChart3, Library } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Sidebar,
@@ -21,6 +21,7 @@ import { StreakWidget } from "@/components/gamification/StreakWidget";
 const items = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Temas", url: "/topics", icon: BookOpen },
+  { title: "Teoría", url: "/theory", icon: Library },
   { title: "Mi progreso", url: "/progress", icon: TrendingUp },
   { title: "Plan de estudio", url: "/study", icon: CalendarDays },
   { title: "Explorar", url: "/explore", icon: LineChart },
