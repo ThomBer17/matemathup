@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { callAI, getAIConfig } from "./service";
+import { callAI, getAIConfig, FatalAIError } from "./service";
 import { buildGenerateActivitiesPrompt } from "./prompts";
 import { sanitizeMathText } from "./sanitize-text";
 import { getTopicScope, validateInScope } from "@/lib/curriculum";
@@ -148,6 +148,7 @@ export const generateActivities = createServerFn({ method: "POST" })
     try {
       parsed = await generateOnce(tema, nivel, scope, avoid);
     } catch (e) {
+      if (e instanceof FatalAIError) throw e; // cuota/credenciales: mensaje real
       console.warn("[generateActivities] parse error (first attempt), retrying", e);
       try {
         parsed = await generateOnce(
@@ -158,6 +159,7 @@ export const generateActivities = createServerFn({ method: "POST" })
           "JSON inválido o campos faltantes — devolvé el objeto exacto del schema",
         );
       } catch (e2) {
+        if (e2 instanceof FatalAIError) throw e2;
         console.error("[generateActivities] parse error (after retry)", e2);
         throw new Error("La IA devolvió un formato inválido. Probá de nuevo.");
       }
@@ -169,6 +171,7 @@ export const generateActivities = createServerFn({ method: "POST" })
       try {
         parsed = await generateOnce(tema, nivel, scope, avoid, check.reason);
       } catch (e) {
+        if (e instanceof FatalAIError) throw e;
         console.error("[generateActivities] parse error (retry)", e);
         throw new Error("La IA devolvió un formato inválido. Probá de nuevo.");
       }

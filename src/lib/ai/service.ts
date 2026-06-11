@@ -117,11 +117,19 @@ export async function callAI<T>(options: AICallOptions): Promise<T> {
         if (res.status === 400) {
           throw new FatalAIError(`La IA rechazó la solicitud (400). ${errBody.slice(0, 200)}`);
         }
+        // 429 = cuota/límite. NO reintentamos: cada reintento gasta otra request y
+        // empeora el límite. Damos un mensaje claro y accionable.
+        if (res.status === 429) {
+          const quota = lower.includes("quota") || lower.includes("billing");
+          throw new FatalAIError(
+            quota
+              ? "Se agotó la cuota gratuita de la IA (Gemini free tier). Esperá un minuto y reintentá, o activá facturación en Google AI Studio para más capacidad."
+              : "Demasiadas solicitudes a la IA en poco tiempo. Esperá unos segundos y probá de nuevo.",
+          );
+        }
 
-        // 429 y 5xx son transitorios → reintentamos con backoff.
-        lastError = new Error(
-          res.status === 429 ? "Límite de uso alcanzado." : `Error de IA (${res.status})`,
-        );
+        // 5xx son transitorios → reintentamos con backoff.
+        lastError = new Error(`Error de IA (${res.status})`);
         await backoff(attempt, maxAttempts);
         continue;
       }

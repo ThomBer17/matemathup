@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { callAI, getAIConfig } from "./service";
+import { callAI, getAIConfig, FatalAIError } from "./service";
 import { buildMaterialActivitiesPrompt } from "./prompts";
 import { sanitizeMathText } from "./sanitize-text";
 import { checkArtificialPatterns, checkStatementMutation } from "./quality-checks";
@@ -104,8 +104,10 @@ export const generateFromMaterial = createServerFn({ method: "POST" })
     try {
       parsed = await generateOnce(text, topicHint, nivel);
     } catch (e) {
+      if (e instanceof FatalAIError) throw e; // cuota/credenciales: mensaje real
       console.warn("[generateFromMaterial] parse error, retrying", e);
-      parsed = await generateOnce(text, topicHint, nivel, "JSON inválido o campos faltantes — devolvé el objeto exacto del schema").catch(() => {
+      parsed = await generateOnce(text, topicHint, nivel, "JSON inválido o campos faltantes — devolvé el objeto exacto del schema").catch((e2) => {
+        if (e2 instanceof FatalAIError) throw e2;
         throw new Error("La IA devolvió un formato inválido. Probá de nuevo.");
       });
     }
