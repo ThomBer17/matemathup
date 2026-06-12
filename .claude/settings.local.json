@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(Get-ChildItem -Path \"E:\\\\repos\\\\matemathup\" -Force)",
-      "Bash(Select-Object Mode, Name)"
+      "Bash(Select-Object Mode, Name)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ]
   }
 }

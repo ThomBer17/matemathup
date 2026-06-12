@@ -130,6 +130,35 @@ function Dashboard() {
         <ReportProblem variant="outline" className="shrink-0" />
       </motion.div>
 
+      {/* Test diagnóstico: lo ofrecemos hasta que lo completen */}
+      {!loadingCore && profile && !profile.diagnostic_completed && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-6"
+        >
+          <Link
+            to="/diagnostic"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-gradient-to-br from-primary-soft/70 to-card p-5 shadow-soft transition hover:shadow-glow"
+          >
+            <div className="flex items-center gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-display text-base font-semibold">Hacé el test diagnóstico</p>
+                <p className="text-sm text-muted-foreground">
+                  ~5 minutos para calibrar tu nivel en cada tema y personalizar la práctica.
+                </p>
+              </div>
+            </div>
+            <span className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
+              Empezar <ArrowRight className="h-4 w-4" />
+            </span>
+          </Link>
+        </motion.div>
+      )}
+
       {/* Carga inicial: skeletons en vez de flash de contenido vacío */}
       {loadingCore ? (
         <div className="mt-8">

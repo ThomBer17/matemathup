@@ -385,6 +385,7 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           current_streak: number
+          diagnostic_completed: boolean
           full_name: string | null
           id: string
           last_activity_date: string | null
@@ -399,6 +400,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           current_streak?: number
+          diagnostic_completed?: boolean
           full_name?: string | null
           id: string
           last_activity_date?: string | null
@@ -413,6 +415,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           current_streak?: number
+          diagnostic_completed?: boolean
           full_name?: string | null
           id?: string
           last_activity_date?: string | null
