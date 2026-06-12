@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { LayoutDashboard, BookOpen, User, LogOut, GraduationCap, LineChart, TrendingUp, Flag, CalendarDays, BarChart3, Library, RotateCcw } from "lucide-react";
+import { LayoutDashboard, BookOpen, User, LogOut, GraduationCap, LineChart, TrendingUp, Flag, CalendarDays, BarChart3, Library, RotateCcw, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Sidebar,
@@ -23,6 +23,7 @@ const items = [
   { title: "Temas", url: "/topics", icon: BookOpen },
   { title: "Teoría", url: "/theory", icon: Library },
   { title: "Repaso", url: "/review", icon: RotateCcw },
+  { title: "Simulacro", url: "/exam", icon: Trophy },
   { title: "Mi progreso", url: "/progress", icon: TrendingUp },
   { title: "Plan de estudio", url: "/study", icon: CalendarDays },
   { title: "Explorar", url: "/explore", icon: LineChart },
