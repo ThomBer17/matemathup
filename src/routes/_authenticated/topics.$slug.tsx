@@ -2,7 +2,7 @@ import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ArrowLeft, Lightbulb, Loader2, Sparkles, Check, X, RotateCw, LineChart, AlertCircle, Trophy } from "lucide-react";
+import { ArrowLeft, Lightbulb, Loader2, Sparkles, Check, X, RotateCw, LineChart, AlertCircle, Trophy, BookText } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -29,6 +29,7 @@ import { isFreemiumLimitError } from "@/lib/billing/plans";
 import { track, EV } from "@/lib/analytics/events";
 import { cn } from "@/lib/utils";
 import { newItem } from "@/lib/review/srs";
+import { hasTheory } from "@/content/theory";
 import type { DifficultyLevel } from "@/lib/ai/types";
 
 const LETTERS = ["A", "B", "C", "D", "E", "F"];
@@ -340,6 +341,16 @@ function TopicPage() {
           <h1 className="font-display text-3xl font-bold">{topic.name}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{topic.description}</p>
         </div>
+        {hasTheory(slug) && (
+          <Link
+            to="/theory/$slug"
+            params={{ slug }}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border bg-background px-3 py-2 text-sm font-medium transition hover:border-primary/40"
+          >
+            <BookText className="h-4 w-4 text-primary" />
+            <span className="hidden sm:inline">Ver teoría</span>
+          </Link>
+        )}
       </div>
 
       <div className="mt-6 grid grid-cols-3 gap-3">
@@ -606,6 +617,15 @@ function TopicPage() {
                     text={exercise.explanation}
                     className="mt-4 border-t pt-4"
                   />
+                  {!isCorrect && hasTheory(slug) && (
+                    <Link
+                      to="/theory/$slug"
+                      params={{ slug }}
+                      className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                    >
+                      <BookText className="h-3.5 w-3.5" /> Repasá la teoría de {topic.name}
+                    </Link>
+                  )}
                 </motion.div>
               )}
 

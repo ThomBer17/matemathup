@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 import { MathRich } from "@/components/math/MathRich";
 import { StepByStepExplanation } from "@/components/math/StepByStepExplanation";
 import { applyReview, type SrsState } from "@/lib/review/srs";
+import { hasTheory } from "@/content/theory";
+import { BookText } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/review")({
   component: ReviewPage,
@@ -155,6 +157,15 @@ function ReviewPage() {
                   Respuesta correcta: <MathRich text={ex.correct_answer} className="text-foreground" />
                 </p>
                 <StepByStepExplanation text={ex.explanation} className="mt-4 border-t pt-4" />
+                {item.topic && hasTheory(item.topic.slug) && (
+                  <Link
+                    to="/theory/$slug"
+                    params={{ slug: item.topic.slug }}
+                    className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                  >
+                    <BookText className="h-3.5 w-3.5" /> Repasá la teoría
+                  </Link>
+                )}
               </div>
 
               <p className="mt-5 text-center text-sm text-muted-foreground">¿Lo entendiste esta vez?</p>
