@@ -16,6 +16,7 @@ import { MyMaterials } from "@/components/materials/MyMaterials";
 import { NextExamWidget } from "@/components/study/NextExamWidget";
 import { StatCardsSkeleton, TopicGridSkeleton } from "@/components/CardSkeletons";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DailyGoalWidget } from "@/components/gamification/DailyGoalWidget";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -257,6 +258,18 @@ function Dashboard() {
               <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{s.label}</p>
             </motion.div>
           ))}
+        </div>
+      )}
+
+      {/* Meta diaria (retención) */}
+      {!loadingCore && !isNewUser && profile && user && (
+        <div className="mt-6">
+          <DailyGoalWidget
+            userId={user.id}
+            goal={profile.daily_goal ?? 3}
+            attempts={attempts}
+            streak={profile.current_streak ?? 0}
+          />
         </div>
       )}
 
