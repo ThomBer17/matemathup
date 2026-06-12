@@ -12,6 +12,8 @@ import { sanitizeMathText } from "@/lib/ai/sanitize-text";
 import { checkNumericSanity } from "@/lib/ai/numeric-sanity";
 import { validateStructure } from "@/lib/ai/structural";
 import { assertWithinFreemiumLimit } from "@/lib/billing/usage";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 
 const SIMILARITY_THRESHOLD = 0.7;
 
@@ -142,6 +144,69 @@ function combinedScopeText(ex: ParsedExercise): string {
   return [ex.statement, ex.explanation, ...(ex.options ?? []), ...ex.hints].join(" ");
 }
 
+interface ServedExercise {
+  id: string;
+  statement: string;
+  type: ParsedExercise["type"];
+  options: string[] | null;
+  correct_answer: string;
+  explanation: string;
+  hints: string[];
+  graph_expressions: string[];
+  difficulty: number;
+}
+
+/**
+ * Banco de ejercicios: intenta servir uno YA generado del tema (dificultad cercana)
+ * que el alumno no haya visto todavía, en vez de llamar a la IA. Ahorra cuota y es
+ * instantáneo. Devuelve null si no hay candidato fresco → se genera con IA.
+ */
+async function tryBank(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  topicId: string,
+  difficulty: number,
+  avoid: string[],
+): Promise<ServedExercise | null> {
+  const { data: candidates } = await supabase
+    .from("exercises")
+    .select("id, statement, type, options, correct_answer, explanation, hints, difficulty")
+    .eq("topic_id", topicId)
+    .eq("approved", true)
+    .gte("difficulty", Math.max(1, difficulty - 1))
+    .lte("difficulty", Math.min(5, difficulty + 1))
+    .limit(80);
+  if (!candidates || candidates.length === 0) return null;
+
+  const { data: seen } = await supabase
+    .from("exercise_attempts")
+    .select("exercise_id")
+    .eq("user_id", userId)
+    .not("exercise_id", "is", null)
+    .limit(1000);
+  const seenIds = new Set((seen ?? []).map((s) => s.exercise_id));
+  const norm = (s: string) => s.trim().toLowerCase();
+  const avoidSet = new Set(avoid.map(norm));
+
+  const fresh = candidates.filter(
+    (c) => !seenIds.has(c.id) && !avoidSet.has(norm(c.statement as string)),
+  );
+  if (fresh.length === 0) return null;
+
+  const pick = fresh[Math.floor(Math.random() * fresh.length)];
+  return {
+    id: pick.id as string,
+    statement: pick.statement as string,
+    type: pick.type as ParsedExercise["type"],
+    options: (pick.options as string[] | null) ?? null,
+    correct_answer: pick.correct_answer as string,
+    explanation: pick.explanation as string,
+    hints: (pick.hints as string[] | null) ?? [],
+    graph_expressions: [],
+    difficulty: (pick.difficulty as number) ?? difficulty,
+  };
+}
+
 export const generateExercise = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
@@ -158,6 +223,13 @@ export const generateExercise = createServerFn({ method: "POST" })
     const rl = rateLimit(userId, "generate", 15);
     if (!rl.ok) {
       throw new Error(`Estás generando muy seguido. Probá en ${rl.retryInSec}s.`);
+    }
+
+    // Banco de ejercicios: si hay uno ya generado y sin ver, lo servimos (sin IA).
+    const banked = await tryBank(supabase, userId, topicId, difficulty, avoid);
+    if (banked) {
+      console.log(`[generateExercise] servido del banco · tema=${topicName} diff=${difficulty} · sin IA`);
+      return banked;
     }
 
     const diffLabel =
