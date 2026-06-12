@@ -131,6 +131,42 @@ export type Database = {
         }
         Relationships: []
       }
+      srs_items: {
+        Row: {
+          box: number
+          created_at: string
+          due_at: string
+          exercise_id: string
+          id: string
+          reviews: number
+          topic_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          box?: number
+          created_at?: string
+          due_at?: string
+          exercise_id: string
+          id?: string
+          reviews?: number
+          topic_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          box?: number
+          created_at?: string
+          due_at?: string
+          exercise_id?: string
+          id?: string
+          reviews?: number
+          topic_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       materials: {
         Row: {
           created_at: string

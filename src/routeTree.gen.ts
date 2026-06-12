@@ -13,6 +13,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedReviewRouteImport } from './routes/_authenticated/review'
 import { Route as AuthenticatedProgressRouteImport } from './routes/_authenticated/progress'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedExploreRouteImport } from './routes/_authenticated/explore'
@@ -46,6 +47,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedReviewRoute = AuthenticatedReviewRouteImport.update({
+  id: '/review',
+  path: '/review',
+  getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedProgressRoute = AuthenticatedProgressRouteImport.update({
   id: '/progress',
@@ -132,6 +138,7 @@ export interface FileRoutesByFullPath {
   '/explore': typeof AuthenticatedExploreRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/progress': typeof AuthenticatedProgressRoute
+  '/review': typeof AuthenticatedReviewRoute
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/materials/$id': typeof AuthenticatedMaterialsIdRoute
@@ -151,6 +158,7 @@ export interface FileRoutesByTo {
   '/explore': typeof AuthenticatedExploreRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/progress': typeof AuthenticatedProgressRoute
+  '/review': typeof AuthenticatedReviewRoute
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/materials/$id': typeof AuthenticatedMaterialsIdRoute
@@ -172,6 +180,7 @@ export interface FileRoutesById {
   '/_authenticated/explore': typeof AuthenticatedExploreRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/progress': typeof AuthenticatedProgressRoute
+  '/_authenticated/review': typeof AuthenticatedReviewRoute
   '/_authenticated/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/_authenticated/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/_authenticated/materials/$id': typeof AuthenticatedMaterialsIdRoute
@@ -193,6 +202,7 @@ export interface FileRouteTypes {
     | '/explore'
     | '/profile'
     | '/progress'
+    | '/review'
     | '/admin/analytics'
     | '/admin/reports'
     | '/materials/$id'
@@ -212,6 +222,7 @@ export interface FileRouteTypes {
     | '/explore'
     | '/profile'
     | '/progress'
+    | '/review'
     | '/admin/analytics'
     | '/admin/reports'
     | '/materials/$id'
@@ -232,6 +243,7 @@ export interface FileRouteTypes {
     | '/_authenticated/explore'
     | '/_authenticated/profile'
     | '/_authenticated/progress'
+    | '/_authenticated/review'
     | '/_authenticated/admin/analytics'
     | '/_authenticated/admin/reports'
     | '/_authenticated/materials/$id'
@@ -279,6 +291,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/review': {
+      id: '/_authenticated/review'
+      path: '/review'
+      fullPath: '/review'
+      preLoaderRoute: typeof AuthenticatedReviewRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/progress': {
       id: '/_authenticated/progress'
@@ -387,6 +406,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedExploreRoute: typeof AuthenticatedExploreRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedProgressRoute: typeof AuthenticatedProgressRoute
+  AuthenticatedReviewRoute: typeof AuthenticatedReviewRoute
   AuthenticatedAdminAnalyticsRoute: typeof AuthenticatedAdminAnalyticsRoute
   AuthenticatedAdminReportsRoute: typeof AuthenticatedAdminReportsRoute
   AuthenticatedMaterialsIdRoute: typeof AuthenticatedMaterialsIdRoute
@@ -404,6 +424,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedExploreRoute: AuthenticatedExploreRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedProgressRoute: AuthenticatedProgressRoute,
+  AuthenticatedReviewRoute: AuthenticatedReviewRoute,
   AuthenticatedAdminAnalyticsRoute: AuthenticatedAdminAnalyticsRoute,
   AuthenticatedAdminReportsRoute: AuthenticatedAdminReportsRoute,
   AuthenticatedMaterialsIdRoute: AuthenticatedMaterialsIdRoute,

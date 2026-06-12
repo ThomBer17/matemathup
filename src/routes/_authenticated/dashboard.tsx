@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { motion } from "motion/react";
-import { Flame, Trophy, Target, BookOpen, ArrowRight, Sparkles, TrendingUp } from "lucide-react";
+import { Flame, Trophy, Target, BookOpen, ArrowRight, Sparkles, TrendingUp, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Progress } from "@/components/ui/progress";
@@ -65,6 +65,20 @@ function Dashboard() {
   });
 
   const loadingCore = topicsPending || attemptsLoading;
+
+  // Cantidad de ejercicios vencidos para repasar (SRS).
+  const { data: dueCount = 0 } = useQuery({
+    queryKey: ["srs-due", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("srs_items")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user!.id)
+        .lte("due_at", new Date().toISOString());
+      return count ?? 0;
+    },
+  });
 
   const { recommendation, badgeCount, recentTopicAggs } = useMemo(() => {
     const metaById = new Map(
@@ -154,6 +168,33 @@ function Dashboard() {
             </div>
             <span className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
               Empezar <ArrowRight className="h-4 w-4" />
+            </span>
+          </Link>
+        </motion.div>
+      )}
+
+      {/* Repaso pendiente (SRS) */}
+      {!loadingCore && dueCount > 0 && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-6">
+          <Link
+            to="/review"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5 shadow-soft transition hover:shadow-glow"
+          >
+            <div className="flex items-center gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-300">
+                <RotateCcw className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-display text-base font-semibold">
+                  Tenés {dueCount} ejercicio{dueCount === 1 ? "" : "s"} para repasar
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Repasá los que fallaste, en el momento justo para que se te fijen.
+                </p>
+              </div>
+            </div>
+            <span className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
+              Repasar <ArrowRight className="h-4 w-4" />
             </span>
           </Link>
         </motion.div>

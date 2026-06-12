@@ -28,6 +28,7 @@ import { PaywallDialog } from "@/components/billing/PaywallDialog";
 import { isFreemiumLimitError } from "@/lib/billing/plans";
 import { track, EV } from "@/lib/analytics/events";
 import { cn } from "@/lib/utils";
+import { newItem } from "@/lib/review/srs";
 import type { DifficultyLevel } from "@/lib/ai/types";
 
 const LETTERS = ["A", "B", "C", "D", "E", "F"];
@@ -214,6 +215,28 @@ function TopicPage() {
     if (attemptError) {
       console.error("[persistAttempt] insert exercise_attempts falló:", attemptError);
       toast.error(`No se pudo guardar el intento: ${attemptError.message}`);
+    }
+
+    // Repaso espaciado: si lo falló, lo encolamos para revisar más adelante.
+    if (!correct) {
+      const init = newItem();
+      void supabase
+        .from("srs_items")
+        .upsert(
+          {
+            user_id: user.id,
+            exercise_id: exercise.id,
+            topic_id: topic.id,
+            box: init.box,
+            due_at: init.dueAt,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id,exercise_id" },
+        )
+        .then(({ error }) => {
+          if (error) console.warn("[srs] enqueue falló", error.message);
+          else queryClient.invalidateQueries({ queryKey: ["srs-due", user.id] });
+        });
     }
 
     // adaptive: track recent results, adjust difficulty
