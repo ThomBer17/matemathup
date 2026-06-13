@@ -2,13 +2,27 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { motion } from "motion/react";
-import { Flame, Trophy, Target, BookOpen, ArrowRight, Sparkles, TrendingUp, RotateCcw } from "lucide-react";
+import {
+  Flame,
+  Trophy,
+  Target,
+  BookOpen,
+  ArrowRight,
+  Sparkles,
+  TrendingUp,
+  RotateCcw,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Progress } from "@/components/ui/progress";
 import { getTopicIcon, topicGradient } from "@/lib/topic-icons";
 import { RecommendedCard } from "@/components/progress/RecommendedCard";
-import { aggregateByTopic, computeOverall, type AttemptRow, type TopicMeta } from "@/lib/progress/aggregate";
+import {
+  aggregateByTopic,
+  computeOverall,
+  type AttemptRow,
+  type TopicMeta,
+} from "@/lib/progress/aggregate";
 import { recommendNext } from "@/lib/progress/recommendations";
 import { computeBadges, badgeStats } from "@/lib/gamification/badges";
 import { ReportProblem } from "@/components/feedback/ReportProblem";
@@ -83,7 +97,10 @@ function Dashboard() {
 
   const { recommendation, badgeCount, recentTopicAggs } = useMemo(() => {
     const metaById = new Map(
-      topics.map((t) => [t.id, { id: t.id, name: t.name, slug: t.slug, color: t.color, icon: t.icon } as TopicMeta]),
+      topics.map((t) => [
+        t.id,
+        { id: t.id, name: t.name, slug: t.slug, color: t.color, icon: t.icon } as TopicMeta,
+      ]),
     );
     const aggs = aggregateByTopic(attempts, metaById);
     const overall = computeOverall(attempts);
@@ -105,16 +122,39 @@ function Dashboard() {
   const totalEx = attempts.length;
   const avgMastery = topics.length
     ? Math.round(
-        topics.reduce((s, t) => s + Number(progressMap.get(t.id)?.mastery_pct ?? 0), 0) / topics.length
+        topics.reduce((s, t) => s + Number(progressMap.get(t.id)?.mastery_pct ?? 0), 0) /
+          topics.length,
       )
     : 0;
-  const completed = topics.filter((t) => Number(progressMap.get(t.id)?.mastery_pct ?? 0) >= 80).length;
+  const completed = topics.filter(
+    (t) => Number(progressMap.get(t.id)?.mastery_pct ?? 0) >= 80,
+  ).length;
 
   const stats = [
-    { label: "Avance general", value: `${avgMastery}%`, icon: Target, color: "text-sky-600 bg-sky-500/10" },
-    { label: "Temas dominados", value: `${completed}/${topics.length}`, icon: Trophy, color: "text-amber-600 bg-amber-500/10" },
-    { label: "Ejercicios hechos", value: String(totalEx), icon: BookOpen, color: "text-violet-600 bg-violet-500/10" },
-    { label: "Racha actual", value: `${profile?.current_streak ?? 0} días`, icon: Flame, color: "text-rose-600 bg-rose-500/10" },
+    {
+      label: "Avance general",
+      value: `${avgMastery}%`,
+      icon: Target,
+      color: "text-sky-600 bg-sky-500/10",
+    },
+    {
+      label: "Temas dominados",
+      value: `${completed}/${topics.length}`,
+      icon: Trophy,
+      color: "text-amber-600 bg-amber-500/10",
+    },
+    {
+      label: "Ejercicios hechos",
+      value: String(totalEx),
+      icon: BookOpen,
+      color: "text-violet-600 bg-violet-500/10",
+    },
+    {
+      label: "Racha actual",
+      value: `${profile?.current_streak ?? 0} días`,
+      icon: Flame,
+      color: "text-rose-600 bg-rose-500/10",
+    },
   ];
 
   const firstName = profile?.full_name?.split(" ")[0] ?? "estudiante";
@@ -125,33 +165,26 @@ function Dashboard() {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-start justify-between gap-4"
+        className="min-w-0"
       >
-        <div className="min-w-0">
-          {loadingCore ? (
-            <>
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="mt-2 h-9 w-72 max-w-full" />
-            </>
-          ) : (
-            <>
-              <p className="text-sm text-muted-foreground">Hola{isNewUser ? "" : " de nuevo"},</p>
-              <h1 className="font-display text-3xl font-bold md:text-4xl">
-                {isNewUser ? `Bienvenido/a, ${firstName}` : `¿Qué resolvemos hoy, ${firstName}?`}
-              </h1>
-            </>
-          )}
-        </div>
-        <ReportProblem variant="outline" className="shrink-0" />
+        {loadingCore ? (
+          <>
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="mt-2 h-9 w-72 max-w-full" />
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-muted-foreground">Hola{isNewUser ? "" : " de nuevo"},</p>
+            <h1 className="font-display text-3xl font-bold md:text-4xl">
+              {isNewUser ? `Bienvenido/a, ${firstName}` : `¿Qué resolvemos hoy, ${firstName}?`}
+            </h1>
+          </>
+        )}
       </motion.div>
 
       {/* Test diagnóstico: lo ofrecemos hasta que lo completen */}
       {!loadingCore && profile && !profile.diagnostic_completed && (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-6"
-        >
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-6">
           <Link
             to="/diagnostic"
             className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-gradient-to-br from-primary-soft/70 to-card p-5 shadow-soft transition hover:shadow-glow"
@@ -174,8 +207,8 @@ function Dashboard() {
         </motion.div>
       )}
 
-      {/* Repaso pendiente (SRS) */}
-      {!loadingCore && dueCount > 0 && (
+      {/* Repaso pendiente (SRS) — solo si ya pasó el diagnóstico, para no apilar banners */}
+      {!loadingCore && profile?.diagnostic_completed && dueCount > 0 && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-6">
           <Link
             to="/review"
@@ -201,6 +234,16 @@ function Dashboard() {
         </motion.div>
       )}
 
+      {/* Próximo paso destacado: lo primero accionable que ve un alumno que ya practicó */}
+      {!loadingCore && !isNewUser && recommendation && (
+        <div className="mt-6">
+          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Seguí con esto
+          </h2>
+          <RecommendedCard rec={recommendation} />
+        </div>
+      )}
+
       {/* Carga inicial: skeletons en vez de flash de contenido vacío */}
       {loadingCore ? (
         <div className="mt-8">
@@ -219,9 +262,9 @@ function Dashboard() {
           </div>
           <h2 className="mt-2 font-display text-2xl font-bold">Practicá tu primer ejercicio</h2>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            En MatemathUp resolvés ejercicios generados por IA, adaptados a tu nivel. Empezá por
-            un tema cualquiera del programa. La dificultad sube cuando vas bien y baja
-            si te trabás. Cada respuesta te suma XP, rachas y desbloquea logros.
+            En MatemathUp resolvés ejercicios generados por IA, adaptados a tu nivel. Empezá por un
+            tema cualquiera del programa. La dificultad sube cuando vas bien y baja si te trabás.
+            Cada respuesta te suma XP, rachas y desbloquea logros.
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link
@@ -254,8 +297,12 @@ function Dashboard() {
               <div className={`grid h-9 w-9 place-items-center rounded-lg ${s.color}`}>
                 <s.icon className="h-4 w-4" />
               </div>
-              <p className="mt-4 font-display text-2xl font-bold tabular-nums tracking-tight">{s.value}</p>
-              <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{s.label}</p>
+              <p className="mt-4 font-display text-2xl font-bold tabular-nums tracking-tight">
+                {s.value}
+              </p>
+              <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                {s.label}
+              </p>
             </motion.div>
           ))}
         </div>
@@ -273,18 +320,10 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Próximo examen + recomendación */}
+      {/* Próximo examen */}
       {!isNewUser && (
-        <div className="mt-10 grid gap-4 md:grid-cols-2">
+        <div className="mt-10">
           <NextExamWidget />
-          {recommendation && (
-            <div>
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Recomendado para hoy
-              </h2>
-              <RecommendedCard rec={recommendation} />
-            </div>
-          )}
         </div>
       )}
 
@@ -308,7 +347,9 @@ function Dashboard() {
                 <p className="text-sm font-semibold">{agg.topic.name}</p>
                 <div className="mt-2 flex items-center gap-2">
                   <Progress value={agg.accuracy} className="h-1.5 flex-1" />
-                  <span className="text-xs font-medium tabular-nums text-muted-foreground">{agg.accuracy}%</span>
+                  <span className="text-xs font-medium tabular-nums text-muted-foreground">
+                    {agg.accuracy}%
+                  </span>
                 </div>
                 <p className="mt-2 text-[11px] tabular-nums text-muted-foreground">
                   {agg.totalAttempts} intentos · nivel {agg.estimatedLevel}/5
@@ -332,40 +373,44 @@ function Dashboard() {
           <TopicGridSkeleton count={6} />
         </div>
       ) : (
-      <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {topics.map((t, i) => {
-          const Icon = getTopicIcon(t.icon);
-          const p = progressMap.get(t.id);
-          const mastery = Math.round(Number(p?.mastery_pct ?? 0));
-          return (
-            <motion.div
-              key={t.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.03 * i }}
-            >
-              <Link
-                to="/topics/$slug"
-                params={{ slug: t.slug }}
-                className="group block rounded-2xl border bg-card p-5 shadow-soft transition hover:-translate-y-0.5 hover:shadow-glow"
+        <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {topics.map((t, i) => {
+            const Icon = getTopicIcon(t.icon);
+            const p = progressMap.get(t.id);
+            const mastery = Math.round(Number(p?.mastery_pct ?? 0));
+            return (
+              <motion.div
+                key={t.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.03 * i }}
               >
-                <div className="flex items-start justify-between">
-                  <div className={`grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br ${topicGradient(t.color)}`}>
-                    <Icon className="h-5 w-5" />
+                <Link
+                  to="/topics/$slug"
+                  params={{ slug: t.slug }}
+                  className="group block rounded-2xl border bg-card p-5 shadow-soft transition hover:-translate-y-0.5 hover:shadow-glow"
+                >
+                  <div className="flex items-start justify-between">
+                    <div
+                      className={`grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br ${topicGradient(t.color)}`}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition group-hover:translate-x-1 group-hover:opacity-100" />
                   </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition group-hover:translate-x-1 group-hover:opacity-100" />
-                </div>
-                <h3 className="mt-4 font-display text-lg font-semibold">{t.name}</h3>
-                <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{t.description}</p>
-                <div className="mt-4 flex items-center gap-3">
-                  <Progress value={mastery} className="h-2" />
-                  <span className="text-xs font-medium tabular-nums text-muted-foreground">{mastery}%</span>
-                </div>
-              </Link>
-            </motion.div>
-          );
-        })}
-      </div>
+                  <h3 className="mt-4 font-display text-lg font-semibold">{t.name}</h3>
+                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{t.description}</p>
+                  <div className="mt-4 flex items-center gap-3">
+                    <Progress value={mastery} className="h-2" />
+                    <span className="text-xs font-medium tabular-nums text-muted-foreground">
+                      {mastery}%
+                    </span>
+                  </div>
+                </Link>
+              </motion.div>
+            );
+          })}
+        </div>
       )}
 
       {/* Mi Material */}
@@ -387,12 +432,19 @@ function Dashboard() {
               <p className="font-display text-base font-semibold">
                 {badgeCount.earned}/{badgeCount.total} logros desbloqueados
               </p>
-              <p className="text-xs text-muted-foreground">Mirá tu colección completa en Mi progreso.</p>
+              <p className="text-xs text-muted-foreground">
+                Mirá tu colección completa en Mi progreso.
+              </p>
             </div>
           </div>
           <TrendingUp className="h-4 w-4 text-muted-foreground" />
         </Link>
       )}
+
+      {/* Reportar problema: acción secundaria, al pie y sin competir con el saludo */}
+      <div className="mt-10 flex justify-center">
+        <ReportProblem variant="ghost" className="text-muted-foreground" />
+      </div>
     </div>
   );
 }
