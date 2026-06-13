@@ -11,6 +11,7 @@ import {
   Sparkles,
   TrendingUp,
   RotateCcw,
+  Star,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -165,20 +166,43 @@ function Dashboard() {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="min-w-0"
+        className="flex items-start justify-between gap-4"
       >
-        {loadingCore ? (
-          <>
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="mt-2 h-9 w-72 max-w-full" />
-          </>
-        ) : (
-          <>
-            <p className="text-sm text-muted-foreground">Hola{isNewUser ? "" : " de nuevo"},</p>
-            <h1 className="font-display text-3xl font-bold md:text-4xl">
-              {isNewUser ? `Bienvenido/a, ${firstName}` : `¿Qué resolvemos hoy, ${firstName}?`}
-            </h1>
-          </>
+        <div className="min-w-0">
+          {loadingCore ? (
+            <>
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="mt-2 h-9 w-72 max-w-full" />
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">Hola{isNewUser ? "" : " de nuevo"},</p>
+              <h1 className="font-display text-3xl font-bold md:text-4xl">
+                {isNewUser ? `Bienvenido/a, ${firstName}` : `¿Qué resolvemos hoy, ${firstName}?`}
+              </h1>
+            </>
+          )}
+        </div>
+        {/* Nivel/XP: visible en el dashboard (en mobile el widget del sidebar queda oculto) */}
+        {!loadingCore && profile && (
+          <div className="hidden w-44 shrink-0 rounded-xl border bg-card p-3 shadow-soft sm:block">
+            <div className="flex items-center justify-between">
+              <span className="inline-flex items-center gap-1.5 text-sm font-semibold">
+                <Star className="h-4 w-4 text-amber-500" />
+                Nivel {profile.level ?? 1}
+              </span>
+              <span className="text-[11px] tabular-nums text-muted-foreground">
+                {(profile.xp ?? 0) % 100}/100
+              </span>
+            </div>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full bg-gradient-to-r from-amber-500 to-rose-500 transition-all"
+                style={{ width: `${(profile.xp ?? 0) % 100}%` }}
+              />
+            </div>
+            <p className="mt-1.5 text-[10px] text-muted-foreground">XP al próximo nivel</p>
+          </div>
         )}
       </motion.div>
 
