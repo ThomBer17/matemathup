@@ -1,6 +1,20 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { LayoutDashboard, BookOpen, User, LogOut, GraduationCap, LineChart, TrendingUp, Flag, CalendarDays, BarChart3, Library, RotateCcw, Trophy } from "lucide-react";
+import {
+  LayoutDashboard,
+  BookOpen,
+  User,
+  LogOut,
+  GraduationCap,
+  TrendingUp,
+  Flag,
+  CalendarDays,
+  BarChart3,
+  Library,
+  RotateCcw,
+  Trophy,
+  Wrench,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Sidebar,
@@ -17,18 +31,41 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { StreakWidget } from "@/components/gamification/StreakWidget";
+import { liveTools } from "@/lib/tools";
 
-const items = [
+type NavItem = { title: string; url: string; icon: typeof LayoutDashboard };
+
+const aprender: NavItem[] = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Temas", url: "/topics", icon: BookOpen },
   { title: "Teoría", url: "/theory", icon: Library },
   { title: "Repaso", url: "/review", icon: RotateCcw },
   { title: "Simulacro", url: "/exam", icon: Trophy },
+];
+
+const seguimiento: NavItem[] = [
   { title: "Mi progreso", url: "/progress", icon: TrendingUp },
   { title: "Plan de estudio", url: "/study", icon: CalendarDays },
-  { title: "Explorar", url: "/explore", icon: LineChart },
-  { title: "Perfil", url: "/profile", icon: User },
 ];
+
+// Las herramientas se derivan del registro único (solo las "live").
+// Si superan el tope, el sidebar muestra las primeras + "Ver todas" → /tools,
+// para mantenerse acotado y dejar el descubrimiento al hub.
+const TOOLS_SIDEBAR_CAP = 4;
+const toolItems: NavItem[] = liveTools.map((t) => ({
+  title: t.title,
+  url: t.to!,
+  icon: t.icon,
+}));
+const herramientas: NavItem[] =
+  toolItems.length > TOOLS_SIDEBAR_CAP
+    ? [
+        ...toolItems.slice(0, TOOLS_SIDEBAR_CAP - 1),
+        { title: "Ver todas", url: "/tools", icon: Wrench },
+      ]
+    : toolItems;
+
+const cuenta: NavItem[] = [{ title: "Perfil", url: "/profile", icon: User }];
 
 export function AppSidebar() {
   const path = useRouterState({ select: (r) => r.location.pathname });
@@ -61,11 +98,40 @@ export function AppSidebar() {
         </Link>
       </SidebarHeader>
       <SidebarContent>
+        {(
+          [
+            { label: "Aprender", items: aprender },
+            { label: "Seguimiento", items: seguimiento },
+            { label: "Herramientas", items: herramientas },
+          ] as const
+        ).map((group) => (
+          <SidebarGroup key={group.label}>
+            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map((item) => {
+                  const active = path === item.url || path.startsWith(item.url + "/");
+                  return (
+                    <SidebarMenuItem key={item.url}>
+                      <SidebarMenuButton asChild isActive={active}>
+                        <Link to={item.url} className="flex items-center gap-2">
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
+
         <SidebarGroup>
-          <SidebarGroupLabel>Aprender</SidebarGroupLabel>
+          <SidebarGroupLabel>Cuenta</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => {
+              {cuenta.map((item) => {
                 const active = path === item.url || path.startsWith(item.url + "/");
                 return (
                   <SidebarMenuItem key={item.url}>

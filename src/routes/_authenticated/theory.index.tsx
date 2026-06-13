@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { ArrowRight, Library, BookOpen } from "lucide-react";
+import { Library, BookOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { getTopicIcon, topicGradient } from "@/lib/topic-icons";
+import { getTopicIcon } from "@/lib/topic-icons";
 import { hasTheory } from "@/content/theory";
 import { TopicGridSkeleton } from "@/components/CardSkeletons";
-import { cn } from "@/lib/utils";
+import { HubCard } from "@/components/HubCard";
 
 export const Route = createFileRoute("/_authenticated/theory/")({
   component: TheoryIndex,
@@ -42,34 +42,17 @@ function TheoryIndex() {
       ) : (
         <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {topics.map((t, i) => {
-            const Icon = getTopicIcon(t.icon);
             const available = hasTheory(t.slug);
             const card = (
-              <div
-                className={cn(
-                  "group block h-full rounded-2xl border bg-card p-5 shadow-soft transition",
-                  available ? "hover:-translate-y-0.5 hover:shadow-glow" : "opacity-60",
-                )}
-              >
-                <div className="flex items-start justify-between">
-                  <div className={`grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br ${topicGradient(t.color)}`}>
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  {available ? (
-                    <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition group-hover:translate-x-1 group-hover:opacity-100" />
-                  ) : (
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Pronto
-                    </span>
-                  )}
-                </div>
-                <h3 className="mt-4 font-display text-lg font-semibold">{t.name}</h3>
-                <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{t.description}</p>
-                <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary">
-                  <BookOpen className="h-3.5 w-3.5" />
-                  {available ? "Leer teoría" : "En preparación"}
-                </p>
-              </div>
+              <HubCard
+                icon={getTopicIcon(t.icon)}
+                color={t.color}
+                title={t.name}
+                description={t.description}
+                available={available}
+                cta="Leer teoría"
+                ctaIcon={BookOpen}
+              />
             );
             return (
               <motion.div
@@ -79,7 +62,9 @@ function TheoryIndex() {
                 transition={{ delay: 0.03 * i }}
               >
                 {available ? (
-                  <Link to="/theory/$slug" params={{ slug: t.slug }}>{card}</Link>
+                  <Link to="/theory/$slug" params={{ slug: t.slug }}>
+                    {card}
+                  </Link>
                 ) : (
                   card
                 )}

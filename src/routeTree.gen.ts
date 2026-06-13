@@ -21,9 +21,12 @@ import { Route as AuthenticatedExamRouteImport } from './routes/_authenticated/e
 import { Route as AuthenticatedDiagnosticRouteImport } from './routes/_authenticated/diagnostic'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedTopicsIndexRouteImport } from './routes/_authenticated/topics.index'
+import { Route as AuthenticatedToolsIndexRouteImport } from './routes/_authenticated/tools.index'
 import { Route as AuthenticatedTheoryIndexRouteImport } from './routes/_authenticated/theory.index'
 import { Route as AuthenticatedStudyIndexRouteImport } from './routes/_authenticated/study.index'
 import { Route as AuthenticatedTopicsSlugRouteImport } from './routes/_authenticated/topics.$slug'
+import { Route as AuthenticatedToolsFunctionsRouteImport } from './routes/_authenticated/tools.functions'
+import { Route as AuthenticatedToolsCalculatorRouteImport } from './routes/_authenticated/tools.calculator'
 import { Route as AuthenticatedTheorySlugRouteImport } from './routes/_authenticated/theory.$slug'
 import { Route as AuthenticatedStudyIdRouteImport } from './routes/_authenticated/study.$id'
 import { Route as AuthenticatedMaterialsIdRouteImport } from './routes/_authenticated/materials.$id'
@@ -90,6 +93,11 @@ const AuthenticatedTopicsIndexRoute =
     path: '/topics/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedToolsIndexRoute = AuthenticatedToolsIndexRouteImport.update({
+  id: '/tools/',
+  path: '/tools/',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedTheoryIndexRoute =
   AuthenticatedTheoryIndexRouteImport.update({
     id: '/theory/',
@@ -106,6 +114,18 @@ const AuthenticatedTopicsSlugRoute = AuthenticatedTopicsSlugRouteImport.update({
   path: '/topics/$slug',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedToolsFunctionsRoute =
+  AuthenticatedToolsFunctionsRouteImport.update({
+    id: '/tools/functions',
+    path: '/tools/functions',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedToolsCalculatorRoute =
+  AuthenticatedToolsCalculatorRouteImport.update({
+    id: '/tools/calculator',
+    path: '/tools/calculator',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedTheorySlugRoute = AuthenticatedTheorySlugRouteImport.update({
   id: '/theory/$slug',
   path: '/theory/$slug',
@@ -151,9 +171,12 @@ export interface FileRoutesByFullPath {
   '/materials/$id': typeof AuthenticatedMaterialsIdRoute
   '/study/$id': typeof AuthenticatedStudyIdRoute
   '/theory/$slug': typeof AuthenticatedTheorySlugRoute
+  '/tools/calculator': typeof AuthenticatedToolsCalculatorRoute
+  '/tools/functions': typeof AuthenticatedToolsFunctionsRoute
   '/topics/$slug': typeof AuthenticatedTopicsSlugRoute
   '/study/': typeof AuthenticatedStudyIndexRoute
   '/theory/': typeof AuthenticatedTheoryIndexRoute
+  '/tools/': typeof AuthenticatedToolsIndexRoute
   '/topics/': typeof AuthenticatedTopicsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -172,9 +195,12 @@ export interface FileRoutesByTo {
   '/materials/$id': typeof AuthenticatedMaterialsIdRoute
   '/study/$id': typeof AuthenticatedStudyIdRoute
   '/theory/$slug': typeof AuthenticatedTheorySlugRoute
+  '/tools/calculator': typeof AuthenticatedToolsCalculatorRoute
+  '/tools/functions': typeof AuthenticatedToolsFunctionsRoute
   '/topics/$slug': typeof AuthenticatedTopicsSlugRoute
   '/study': typeof AuthenticatedStudyIndexRoute
   '/theory': typeof AuthenticatedTheoryIndexRoute
+  '/tools': typeof AuthenticatedToolsIndexRoute
   '/topics': typeof AuthenticatedTopicsIndexRoute
 }
 export interface FileRoutesById {
@@ -195,9 +221,12 @@ export interface FileRoutesById {
   '/_authenticated/materials/$id': typeof AuthenticatedMaterialsIdRoute
   '/_authenticated/study/$id': typeof AuthenticatedStudyIdRoute
   '/_authenticated/theory/$slug': typeof AuthenticatedTheorySlugRoute
+  '/_authenticated/tools/calculator': typeof AuthenticatedToolsCalculatorRoute
+  '/_authenticated/tools/functions': typeof AuthenticatedToolsFunctionsRoute
   '/_authenticated/topics/$slug': typeof AuthenticatedTopicsSlugRoute
   '/_authenticated/study/': typeof AuthenticatedStudyIndexRoute
   '/_authenticated/theory/': typeof AuthenticatedTheoryIndexRoute
+  '/_authenticated/tools/': typeof AuthenticatedToolsIndexRoute
   '/_authenticated/topics/': typeof AuthenticatedTopicsIndexRoute
 }
 export interface FileRouteTypes {
@@ -218,9 +247,12 @@ export interface FileRouteTypes {
     | '/materials/$id'
     | '/study/$id'
     | '/theory/$slug'
+    | '/tools/calculator'
+    | '/tools/functions'
     | '/topics/$slug'
     | '/study/'
     | '/theory/'
+    | '/tools/'
     | '/topics/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -239,9 +271,12 @@ export interface FileRouteTypes {
     | '/materials/$id'
     | '/study/$id'
     | '/theory/$slug'
+    | '/tools/calculator'
+    | '/tools/functions'
     | '/topics/$slug'
     | '/study'
     | '/theory'
+    | '/tools'
     | '/topics'
   id:
     | '__root__'
@@ -261,9 +296,12 @@ export interface FileRouteTypes {
     | '/_authenticated/materials/$id'
     | '/_authenticated/study/$id'
     | '/_authenticated/theory/$slug'
+    | '/_authenticated/tools/calculator'
+    | '/_authenticated/tools/functions'
     | '/_authenticated/topics/$slug'
     | '/_authenticated/study/'
     | '/_authenticated/theory/'
+    | '/_authenticated/tools/'
     | '/_authenticated/topics/'
   fileRoutesById: FileRoutesById
 }
@@ -360,6 +398,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTopicsIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/tools/': {
+      id: '/_authenticated/tools/'
+      path: '/tools'
+      fullPath: '/tools/'
+      preLoaderRoute: typeof AuthenticatedToolsIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/theory/': {
       id: '/_authenticated/theory/'
       path: '/theory'
@@ -379,6 +424,20 @@ declare module '@tanstack/react-router' {
       path: '/topics/$slug'
       fullPath: '/topics/$slug'
       preLoaderRoute: typeof AuthenticatedTopicsSlugRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/tools/functions': {
+      id: '/_authenticated/tools/functions'
+      path: '/tools/functions'
+      fullPath: '/tools/functions'
+      preLoaderRoute: typeof AuthenticatedToolsFunctionsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/tools/calculator': {
+      id: '/_authenticated/tools/calculator'
+      path: '/tools/calculator'
+      fullPath: '/tools/calculator'
+      preLoaderRoute: typeof AuthenticatedToolsCalculatorRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/theory/$slug': {
@@ -432,9 +491,12 @@ interface AuthenticatedRouteChildren {
   AuthenticatedMaterialsIdRoute: typeof AuthenticatedMaterialsIdRoute
   AuthenticatedStudyIdRoute: typeof AuthenticatedStudyIdRoute
   AuthenticatedTheorySlugRoute: typeof AuthenticatedTheorySlugRoute
+  AuthenticatedToolsCalculatorRoute: typeof AuthenticatedToolsCalculatorRoute
+  AuthenticatedToolsFunctionsRoute: typeof AuthenticatedToolsFunctionsRoute
   AuthenticatedTopicsSlugRoute: typeof AuthenticatedTopicsSlugRoute
   AuthenticatedStudyIndexRoute: typeof AuthenticatedStudyIndexRoute
   AuthenticatedTheoryIndexRoute: typeof AuthenticatedTheoryIndexRoute
+  AuthenticatedToolsIndexRoute: typeof AuthenticatedToolsIndexRoute
   AuthenticatedTopicsIndexRoute: typeof AuthenticatedTopicsIndexRoute
 }
 
@@ -451,9 +513,12 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedMaterialsIdRoute: AuthenticatedMaterialsIdRoute,
   AuthenticatedStudyIdRoute: AuthenticatedStudyIdRoute,
   AuthenticatedTheorySlugRoute: AuthenticatedTheorySlugRoute,
+  AuthenticatedToolsCalculatorRoute: AuthenticatedToolsCalculatorRoute,
+  AuthenticatedToolsFunctionsRoute: AuthenticatedToolsFunctionsRoute,
   AuthenticatedTopicsSlugRoute: AuthenticatedTopicsSlugRoute,
   AuthenticatedStudyIndexRoute: AuthenticatedStudyIndexRoute,
   AuthenticatedTheoryIndexRoute: AuthenticatedTheoryIndexRoute,
+  AuthenticatedToolsIndexRoute: AuthenticatedToolsIndexRoute,
   AuthenticatedTopicsIndexRoute: AuthenticatedTopicsIndexRoute,
 }
 
