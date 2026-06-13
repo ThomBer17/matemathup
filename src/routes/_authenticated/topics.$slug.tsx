@@ -400,30 +400,35 @@ function TopicPage() {
         )}
       </div>
 
-      <div className="mt-6 grid grid-cols-3 gap-3">
-        <Stat label="Dificultad" value={diffLabel} />
-        <Stat label="Dominio" value={`${mastery}%`} />
-        <Stat
-          label="Resueltos"
-          value={completed.toString()}
-          hint={sessionCount > 0 ? `+${sessionCorrect}/${sessionCount} en esta sesión` : undefined}
-        />
+      {/* Progreso consolidado en una sola línea (la dificultad ya se muestra como pill por ejercicio) */}
+      <div className="mt-6">
+        <div className="mb-1.5 flex items-center justify-between text-xs">
+          <span className="font-medium text-muted-foreground">
+            Dominio <span className="font-semibold tabular-nums text-foreground">{mastery}%</span>
+          </span>
+          <span className="tabular-nums text-muted-foreground">
+            {completed} resuelto{completed === 1 ? "" : "s"}
+            {sessionCount > 0 && (
+              <span className="font-medium text-success">
+                {" "}
+                · +{sessionCorrect}/{sessionCount} hoy
+              </span>
+            )}
+          </span>
+        </div>
+        <Progress value={mastery} className="h-1.5" />
       </div>
 
       {mastered && (
         <motion.div
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300"
+          className="mt-3 flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300"
         >
           <Trophy className="h-4 w-4 shrink-0" />
           <span>¡Tema dominado! Seguí generando ejercicios para mantener el nivel.</span>
         </motion.div>
       )}
-
-      <div className="mt-2">
-        <Progress value={mastery} className="h-1.5" />
-      </div>
 
       <Tabs defaultValue="practica" className="mt-8">
         <TabsList className="grid w-full grid-cols-2 md:w-auto md:inline-flex">
@@ -813,14 +818,4 @@ function difficultyToLevel(d: number): DifficultyLevel {
   if (d <= 2) return "básico";
   if (d >= 4) return "alto";
   return "intermedio";
-}
-
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="rounded-xl border bg-card px-3 py-2">
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="font-display text-sm font-semibold">{value}</p>
-      {hint && <p className="mt-0.5 text-[10px] text-muted-foreground">{hint}</p>}
-    </div>
-  );
 }
