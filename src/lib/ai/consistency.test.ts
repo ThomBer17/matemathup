@@ -5,7 +5,65 @@ import {
   checkIntervalConsistency,
   checkAnswerKeyConsistency,
   checkIntervalAnswerKey,
+  checkSolutionSetMatch,
 } from "./consistency";
+
+// Símbolos no-ASCII vía codepoint para evitar mangling del transpiler.
+const LE = String.fromCharCode(0x2264); // ≤
+const CUP = String.fromCharCode(0x222a); // ∪
+
+describe("checkSolutionSetMatch — conjunto-solución vs answer key", () => {
+  it("DETECTA el caso reportado: explicación concluye [-2,4) (desigualdad) pero key es unión", () => {
+    const explanation =
+      `Como |x-1| ${LE} 3, entonces -3 ${LE} x-1 ${LE} 3, o sea -2 ${LE} x ${LE} 4. ` +
+      `Intersectando con -2 ${LE} x < 4, por lo tanto -2 ${LE} x < 4.`;
+    const r = checkSolutionSetMatch(explanation, `[-5,-1] ${CUP} [1,4]`);
+    expect(r.ok).toBe(false);
+    expect(r.reason).toContain("explanation_answer_mismatch");
+  });
+
+  it("DETECTA con la conclusión en corchetes [-2,4) y key unión", () => {
+    const r = checkSolutionSetMatch(
+      `Resolviendo, la solución es [-2, 4).`,
+      `[-5,-1] ${CUP} [1,4]`,
+    );
+    expect(r.ok).toBe(false);
+  });
+
+  it("acepta unión válida: explicación concluye la misma unión", () => {
+    const r = checkSolutionSetMatch(
+      `Por lo tanto la solución es [-5, -1] ${CUP} [1, 4].`,
+      `[-5,-1] ${CUP} [1,4]`,
+    );
+    expect(r.ok).toBe(true);
+  });
+
+  it("acepta intervalo simple expresado como desigualdad", () => {
+    const r = checkSolutionSetMatch(`Por lo tanto -2 ${LE} x < 4.`, "[-2,4)");
+    expect(r.ok).toBe(true);
+  });
+
+  it("acepta intervalo simple en corchetes coincidente", () => {
+    expect(checkSolutionSetMatch("La solución es [-2, 4).", "[-2,4)").ok).toBe(true);
+  });
+
+  it("no bloquea si la key no es un conjunto de intervalos (número)", () => {
+    expect(checkSolutionSetMatch("el resultado es [-2, 4)", "1.5").ok).toBe(true);
+  });
+
+  it("no bloquea si la explicación no concluye un intervalo", () => {
+    expect(checkSolutionSetMatch("Aplicamos la definición de valor absoluto.", `[-5,-1] ${CUP} [1,4]`).ok).toBe(true);
+  });
+
+  it("ignora pasos intermedios y mira la conclusión tras el marcador", () => {
+    // intermedio [-3,3], conclusión [-2,4] tras 'por lo tanto'
+    const r = checkSolutionSetMatch(
+      `x-1 en [-3, 3], por lo tanto la solución es [-2, 4].`,
+      "[-2,4]",
+    );
+    expect(r.ok).toBe(true);
+  });
+});
 
 describe("checkAnswerKeyConsistency — MATH > ANSWER KEY", () => {
   it("detecta key que no coincide con el resultado de la explicación (teorema del resto)", () => {

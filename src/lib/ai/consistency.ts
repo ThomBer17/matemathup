@@ -149,7 +149,9 @@ export function checkIntervalAnswerKey(
   correctAnswer: string,
 ): ConsistencyResult {
   const keyIvs = findIntervals(correctAnswer);
-  if (keyIvs.length === 0 || !explanation) return { ok: true };
+  // Solo el caso de UN intervalo simple; las uniones las cubre checkSolutionSetMatch
+  // (comparar último-vs-primero en una unión daría falsos positivos).
+  if (keyIvs.length !== 1 || !explanation) return { ok: true };
   const keyIv = keyIvs[0];
 
   const explIvs = findIntervals(explanation);
@@ -160,6 +162,133 @@ export function checkIntervalAnswerKey(
     return {
       ok: false,
       reason: `answer_key_mismatch: la explicación concluye ${fmtInterval(concluded)} pero answer_key="${correctAnswer}"`,
+    };
+  }
+  return { ok: true };
+}
+
+// ---- Coherencia conjunto-solución: explicación vs answer key (intervalos/uniones/desigualdades) ----
+
+const LE = "≤"; // ≤
+const GE = "≥"; // ≥
+const CUP = "∪"; // ∪
+
+/** Normaliza símbolos para parsear desigualdades e intervalos de forma uniforme. */
+function normSym(s: string): string {
+  return s.split(CHAR.minus).join("-").split(LE).join("<=").split(GE).join(">=");
+}
+
+interface IvTok {
+  iv: Interval;
+  start: number;
+  end: number;
+}
+
+/**
+ * Encuentra TODOS los "tokens de intervalo" en el texto (ya normalizado): tanto en
+ * notación de corchetes [a,b] como desigualdades de dos lados (a ≤ x < b). Devuelve
+ * también el texto normalizado para poder mirar los conectores entre tokens.
+ */
+function intervalTokens(textRaw: string): { toks: IvTok[]; text: string } {
+  const text = normSym(textRaw);
+  const toks: IvTok[] = [];
+
+  // Corchetes: [a,b] (a,b) [a,b) (a,b]
+  const reB = new RegExp(INTERVAL_TOKEN);
+  let m: RegExpExecArray | null;
+  while ((m = reB.exec(text)) !== null) {
+    const lo = parseNumericValue(m[2]);
+    const hi = parseNumericValue(m[3]);
+    if (lo === null || hi === null) continue;
+    toks.push({
+      iv: { lo: Math.min(lo, hi), hi: Math.max(lo, hi), loOpen: m[1] === "(", hiOpen: m[4] === ")" },
+      start: m.index,
+      end: m.index + m[0].length,
+    });
+  }
+
+  // Desigualdad de dos lados: num <op> var <op> num. La variable es UNA letra
+  // (así "x-1 ≤ 3" como paso intermedio NO matchea; sí matchea "−2 ≤ x < 4").
+  const reI = /(-?\d+(?:\.\d+)?(?:\/\d+)?)\s*(<=|<)\s*[a-zA-Z]\s*(<=|<)\s*(-?\d+(?:\.\d+)?(?:\/\d+)?)/g;
+  while ((m = reI.exec(text)) !== null) {
+    const lo = parseNumericValue(m[1]);
+    const hi = parseNumericValue(m[4]);
+    if (lo === null || hi === null) continue;
+    toks.push({
+      iv: { lo, hi, loOpen: m[2] === "<", hiOpen: m[3] === "<" },
+      start: m.index,
+      end: m.index + m[0].length,
+    });
+  }
+
+  toks.sort((a, b) => a.start - b.start);
+  return { toks, text };
+}
+
+function normalizeSet(ivs: Interval[]): Interval[] {
+  return ivs.slice().sort((a, b) => a.lo - b.lo || a.hi - b.hi);
+}
+
+function setsEqual(a: Interval[], b: Interval[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((iv, i) => intervalsEqual(iv, b[i]));
+}
+
+function fmtSet(ivs: Interval[]): string {
+  return ivs.map(fmtInterval).join(` ${CUP} `);
+}
+
+// Marcadores de conclusión: si aparecen, miramos solo lo que viene DESPUÉS del último.
+const CONCLUSION_MARKER = /(solución|solucion|resultado|respuesta|por lo tanto|finalmente|en conclusión|en conclusion|conjunto soluci|intervalo soluci)/gi;
+
+/** Conjunto-solución que CONCLUYE la explicación (grupo de intervalos del final). */
+function explanationConclusionSet(explanation: string): Interval[] {
+  const { toks, text } = intervalTokens(explanation);
+  if (toks.length === 0) return [];
+
+  // Si hay marcador de conclusión, considerar solo tokens posteriores al último.
+  let pool = toks;
+  let lastMarker = -1;
+  let mm: RegExpExecArray | null;
+  const re = new RegExp(CONCLUSION_MARKER);
+  while ((mm = re.exec(text)) !== null) lastMarker = mm.index;
+  if (lastMarker >= 0) {
+    const after = toks.filter((t) => t.start >= lastMarker);
+    if (after.length > 0) pool = after;
+  }
+
+  // Grupo final: el último token + los anteriores unidos por un conector de unión.
+  const group: Interval[] = [pool[pool.length - 1].iv];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const gap = text.slice(pool[i - 1].end, pool[i].start);
+    const unionLike = gap.length <= 8 && new RegExp(`[${CUP},;]|\\b[ouy]\\b`, "i").test(gap);
+    if (unionLike) group.unshift(pool[i - 1].iv);
+    else break;
+  }
+  return normalizeSet(group);
+}
+
+/**
+ * DEFENSA CLAVE: el conjunto-solución que CONCLUYE la explicación debe coincidir
+ * EXACTAMENTE con la answer key. Cubre el caso que se escapaba: explicación que
+ * concluye [-2,4) (como intervalo o como desigualdad -2 ≤ x < 4) mientras la
+ * answer key dice [-5,-1] ∪ [1,4]. Conservador: si alguno no parsea, no bloquea.
+ */
+export function checkSolutionSetMatch(
+  explanation: string,
+  correctAnswer: string,
+): ConsistencyResult {
+  const ansToks = intervalTokens(correctAnswer).toks;
+  const ansSet = normalizeSet(ansToks.map((t) => t.iv));
+  if (ansSet.length === 0 || !explanation) return { ok: true };
+
+  const explSet = explanationConclusionSet(explanation);
+  if (explSet.length === 0) return { ok: true };
+
+  if (!setsEqual(explSet, ansSet)) {
+    return {
+      ok: false,
+      reason: `explanation_answer_mismatch: la explicación concluye ${fmtSet(explSet)} pero answer_key="${correctAnswer}"`,
     };
   }
   return { ok: true };
@@ -241,5 +370,8 @@ export function checkConsistency(
   if (!interval.ok) return interval;
   const numericKey = checkAnswerKeyConsistency(explanation, correctAnswer);
   if (!numericKey.ok) return numericKey;
-  return checkIntervalAnswerKey(explanation, correctAnswer);
+  const singleIv = checkIntervalAnswerKey(explanation, correctAnswer);
+  if (!singleIv.ok) return singleIv;
+  // Comparación de conjunto-solución completa (uniones + desigualdades).
+  return checkSolutionSetMatch(explanation, correctAnswer);
 }
