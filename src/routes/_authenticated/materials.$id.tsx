@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { MaterialExerciseGenerator } from "@/components/materials/MaterialExerciseGenerator";
 import { isMathematicalContent } from "@/lib/materials/classify";
 import { CalculatorFAB } from "@/components/calculator/CalculatorFAB";
+import { FormulasFAB } from "@/components/formulas/FormulasFAB";
 import { MathWorkspace } from "@/components/workspace/MathWorkspace";
 
 export const Route = createFileRoute("/_authenticated/materials/$id")({
@@ -33,7 +34,9 @@ function MaterialDetailPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("materials")
-        .select("id, file_name, file_type, detected_topic, page_count, preview, extracted_text, status")
+        .select(
+          "id, file_name, file_type, detected_topic, page_count, preview, extracted_text, status",
+        )
         .eq("id", id)
         .eq("user_id", user!.id)
         .maybeSingle();
@@ -66,7 +69,10 @@ function MaterialDetailPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 md:py-12">
-      <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <Link
+        to="/dashboard"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      >
         <ArrowLeft className="h-3.5 w-3.5" />
         Volver
       </Link>
@@ -102,7 +108,9 @@ function MaterialDetailPage() {
             <p className="text-sm">
               Este material no parece contener matemática, así que no podemos generar ejercicios.
             </p>
-            <p className="text-xs">Subí una guía o ejercicios de matemática para usar esta función.</p>
+            <p className="text-xs">
+              Subí una guía o ejercicios de matemática para usar esta función.
+            </p>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2 py-6 text-center text-muted-foreground">
@@ -128,6 +136,7 @@ function MaterialDetailPage() {
 
       {/* Herramientas de estudio mientras resolvés (mismas que en los temas) */}
       <CalculatorFAB />
+      <FormulasFAB />
       <MathWorkspace storageKey={`mathup:workspace:material-${material.id}`} />
     </div>
   );

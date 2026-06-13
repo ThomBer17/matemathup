@@ -26,6 +26,7 @@ import { Route as AuthenticatedTheoryIndexRouteImport } from './routes/_authenti
 import { Route as AuthenticatedStudyIndexRouteImport } from './routes/_authenticated/study.index'
 import { Route as AuthenticatedTopicsSlugRouteImport } from './routes/_authenticated/topics.$slug'
 import { Route as AuthenticatedToolsFunctionsRouteImport } from './routes/_authenticated/tools.functions'
+import { Route as AuthenticatedToolsFormulasRouteImport } from './routes/_authenticated/tools.formulas'
 import { Route as AuthenticatedToolsCalculatorRouteImport } from './routes/_authenticated/tools.calculator'
 import { Route as AuthenticatedTheorySlugRouteImport } from './routes/_authenticated/theory.$slug'
 import { Route as AuthenticatedStudyIdRouteImport } from './routes/_authenticated/study.$id'
@@ -120,6 +121,12 @@ const AuthenticatedToolsFunctionsRoute =
     path: '/tools/functions',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedToolsFormulasRoute =
+  AuthenticatedToolsFormulasRouteImport.update({
+    id: '/tools/formulas',
+    path: '/tools/formulas',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedToolsCalculatorRoute =
   AuthenticatedToolsCalculatorRouteImport.update({
     id: '/tools/calculator',
@@ -172,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/study/$id': typeof AuthenticatedStudyIdRoute
   '/theory/$slug': typeof AuthenticatedTheorySlugRoute
   '/tools/calculator': typeof AuthenticatedToolsCalculatorRoute
+  '/tools/formulas': typeof AuthenticatedToolsFormulasRoute
   '/tools/functions': typeof AuthenticatedToolsFunctionsRoute
   '/topics/$slug': typeof AuthenticatedTopicsSlugRoute
   '/study/': typeof AuthenticatedStudyIndexRoute
@@ -196,6 +204,7 @@ export interface FileRoutesByTo {
   '/study/$id': typeof AuthenticatedStudyIdRoute
   '/theory/$slug': typeof AuthenticatedTheorySlugRoute
   '/tools/calculator': typeof AuthenticatedToolsCalculatorRoute
+  '/tools/formulas': typeof AuthenticatedToolsFormulasRoute
   '/tools/functions': typeof AuthenticatedToolsFunctionsRoute
   '/topics/$slug': typeof AuthenticatedTopicsSlugRoute
   '/study': typeof AuthenticatedStudyIndexRoute
@@ -222,6 +231,7 @@ export interface FileRoutesById {
   '/_authenticated/study/$id': typeof AuthenticatedStudyIdRoute
   '/_authenticated/theory/$slug': typeof AuthenticatedTheorySlugRoute
   '/_authenticated/tools/calculator': typeof AuthenticatedToolsCalculatorRoute
+  '/_authenticated/tools/formulas': typeof AuthenticatedToolsFormulasRoute
   '/_authenticated/tools/functions': typeof AuthenticatedToolsFunctionsRoute
   '/_authenticated/topics/$slug': typeof AuthenticatedTopicsSlugRoute
   '/_authenticated/study/': typeof AuthenticatedStudyIndexRoute
@@ -248,6 +258,7 @@ export interface FileRouteTypes {
     | '/study/$id'
     | '/theory/$slug'
     | '/tools/calculator'
+    | '/tools/formulas'
     | '/tools/functions'
     | '/topics/$slug'
     | '/study/'
@@ -272,6 +283,7 @@ export interface FileRouteTypes {
     | '/study/$id'
     | '/theory/$slug'
     | '/tools/calculator'
+    | '/tools/formulas'
     | '/tools/functions'
     | '/topics/$slug'
     | '/study'
@@ -297,6 +309,7 @@ export interface FileRouteTypes {
     | '/_authenticated/study/$id'
     | '/_authenticated/theory/$slug'
     | '/_authenticated/tools/calculator'
+    | '/_authenticated/tools/formulas'
     | '/_authenticated/tools/functions'
     | '/_authenticated/topics/$slug'
     | '/_authenticated/study/'
@@ -433,6 +446,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedToolsFunctionsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/tools/formulas': {
+      id: '/_authenticated/tools/formulas'
+      path: '/tools/formulas'
+      fullPath: '/tools/formulas'
+      preLoaderRoute: typeof AuthenticatedToolsFormulasRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/tools/calculator': {
       id: '/_authenticated/tools/calculator'
       path: '/tools/calculator'
@@ -492,6 +512,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedStudyIdRoute: typeof AuthenticatedStudyIdRoute
   AuthenticatedTheorySlugRoute: typeof AuthenticatedTheorySlugRoute
   AuthenticatedToolsCalculatorRoute: typeof AuthenticatedToolsCalculatorRoute
+  AuthenticatedToolsFormulasRoute: typeof AuthenticatedToolsFormulasRoute
   AuthenticatedToolsFunctionsRoute: typeof AuthenticatedToolsFunctionsRoute
   AuthenticatedTopicsSlugRoute: typeof AuthenticatedTopicsSlugRoute
   AuthenticatedStudyIndexRoute: typeof AuthenticatedStudyIndexRoute
@@ -514,6 +535,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedStudyIdRoute: AuthenticatedStudyIdRoute,
   AuthenticatedTheorySlugRoute: AuthenticatedTheorySlugRoute,
   AuthenticatedToolsCalculatorRoute: AuthenticatedToolsCalculatorRoute,
+  AuthenticatedToolsFormulasRoute: AuthenticatedToolsFormulasRoute,
   AuthenticatedToolsFunctionsRoute: AuthenticatedToolsFunctionsRoute,
   AuthenticatedTopicsSlugRoute: AuthenticatedTopicsSlugRoute,
   AuthenticatedStudyIndexRoute: AuthenticatedStudyIndexRoute,

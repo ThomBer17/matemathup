@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { setWorkspaceOpen } from "./panel-store";
+import { setWorkspaceOpen, subscribeWorkspaceAppend } from "./panel-store";
 
 /**
  * Workspace Matemático: panel lateral derecho para que el alumno haga cuentas,
@@ -98,6 +98,14 @@ export function MathWorkspace({ storageKey }: { storageKey: string }) {
     setWorkspaceOpen(open);
     return () => setWorkspaceOpen(false);
   }, [open]);
+
+  // Recibe texto enviado desde otras herramientas (ej. Fórmulas): abre y lo agrega.
+  useEffect(() => {
+    return subscribeWorkspaceAppend((text) => {
+      setOpen(true);
+      setValue((v) => (v.trim() ? `${v}\n${text}` : text));
+    });
+  }, []);
 
   // Auto-guardar.
   useEffect(() => {
@@ -199,7 +207,9 @@ export function MathWorkspace({ storageKey }: { storageKey: string }) {
                   <NotebookPen className="h-4 w-4 text-white" />
                 </div>
                 <div>
-                  <p className="font-display text-sm font-semibold leading-tight">Workspace Matemático</p>
+                  <p className="font-display text-sm font-semibold leading-tight">
+                    Workspace Matemático
+                  </p>
                   <p className="text-[10px] text-muted-foreground">Tu espacio para hacer cuentas</p>
                 </div>
               </div>
@@ -240,12 +250,26 @@ export function MathWorkspace({ storageKey }: { storageKey: string }) {
             <div className="flex items-center justify-between gap-2 border-t px-3 py-2.5">
               <span className="text-[10px] text-muted-foreground">Se guarda automáticamente</span>
               <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={handleClear} className="h-8 gap-1.5 text-xs">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClear}
+                  className="h-8 gap-1.5 text-xs"
+                >
                   <Trash2 className="h-3.5 w-3.5" />
                   Limpiar
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleCopy} className="h-8 gap-1.5 text-xs">
-                  {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopy}
+                  className="h-8 gap-1.5 text-xs"
+                >
+                  {copied ? (
+                    <Check className="h-3.5 w-3.5 text-emerald-500" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" />
+                  )}
                   {copied ? "Copiado" : "Copiar"}
                 </Button>
               </div>
@@ -257,7 +281,15 @@ export function MathWorkspace({ storageKey }: { storageKey: string }) {
   );
 }
 
-function SymbolButton({ label, onClick, fn }: { label: string; onClick: () => void; fn?: boolean }) {
+function SymbolButton({
+  label,
+  onClick,
+  fn,
+}: {
+  label: string;
+  onClick: () => void;
+  fn?: boolean;
+}) {
   return (
     <button
       type="button"

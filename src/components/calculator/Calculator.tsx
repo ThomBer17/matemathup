@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from "motion/react";
 import { Copy, Delete, History as HistoryIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { evaluate, type AngleMode } from "@/lib/calc-eval";
+import { decimalToFraction, formatNumber } from "@/lib/fraction";
 
-type AngleMode = "deg" | "rad";
 type ResultMode = "dec" | "frac";
 
 interface HistoryEntry {
@@ -12,105 +13,26 @@ interface HistoryEntry {
   result: string;
 }
 
-const DEG_TO_RAD = Math.PI / 180;
-const RAD_TO_DEG = 180 / Math.PI;
-
+/** Evalúa o lanza (la UI ya envuelve en try/catch / preview). */
 function evaluateExpression(input: string, mode: AngleMode): number {
-  if (!input.trim()) throw new Error("vacío");
-
-  const sinFn = mode === "deg" ? `((x)=>Math.sin(x*${DEG_TO_RAD}))` : `Math.sin`;
-  const cosFn = mode === "deg" ? `((x)=>Math.cos(x*${DEG_TO_RAD}))` : `Math.cos`;
-  const tanFn = mode === "deg" ? `((x)=>Math.tan(x*${DEG_TO_RAD}))` : `Math.tan`;
-  // Inversas: en grados, convertimos el resultado (que sale en radianes) a grados.
-  const asinFn = mode === "deg" ? `((x)=>Math.asin(x)*${RAD_TO_DEG})` : `Math.asin`;
-  const acosFn = mode === "deg" ? `((x)=>Math.acos(x)*${RAD_TO_DEG})` : `Math.acos`;
-  const atanFn = mode === "deg" ? `((x)=>Math.atan(x)*${RAD_TO_DEG})` : `Math.atan`;
-
-  let expr = input
-    .replace(/×/g, "*")
-    .replace(/÷/g, "/")
-    .replace(/−/g, "-")
-    .replace(/π/g, "(Math.PI)")
-    .replace(/\^/g, "**")
-    .replace(/√\(/g, "Math.sqrt(")
-    .replace(/√/g, "Math.sqrt")
-    // Inversas → placeholders (en MAYÚSCULA) para que el reemplazo de sin/cos/tan
-    // de abajo no toque el "sin" de "asin", etc.
-    .replace(/arcs(?:en|in)\(/g, "@ASIN@(")
-    .replace(/asin\(/g, "@ASIN@(")
-    .replace(/arccos\(/g, "@ACOS@(")
-    .replace(/acos\(/g, "@ACOS@(")
-    .replace(/arctan\(/g, "@ATAN@(")
-    .replace(/atan\(/g, "@ATAN@(")
-    // Directas
-    .replace(/sin\(/g, `${sinFn}(`)
-    .replace(/sen\(/g, `${sinFn}(`)
-    .replace(/cos\(/g, `${cosFn}(`)
-    .replace(/tan\(/g, `${tanFn}(`)
-    .replace(/ln\(/g, "Math.log(")
-    .replace(/log\(/g, "Math.log10(")
-    // Placeholders de inversas → funciones reales (después de sin/cos/tan)
-    .replace(/@ASIN@\(/g, `${asinFn}(`)
-    .replace(/@ACOS@\(/g, `${acosFn}(`)
-    .replace(/@ATAN@\(/g, `${atanFn}(`);
-
-  const stripped = expr
-    .replace(/Math\.(PI|sqrt|asin|acos|atan|sin|cos|tan|log10|log)/g, "")
-    .replace(/\(\(x\)=>[^)]+\)/g, "")
-    .replace(/[0-9+\-*/().\sx>=,]/g, "");
-  if (stripped.length > 0) throw new Error("Expresión inválida");
-
-  // eslint-disable-next-line no-new-func
-  const value = new Function(`return (${expr})`)();
-  if (typeof value !== "number" || !isFinite(value)) {
-    throw new Error("Resultado no definido");
-  }
-  return value;
-}
-
-/**
- * Convierte un decimal a fracción exacta por fracciones continuas. Devuelve null si
- * el número es esencialmente irracional (no hay fracción "limpia" con denominador
- * razonable), para no mostrar fracciones gigantes en √2, π, etc.
- */
-function decimalToFraction(value: number): { num: number; den: number } | null {
-  if (!isFinite(value)) return null;
-  if (Number.isInteger(value)) return { num: value, den: 1 };
-  const sign = value < 0 ? -1 : 1;
-  const x = Math.abs(value);
-  const maxDen = 10000;
-  let prevNum = 0, num = 1, prevDen = 1, den = 0;
-  let rem = x;
-  for (let i = 0; i < 64; i++) {
-    const intPart = Math.floor(rem);
-    const nextNum = intPart * num + prevNum;
-    const nextDen = intPart * den + prevDen;
-    if (nextDen > maxDen) break;
-    prevNum = num; num = nextNum;
-    prevDen = den; den = nextDen;
-    if (Math.abs(x - num / den) < 1e-12) break;
-    const frac = rem - intPart;
-    if (frac < 1e-12) break;
-    rem = 1 / frac;
-  }
-  if (den === 0 || Math.abs(x - num / den) > 1e-9) return null;
-  return { num: sign * num, den };
+  const r = evaluate(input, mode);
+  if (!r.ok) throw new Error(r.error);
+  return r.value;
 }
 
 function formatResult(n: number, resultMode: ResultMode = "dec"): string {
   if (resultMode === "frac" && !Number.isInteger(n)) {
     const f = decimalToFraction(n);
-    if (f && f.den !== 1) return `${f.num}/${f.den}`;
+    if (f && f.den !== 1) return f.toString();
   }
-  if (Number.isInteger(n)) return n.toString();
-  const rounded = Math.round(n * 1e10) / 1e10;
-  return rounded.toString();
+  return formatNumber(n);
 }
 
 const BTN_DIGIT = "bg-background hover:bg-muted text-foreground";
 const BTN_OP = "bg-primary/10 hover:bg-primary/20 text-primary font-semibold";
 const BTN_FN = "bg-muted hover:bg-muted/70 text-foreground text-xs font-medium";
-const BTN_CLEAR = "bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-semibold";
+const BTN_CLEAR =
+  "bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-semibold";
 const BTN_EQ = "bg-primary text-primary-foreground hover:bg-primary/90 font-bold";
 
 export function Calculator({ onClose }: { onClose?: () => void }) {
@@ -226,7 +148,12 @@ export function Calculator({ onClose }: { onClose?: () => void }) {
           </div>
           {/* Resultado: decimal / fracción */}
           <div className="flex items-center gap-1 rounded-lg border bg-background p-0.5 text-[10px] font-semibold">
-            {([["dec", "0.5"], ["frac", "½"]] as [ResultMode, string][]).map(([m, label]) => (
+            {(
+              [
+                ["dec", "0.5"],
+                ["frac", "½"],
+              ] as [ResultMode, string][]
+            ).map(([m, label]) => (
               <button
                 key={m}
                 type="button"

@@ -44,10 +44,11 @@ export const TOOLS: Tool[] = [
   {
     slug: "formulas",
     title: "Fórmulas",
-    description: "Buscá fórmulas por tema, con notación lista para usar.",
+    description: "Elegí una fórmula, completá los valores y resolvé paso a paso.",
     icon: Sigma,
     color: "teal",
-    status: "soon",
+    status: "live",
+    to: "/tools/formulas",
   },
 ];
 
