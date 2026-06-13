@@ -50,8 +50,8 @@ export function FormulasFAB() {
                     <ArrowLeft className="h-4 w-4" />
                   </button>
                 )}
-                <div className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-teal-500 to-emerald-600">
-                  <Sigma className="h-4 w-4 text-white" />
+                <div className="grid h-7 w-7 place-items-center rounded-lg bg-primary/15 text-primary">
+                  <Sigma className="h-4 w-4" />
                 </div>
                 <p className="font-display text-sm font-semibold">
                   {selected ? selected.name : "Fórmulas"}
@@ -106,7 +106,7 @@ export function FormulasFAB() {
         aria-label={open ? "Cerrar fórmulas" : "Abrir fórmulas"}
         aria-expanded={open}
         className={cn(
-          "fixed bottom-4 left-4 z-50 grid h-12 w-12 place-items-center rounded-full bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-glow transition-all hover:scale-105 active:scale-95 md:bottom-6 md:left-6",
+          "fixed bottom-4 left-4 z-50 grid h-12 w-12 place-items-center rounded-full bg-primary text-primary-foreground shadow-glow transition-all hover:scale-105 active:scale-95 md:bottom-6 md:left-6",
         )}
         data-floating-panel
       >
