@@ -111,6 +111,7 @@ function TopicPage() {
   const [revealed, setRevealed] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [hintIndex, setHintIndex] = useState(-1);
+  const [lastXp, setLastXp] = useState(0);
   const [sessionCount, setSessionCount] = useState(0);
   const [sessionCorrect, setSessionCorrect] = useState(0);
   const [showGraph, setShowGraph] = useState(false);
@@ -221,6 +222,7 @@ function TopicPage() {
     });
     if (correct) {
       const xpGain = 10 + difficulty * 2;
+      setLastXp(xpGain);
       track(EV.xpGained, { metadata: { amount: xpGain, source: "adaptive" } });
       toast.success(`¡Correcto! +${xpGain} XP`);
     } else {
@@ -716,6 +718,16 @@ function TopicPage() {
                             </>
                           )}
                         </span>
+                        {isCorrect && lastXp > 0 && (
+                          <motion.span
+                            initial={{ opacity: 0, scale: 0.6, y: 4 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            transition={{ type: "spring", stiffness: 500, damping: 18 }}
+                            className="ml-auto inline-flex items-center gap-1 rounded-full bg-success/15 px-2.5 py-1 text-xs font-bold text-success"
+                          >
+                            <Sparkles className="h-3.5 w-3.5" />+{lastXp} XP
+                          </motion.span>
+                        )}
                       </div>
                       <StepByStepExplanation
                         text={exercise.explanation}
