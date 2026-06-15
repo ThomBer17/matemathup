@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Copy, Delete, History as HistoryIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { Segmented } from "@/components/ui/segmented";
 import { evaluate, type AngleMode } from "@/lib/calc-eval";
 import { decimalToFraction, formatNumber } from "@/lib/fraction";
 
@@ -129,47 +130,25 @@ export function Calculator({ onClose }: { onClose?: () => void }) {
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
           {/* Ángulo: grados / radianes */}
-          <div className="flex items-center gap-1 rounded-lg border bg-background p-0.5 text-[10px] font-semibold">
-            {(["deg", "rad"] as AngleMode[]).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setAngleMode(m)}
-                className={cn(
-                  "rounded-md px-2 py-0.5 uppercase tracking-wide transition-colors",
-                  angleMode === m
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
+          <Segmented
+            size="xs"
+            value={angleMode}
+            onChange={setAngleMode}
+            options={[
+              { key: "deg", label: "DEG" },
+              { key: "rad", label: "RAD" },
+            ]}
+          />
           {/* Resultado: decimal / fracción */}
-          <div className="flex items-center gap-1 rounded-lg border bg-background p-0.5 text-[10px] font-semibold">
-            {(
-              [
-                ["dec", "0.5"],
-                ["frac", "½"],
-              ] as [ResultMode, string][]
-            ).map(([m, label]) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setResultMode(m)}
-                title={m === "dec" ? "Resultado en decimales" : "Resultado en fracción"}
-                className={cn(
-                  "rounded-md px-2 py-0.5 transition-colors",
-                  resultMode === m
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <Segmented
+            size="xs"
+            value={resultMode}
+            onChange={setResultMode}
+            options={[
+              { key: "dec", label: "0.5" },
+              { key: "frac", label: "½" },
+            ]}
+          />
         </div>
         <div className="flex items-center gap-1">
           <button

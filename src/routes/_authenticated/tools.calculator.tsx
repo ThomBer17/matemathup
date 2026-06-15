@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Calculator, CornerDownLeft, RotateCcw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Segmented } from "@/components/ui/segmented";
 import { evaluateExpression, formatResult, type AngleMode } from "@/lib/calculator";
 
 export const Route = createFileRoute("/_authenticated/tools/calculator")({
@@ -58,21 +58,15 @@ function CalculatorPage() {
 
       <div className="mt-8 rounded-2xl border bg-card p-5 shadow-soft">
         {/* Toggle grados/radianes */}
-        <div className="mb-3 inline-flex rounded-lg border bg-muted/40 p-0.5 text-xs font-medium">
-          {(["rad", "deg"] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setMode(m)}
-              className={cn(
-                "rounded-md px-3 py-1 transition",
-                mode === m ? "bg-background text-foreground shadow-soft" : "text-muted-foreground",
-              )}
-            >
-              {m === "rad" ? "Radianes" : "Grados"}
-            </button>
-          ))}
-        </div>
+        <Segmented
+          value={mode}
+          onChange={setMode}
+          options={[
+            { key: "rad", label: "Radianes" },
+            { key: "deg", label: "Grados" },
+          ]}
+          className="mb-3"
+        />
 
         <div className="flex items-center gap-2">
           <Input

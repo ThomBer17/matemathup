@@ -3,39 +3,10 @@ import { Copy, Check, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Segmented } from "@/components/ui/segmented";
 import { MathRich } from "@/components/math/MathRich";
-import { cn } from "@/lib/utils";
 import { parseValue, type AngleMode } from "@/lib/calc-eval";
 import type { Formula, FormulaInputs, FormulaResult } from "@/lib/formulas";
-
-/** Toggle segmentado chico y consistente con el resto de la app. */
-function Segmented<T extends string>({
-  value,
-  options,
-  onChange,
-}: {
-  value: T;
-  options: { key: T; label: string }[];
-  onChange: (v: T) => void;
-}) {
-  return (
-    <div className="inline-flex flex-wrap rounded-lg border bg-muted/40 p-0.5 text-xs font-medium">
-      {options.map((o) => (
-        <button
-          key={o.key}
-          type="button"
-          onClick={() => onChange(o.key)}
-          className={cn(
-            "rounded-md px-3 py-1 transition",
-            value === o.key ? "bg-background text-foreground shadow-soft" : "text-muted-foreground",
-          )}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 export function FormulaSolver({
   formula,
