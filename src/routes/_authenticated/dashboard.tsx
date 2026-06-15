@@ -18,6 +18,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Progress } from "@/components/ui/progress";
 import { getTopicIcon, topicGradient } from "@/lib/topic-icons";
 import { RecommendedCard } from "@/components/progress/RecommendedCard";
+import { WeakSpots } from "@/components/progress/WeakSpots";
 import {
   aggregateByTopic,
   computeOverall,
@@ -96,7 +97,7 @@ function Dashboard() {
     },
   });
 
-  const { recommendation, badgeCount, recentTopicAggs } = useMemo(() => {
+  const { recommendation, badgeCount, recentTopicAggs, aggregates } = useMemo(() => {
     const metaById = new Map(
       topics.map((t) => [
         t.id,
@@ -116,6 +117,7 @@ function Dashboard() {
       recommendation: recommendNext(aggs, Array.from(metaById.values())),
       badgeCount: badgeStats(badges),
       recentTopicAggs: aggs.slice(0, 3),
+      aggregates: aggs,
     };
   }, [attempts, topics, profile]);
 
@@ -350,6 +352,9 @@ function Dashboard() {
           <NextExamWidget />
         </div>
       )}
+
+      {/* Qué me falta: temas más flojos primero */}
+      {!isNewUser && <WeakSpots aggregates={aggregates} />}
 
       {/* Resumen de temas en progreso (top 3) */}
       {!isNewUser && recentTopicAggs.length > 0 && (
