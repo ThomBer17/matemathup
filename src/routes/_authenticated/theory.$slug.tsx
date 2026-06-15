@@ -13,12 +13,14 @@ import {
   Library,
   Target,
   Compass,
+  LineChart,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { getTopicIcon, topicGradient } from "@/lib/topic-icons";
 import { getTheory } from "@/content/theory";
 import { getRelated } from "@/content/theory/related";
+import { getInteractive } from "@/content/theory/interactive";
 import { MathRich } from "@/components/math/MathRich";
 import { cn } from "@/lib/utils";
 
@@ -83,11 +85,13 @@ function TheoryDetail() {
   const completed = progress?.exercises_completed ?? 0;
 
   const related = getRelated(slug);
+  const interactive = getInteractive(slug);
   const topicBySlug = new Map(allTopics.map((t) => [t.slug, t]));
   const sections = [
     { id: "resumen", title: "Resumen" },
     { id: "conceptos", title: "Conceptos clave" },
     { id: "formulas", title: "Fórmulas" },
+    ...(interactive ? [{ id: "explorar", title: "Explorá" }] : []),
     { id: "ejemplos", title: "Ejemplos" },
     { id: "errores", title: "Errores comunes" },
     { id: "checklist", title: "Checklist" },
@@ -189,6 +193,13 @@ function TheoryDetail() {
             ))}
           </div>
         </Section>
+
+        {/* Bloque interactivo: manipular el concepto al lado de la teoría */}
+        {interactive && (
+          <Section id="explorar" icon={LineChart} title="Explorá en vivo">
+            {interactive}
+          </Section>
+        )}
 
         {/* 4. Ejemplos resueltos */}
         <Section id="ejemplos" icon={BookText} title="Ejemplos resueltos">
