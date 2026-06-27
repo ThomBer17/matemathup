@@ -10,7 +10,6 @@ import { visualizer } from "rollup-plugin-visualizer";
 function vendorChunk(id: string) {
   if (!id.includes("node_modules")) return undefined;
   if (id.includes("node_modules/pdfjs-dist")) return "vendor-pdf";
-  if (id.includes("node_modules/tesseract.js")) return "vendor-ocr";
   if (id.includes("node_modules/katex")) return "vendor-math";
   if (id.includes("node_modules/recharts")) return "vendor-charts";
   if (id.includes("node_modules/react") || id.includes("node_modules/scheduler")) {

@@ -2,8 +2,8 @@ import { errorFields, log } from "@/lib/observability/log";
 
 /**
  * Procesamiento de material en el CLIENTE (browser). Extrae texto de PDF (pdfjs)
- * e imágenes (OCR con tesseract). Las librerías pesadas se cargan con dynamic import
- * solo al procesar, así no entran al bundle principal.
+ * con carga diferida. Las imágenes se aceptan, pero el OCR queda deshabilitado
+ * hasta usar un motor compatible con Cloudflare Workers.
  *
  * Defensivo: si la extracción falla, devuelve texto vacío (el material igual se cataloga).
  * Reservamos el estado 'error' para fallos de subida/almacenamiento, no de extracción.
@@ -59,9 +59,8 @@ async function extractPdf(file: File): Promise<ExtractResult> {
 }
 
 async function extractImage(file: File): Promise<ExtractResult> {
-  const Tesseract = await import("tesseract.js");
-  const { data } = await Tesseract.recognize(file, "spa");
-  return { text: (data.text ?? "").trim(), pageCount: null };
+  log.warn("material_image_ocr_unavailable_on_worker", { fileName: file.name });
+  return { text: "", pageCount: null };
 }
 
 export function makePreview(text: string): string {
