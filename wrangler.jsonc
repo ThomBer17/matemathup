@@ -4,12 +4,14 @@
   "compatibility_date": "2025-09-24",
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.ts",
-  // Runtime vars. Supabase values below are placeholders: configure real values
-  // in Cloudflare/hosting, or keep them in a local untracked config.
+  // Runtime vars. Supabase values below are public project configuration.
   // AI_API_KEY must be configured as a Cloudflare Secret, not committed here.
   "vars": {
-    "SUPABASE_URL": "https://YOUR_PROJECT.supabase.co",
-    "SUPABASE_PUBLISHABLE_KEY": "your-publishable-key",
+    "SUPABASE_URL": "https://drpsplylcnhmaevqprxp.supabase.co",
+    "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_4O96y-vg7H4xJy-T6On9KQ_SCvj4H6e",
+    "VITE_SUPABASE_URL": "https://drpsplylcnhmaevqprxp.supabase.co",
+    "VITE_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_4O96y-vg7H4xJy-T6On9KQ_SCvj4H6e",
+    "VITE_SUPABASE_PROJECT_ID": "drpsplylcnhmaevqprxp",
     "AI_BASE_URL": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
     "AI_MODEL": "gemini-2.5-flash",
   },
