@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { trackAnalyticsEvent } from "./events.functions";
 
 /**
  * Catálogo de eventos de producto. Constantes para evitar typos y tener
@@ -46,26 +46,18 @@ interface TrackOptions {
 
 /**
  * Registra un evento de forma ASÍNCRONA. Nunca bloquea ni lanza al caller:
- * lee la sesión local (sin red) y dispara el insert fire-and-forget.
+ * dispara una server function fire-and-forget. La RPC server-side fija user_id.
  */
 export function track(eventType: EventType, opts: TrackOptions = {}): void {
   try {
-    void supabase.auth.getSession().then(({ data }) => {
-      const uid = data.session?.user?.id;
-      if (!uid) return; // sin sesión no registramos (RLS lo exigiría igual)
-      void supabase
-        .from("analytics_events")
-        .insert({
-          user_id: uid,
-          event_type: eventType,
-          entity_type: opts.entityType ?? null,
-          entity_id: opts.entityId ?? null,
-          metadata: opts.metadata ? JSON.parse(JSON.stringify(opts.metadata)) : {},
-        })
-        .then(({ error }) => {
-          if (error) console.debug("[analytics] insert falló:", error.message);
-        });
-    });
+    void trackAnalyticsEvent({
+      data: {
+        eventType,
+        entityType: opts.entityType ?? null,
+        entityId: opts.entityId ?? null,
+        metadata: opts.metadata,
+      },
+    }).catch(() => {});
   } catch (e) {
     console.debug("[analytics] track error", e);
   }

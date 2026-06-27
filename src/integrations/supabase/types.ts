@@ -719,6 +719,15 @@ export type Database = {
         };
         Returns: string;
       };
+      track_analytics_event: {
+        Args: {
+          p_entity_id?: string | null;
+          p_entity_type?: string | null;
+          p_event_type: string;
+          p_metadata?: Json;
+        };
+        Returns: string;
+      };
       submit_diagnostic_results: {
         Args: {
           p_results: Json;
