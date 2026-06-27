@@ -21,7 +21,6 @@ import { cn } from "@/lib/utils";
 import {
   detectKind,
   extractFromFile,
-  makePreview,
   isZip,
   expandZip,
   type MaterialKind,
@@ -30,10 +29,13 @@ import { classifyMaterial } from "@/lib/materials/classify";
 import {
   createMaterialRecord,
   deleteMaterialRecord,
+  extractImageOcr,
   finalizeMaterialRecord,
   markMaterialError,
 } from "@/lib/materials/materials.functions";
 import { track, EV } from "@/lib/analytics/events";
+import { MAX_IMAGE_OCR_BYTES } from "@/lib/materials/ocr-constants";
+import { buildFinalizeMaterialData } from "@/lib/materials/finalize";
 
 interface Material {
   id: string;
@@ -66,11 +68,13 @@ export function MyMaterials() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const createMaterialRecordFn = useServerFn(createMaterialRecord);
+  const extractImageOcrFn = useServerFn(extractImageOcr);
   const finalizeMaterialRecordFn = useServerFn(finalizeMaterialRecord);
   const markMaterialErrorFn = useServerFn(markMaterialError);
   const deleteMaterialRecordFn = useServerFn(deleteMaterialRecord);
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [processingLabels, setProcessingLabels] = useState<Record<string, string>>({});
 
   const { data: materials = [] } = useQuery({
     queryKey: ["materials", user?.id],
@@ -86,6 +90,14 @@ export function MyMaterials() {
   });
 
   const refetch = () => queryClient.invalidateQueries({ queryKey: ["materials", user?.id] });
+  const setProcessingLabel = (id: string, label: string | null) => {
+    setProcessingLabels((current) => {
+      const next = { ...current };
+      if (label) next[id] = label;
+      else delete next[id];
+      return next;
+    });
+  };
 
   const processSingleFile = async (file: File) => {
     if (!user) return;
@@ -125,6 +137,7 @@ export function MyMaterials() {
     try {
       // 2) Subir el archivo crudo (best-effort; si falla, seguimos con el texto).
       let storagePath: string | null = null;
+      setProcessingLabel(id, "Subiendo...");
       try {
         const path = `${user.id}/${id}-${sanitize(file.name)}`;
         const { error: upErr } = await supabase.storage.from("materials").upload(path, file);
@@ -134,31 +147,61 @@ export function MyMaterials() {
         console.warn("[materials] storage upload excepción:", e);
       }
 
-      // 3) Extraer texto + clasificar (en el browser).
-      const { text, pageCount } = await extractFromFile(file, kind as MaterialKind);
+      // 3) Extraer texto + clasificar.
+      let text = "";
+      let pageCount: number | null = null;
+      if (kind === "image") {
+        setProcessingLabel(id, "Procesando imagen...");
+        if (!storagePath) {
+          toast.error("No pudimos extraer texto de esta imagen, pero el archivo quedo guardado.");
+        } else if (file.size > MAX_IMAGE_OCR_BYTES) {
+          toast.error("La imagen es muy grande para OCR, pero el archivo quedo guardado.");
+        } else {
+          try {
+            const ocr = await extractImageOcrFn({ data: { materialId: id, storagePath } });
+            text = ocr.text;
+            if (text.trim()) toast.success("Texto extraido de la imagen.");
+          } catch (e) {
+            console.warn("[materials] image OCR failed:", e);
+            toast.error("No pudimos extraer texto de esta imagen, pero el archivo quedo guardado.");
+          }
+        }
+      } else {
+        setProcessingLabel(id, "Procesando PDF...");
+        const extracted = await extractFromFile(file, kind as MaterialKind);
+        text = extracted.text;
+        pageCount = extracted.pageCount;
+      }
       const classification = classifyMaterial(text);
 
       // 4) Persistir resultado.
+      setProcessingLabel(id, "Guardando...");
       await finalizeMaterialRecordFn({
-        data: {
+        data: buildFinalizeMaterialData({
           materialId: id,
           storagePath,
-          extractedText: text || null,
-          preview: text ? makePreview(text) : null,
+          text,
           pageCount,
           detectedTopic: classification.topic,
-        },
+        }),
       });
       track(EV.materialProcessed, {
         entityType: "material",
         entityId: id,
-        metadata: { topic: classification.topic, is_math: classification.isMath },
+        metadata: {
+          topic: classification.topic,
+          is_math: classification.isMath,
+          extraction: kind === "image" ? "gemini_vision" : "pdfjs",
+          has_text: text.trim().length > 0,
+        },
       });
       refetch();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Error al procesar";
       await markMaterialErrorFn({ data: { materialId: id, errorMessage: msg } }).catch(() => {});
       refetch();
+    } finally {
+      setProcessingLabel(id, null);
     }
   };
 
@@ -283,7 +326,11 @@ export function MyMaterials() {
                 <Link to="/materials/$id" params={{ id: m.id }} className="group min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{m.file_name}</p>
                   <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
-                    <StatusBadge status={m.status} topic={m.detected_topic} />
+                    <StatusBadge
+                      status={m.status}
+                      topic={m.detected_topic}
+                      label={processingLabels[m.id]}
+                    />
                     {m.page_count != null && <span>· {m.page_count} pág.</span>}
                     {m.file_size != null && <span>· {formatSize(m.file_size)}</span>}
                   </div>
@@ -314,11 +361,19 @@ export function MyMaterials() {
   );
 }
 
-function StatusBadge({ status, topic }: { status: string; topic: string | null }) {
+function StatusBadge({
+  status,
+  topic,
+  label,
+}: {
+  status: string;
+  topic: string | null;
+  label?: string;
+}) {
   if (status === "processing" || status === "uploading") {
     return (
       <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
-        <Loader2 className="h-3 w-3 animate-spin" /> Procesando…
+        <Loader2 className="h-3 w-3 animate-spin" /> {label ?? "Procesando..."}
       </span>
     );
   }
