@@ -17,6 +17,12 @@ import { sanitizeMathText } from "@/lib/ai/sanitize-text";
 import { checkNumericSanity } from "@/lib/ai/numeric-sanity";
 import { validateStructure } from "@/lib/ai/structural";
 import {
+  buildCanonicalOptions,
+  checkCanonicalConsistency,
+  solveCanonical,
+  type CanonicalAnswer,
+} from "@/lib/math";
+import {
   assertWithinFreemiumLimit,
   finishAIGeneration,
   reserveAIGeneration,
@@ -26,7 +32,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
 const SIMILARITY_THRESHOLD = 0.7;
-const CURRENT_VALIDATION_VERSION = 2;
+const CURRENT_VALIDATION_VERSION = 3;
 
 const ExerciseSchema = z.object({
   statement: z.string().min(5),
@@ -167,6 +173,65 @@ function combinedScopeText(ex: ParsedExercise): string {
   return [ex.statement, ex.explanation, ...(ex.options ?? []), ...ex.hints].join(" ");
 }
 
+function canonicalizeExercise(ex: ParsedExercise): {
+  exercise: ParsedExercise;
+  solver?: string;
+  answer?: CanonicalAnswer;
+} {
+  const result = solveCanonical({
+    statement: ex.statement,
+    type: ex.type,
+    options: ex.options ?? null,
+    correct_answer: ex.correct_answer,
+    explanation: ex.explanation,
+  });
+  if (!result.ok) return { exercise: ex };
+
+  return {
+    exercise: {
+      ...ex,
+      correct_answer: result.answer.typable,
+      options:
+        ex.type === "multiple_choice"
+          ? buildCanonicalOptions(result.answer, ex.options)
+          : ex.options,
+    },
+    solver: result.solver,
+    answer: result.answer,
+  };
+}
+
+function validateCanonicalSourceOfTruth(
+  ex: ParsedExercise,
+): { ok: true } | { ok: false; reason: string } {
+  const result = solveCanonical({
+    statement: ex.statement,
+    type: ex.type,
+    options: ex.options ?? null,
+    correct_answer: ex.correct_answer,
+    explanation: ex.explanation,
+  });
+  if (!result.ok) return { ok: true };
+
+  const consistency = checkCanonicalConsistency(
+    {
+      statement: ex.statement,
+      type: ex.type,
+      options: ex.options ?? null,
+      correct_answer: ex.correct_answer,
+      explanation: ex.explanation,
+    },
+    result.answer,
+  );
+  if (consistency.ok) return { ok: true };
+  return {
+    ok: false,
+    reason: `canonical_consistency_failed: ${result.solver}: ${consistency.issues
+      .map((issue) => `${issue.code}: ${issue.message}`)
+      .join("; ")}`,
+  };
+}
+
 function sanitizeExerciseForValidation(exRaw: ParsedExercise): ParsedExercise {
   return {
     ...exRaw,
@@ -234,6 +299,9 @@ function validateGeneratedExerciseCore(
       reason: `math_consistency_failed: ${consistency.reason ?? "incoherencia consigna-respuesta"}`,
     };
   }
+
+  const canonical = validateCanonicalSourceOfTruth(ex);
+  if (!canonical.ok) return canonical;
 
   const sanity = checkNumericSanity(ex.explanation);
   if (!sanity.ok) {
@@ -445,6 +513,17 @@ export const generateExercise = createServerFn({ method: "POST" })
       }
     }
 
+    const canonicalized = canonicalizeExercise(parsed);
+    parsed = canonicalized.exercise;
+    if (canonicalized.solver) {
+      log.info("adaptive_exercise_canonicalized", {
+        solver: canonicalized.solver,
+        canonical: canonicalized.answer?.canonical,
+        topicName,
+        difficulty,
+      });
+    }
+
     const checkCore = (exRaw: ParsedExercise): { ok: true } | { ok: false; reason: string } => {
       // Los validadores son heurísticos sobre texto plano; el statement/explanation/hints
       // ahora traen LaTeX $...$ (para KaTeX). Validamos sobre una copia saneada a texto
@@ -517,6 +596,9 @@ export const generateExercise = createServerFn({ method: "POST" })
           reason: `math_consistency_failed: ${consistency.reason ?? "incoherencia consigna-respuesta"}`,
         };
       }
+
+      const canonical = validateCanonicalSourceOfTruth(ex);
+      if (!canonical.ok) return canonical;
 
       // 6) Sanity numérico SOLO de la explicación (sus cálculos deben ser correctos).
       //    NO escaneamos el statement: un true_false válido puede contener una
@@ -592,6 +674,16 @@ export const generateExercise = createServerFn({ method: "POST" })
       // En el retry exigimos toda la validez matemática/estructural (checkCore),
       // pero NO la similitud (era best-effort). Mejor un ejercicio válido repetido
       // que dejar al alumno sin ejercicio.
+      const retryCanonicalized = canonicalizeExercise(parsed);
+      parsed = retryCanonicalized.exercise;
+      if (retryCanonicalized.solver) {
+        log.info("adaptive_exercise_canonicalized", {
+          solver: retryCanonicalized.solver,
+          canonical: retryCanonicalized.answer?.canonical,
+          topicName,
+          difficulty: retryDifficulty,
+        });
+      }
       const coreRetry = checkCore(parsed);
       if (!coreRetry.ok) {
         await finishAIGeneration(supabase, generationLogId, {
