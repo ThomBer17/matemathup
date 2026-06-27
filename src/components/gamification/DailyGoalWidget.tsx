@@ -1,12 +1,19 @@
 import { useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { motion } from "motion/react";
 import { Target, Flame, Check } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
-  countToday, goalProgress, goalMessage, shouldNudgeStreak, hourArgentina, GOAL_OPTIONS,
+  countToday,
+  goalProgress,
+  goalMessage,
+  shouldNudgeStreak,
+  hourArgentina,
+  GOAL_OPTIONS,
 } from "@/lib/goals/daily";
+import { updateDailyGoal } from "@/lib/profile/profile.functions";
 
 /**
  * Meta diaria de ejercicios. Cuenta los intentos de hoy, muestra el progreso y
@@ -25,21 +32,21 @@ export function DailyGoalWidget({
   streak: number;
 }) {
   const queryClient = useQueryClient();
+  const updateDailyGoalFn = useServerFn(updateDailyGoal);
   const done = useMemo(() => countToday(attempts), [attempts]);
   const p = goalProgress(done, goal);
   const nudge = shouldNudgeStreak(p, hourArgentina()) && streak > 0;
 
   const setGoal = (g: number) => {
     if (g === goal) return;
-    void supabase
-      .from("profiles")
-      .update({ daily_goal: g })
-      .eq("id", userId)
-      .then(({ error }) => {
-        if (!error) {
-          queryClient.invalidateQueries({ queryKey: ["profile", userId] });
-          queryClient.invalidateQueries({ queryKey: ["profile-mini", userId] });
-        }
+    void updateDailyGoalFn({ data: { dailyGoal: g } })
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ["profile", userId] });
+        queryClient.invalidateQueries({ queryKey: ["profile-mini", userId] });
+      })
+      .catch((e) => {
+        const msg = e instanceof Error ? e.message : "No se pudo actualizar la meta diaria.";
+        toast.error(msg);
       });
   };
 
@@ -54,10 +61,12 @@ export function DailyGoalWidget({
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className={cn(
-            "grid h-9 w-9 place-items-center rounded-lg",
-            p.met ? "bg-success/15 text-success" : "bg-primary/10 text-primary",
-          )}>
+          <div
+            className={cn(
+              "grid h-9 w-9 place-items-center rounded-lg",
+              p.met ? "bg-success/15 text-success" : "bg-primary/10 text-primary",
+            )}
+          >
             {p.met ? <Check className="h-4 w-4" /> : <Target className="h-4 w-4" />}
           </div>
           <div>
@@ -76,7 +85,9 @@ export function DailyGoalWidget({
               onClick={() => setGoal(g)}
               className={cn(
                 "rounded-md px-2 py-0.5 tabular-nums transition-colors",
-                goal === g ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+                goal === g
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               {g}
@@ -98,7 +109,12 @@ export function DailyGoalWidget({
         ))}
       </div>
 
-      <p className={cn("mt-3 text-xs", nudge ? "font-medium text-amber-700 dark:text-amber-300" : "text-muted-foreground")}>
+      <p
+        className={cn(
+          "mt-3 text-xs",
+          nudge ? "font-medium text-amber-700 dark:text-amber-300" : "text-muted-foreground",
+        )}
+      >
         {nudge ? (
           <span className="inline-flex items-center gap-1.5">
             <Flame className="h-3.5 w-3.5" />

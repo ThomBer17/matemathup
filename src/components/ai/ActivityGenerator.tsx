@@ -32,10 +32,7 @@ function useRotatingMessage(active: boolean, intervalMs = 1800) {
       setIdx(0);
       return;
     }
-    const id = setInterval(
-      () => setIdx((i) => (i + 1) % LOADING_MESSAGES.length),
-      intervalMs,
-    );
+    const id = setInterval(() => setIdx((i) => (i + 1) % LOADING_MESSAGES.length), intervalMs);
     return () => clearInterval(id);
   }, [active, intervalMs]);
   return LOADING_MESSAGES[idx];
@@ -67,7 +64,10 @@ export function ActivityGenerator({
       const data = await genFn({ data: { tema: topicName, nivel, force } });
       setResult(data);
       setBatchKey((k) => k + 1);
-      track(EV.tandaGenerated, { entityType: "tanda", metadata: { topic: topicName, nivel, count: data.actividades.length } });
+      track(EV.tandaGenerated, {
+        entityType: "tanda",
+        metadata: { topic: topicName, nivel, count: data.actividades.length },
+      });
       queryClient.invalidateQueries({ queryKey: ["usage-status"] });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Error al generar las actividades";
@@ -95,7 +95,8 @@ export function ActivityGenerator({
         <div>
           <p className="text-sm font-medium">Generá una tanda de actividades con IA</p>
           <p className="text-xs text-muted-foreground">
-            Elegí el nivel, te creamos 3 a 5 ejercicios sobre <span className="font-medium">{topicName}</span> y los podés resolver con feedback IA.
+            Elegí el nivel, te creamos 3 a 5 ejercicios sobre{" "}
+            <span className="font-medium">{topicName}</span> y los podés resolver con feedback IA.
           </p>
         </div>
       </div>

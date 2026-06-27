@@ -1,7 +1,15 @@
 import { motion } from "motion/react";
 import {
-  Flame, Trophy, Target, Zap, Star,
-  GraduationCap, Telescope, Rocket, Medal, Award,
+  Flame,
+  Trophy,
+  Target,
+  Zap,
+  Star,
+  GraduationCap,
+  Telescope,
+  Rocket,
+  Medal,
+  Award,
   Lock,
   type LucideIcon,
 } from "lucide-react";
@@ -58,20 +66,16 @@ export function BadgeGrid({
             <div
               className={cn(
                 "grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br ring-1",
-                b.earned ? TIER_STYLES[b.def.tier] : "from-muted to-muted/50 text-muted-foreground ring-border",
+                b.earned
+                  ? TIER_STYLES[b.def.tier]
+                  : "from-muted to-muted/50 text-muted-foreground ring-border",
               )}
             >
-              {b.earned ? (
-                <Icon className="h-6 w-6" />
-              ) : (
-                <Lock className="h-5 w-5" />
-              )}
+              {b.earned ? <Icon className="h-6 w-6" /> : <Lock className="h-5 w-5" />}
             </div>
             <div className="space-y-0.5">
               <p className="text-xs font-semibold leading-tight">{b.def.name}</p>
-              <p className="text-[10px] leading-tight text-muted-foreground">
-                {b.def.description}
-              </p>
+              <p className="text-[10px] leading-tight text-muted-foreground">{b.def.description}</p>
             </div>
             {showProgress && !b.earned && b.progress > 0 && (
               <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-muted">

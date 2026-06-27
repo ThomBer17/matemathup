@@ -1,15 +1,31 @@
 import { describe, it, expect } from "vitest";
 import {
-  countByType, countOf, distinctActiveUsers, topByMetadataKey,
-  funnel, retention, filterSince,
-  sessionize, sessionMetrics, abandonmentByTopic, globalAbandonment,
-  accuracyByTopic, activityByHour, buildAlerts, type AnalyticsEvent,
+  countByType,
+  countOf,
+  distinctActiveUsers,
+  topByMetadataKey,
+  funnel,
+  retention,
+  filterSince,
+  sessionize,
+  sessionMetrics,
+  abandonmentByTopic,
+  globalAbandonment,
+  accuracyByTopic,
+  activityByHour,
+  buildAlerts,
+  type AnalyticsEvent,
 } from "./compute";
 
 function ev(p: Partial<AnalyticsEvent>): AnalyticsEvent {
   return {
-    user_id: "u1", event_type: "x", entity_type: null, entity_id: null,
-    metadata: {}, created_at: "2026-06-01T10:00:00.000Z", ...p,
+    user_id: "u1",
+    event_type: "x",
+    entity_type: null,
+    entity_id: null,
+    metadata: {},
+    created_at: "2026-06-01T10:00:00.000Z",
+    ...p,
   };
 }
 
@@ -91,9 +107,24 @@ describe("filterSince", () => {
 describe("sessionize", () => {
   it("eventos a <30 min son una sesión; >30 min abren otra", () => {
     const evs = [
-      ev({ user_id: "u1", event_type: "exercise_answered", created_at: "2026-06-01T10:00:00Z", metadata: { topic: "Álgebra" } }),
-      ev({ user_id: "u1", event_type: "exercise_answered", created_at: "2026-06-01T10:10:00Z", metadata: { topic: "Funciones" } }),
-      ev({ user_id: "u1", event_type: "exercise_answered", created_at: "2026-06-01T11:00:00Z", metadata: { topic: "Álgebra" } }), // gap 50 min
+      ev({
+        user_id: "u1",
+        event_type: "exercise_answered",
+        created_at: "2026-06-01T10:00:00Z",
+        metadata: { topic: "Álgebra" },
+      }),
+      ev({
+        user_id: "u1",
+        event_type: "exercise_answered",
+        created_at: "2026-06-01T10:10:00Z",
+        metadata: { topic: "Funciones" },
+      }),
+      ev({
+        user_id: "u1",
+        event_type: "exercise_answered",
+        created_at: "2026-06-01T11:00:00Z",
+        metadata: { topic: "Álgebra" },
+      }), // gap 50 min
     ];
     const s = sessionize(evs, 30);
     expect(s).toHaveLength(2);
@@ -118,13 +149,26 @@ describe("sessionize", () => {
 describe("abandonmentByTopic", () => {
   it("calcula abandono y ordena peor primero", () => {
     const evs = [
-      ...Array(10).fill(0).map(() => ev({ event_type: "exercise_generated", metadata: { topic: "Logaritmos" } })),
-      ...Array(4).fill(0).map(() => ev({ event_type: "exercise_answered", metadata: { topic: "Logaritmos" } })),
-      ...Array(5).fill(0).map(() => ev({ event_type: "exercise_generated", metadata: { topic: "Álgebra" } })),
-      ...Array(5).fill(0).map(() => ev({ event_type: "exercise_answered", metadata: { topic: "Álgebra" } })),
+      ...Array(10)
+        .fill(0)
+        .map(() => ev({ event_type: "exercise_generated", metadata: { topic: "Logaritmos" } })),
+      ...Array(4)
+        .fill(0)
+        .map(() => ev({ event_type: "exercise_answered", metadata: { topic: "Logaritmos" } })),
+      ...Array(5)
+        .fill(0)
+        .map(() => ev({ event_type: "exercise_generated", metadata: { topic: "Álgebra" } })),
+      ...Array(5)
+        .fill(0)
+        .map(() => ev({ event_type: "exercise_answered", metadata: { topic: "Álgebra" } })),
     ];
     const r = abandonmentByTopic(evs);
-    expect(r[0]).toMatchObject({ topic: "Logaritmos", generated: 10, completed: 4, abandonPct: 60 });
+    expect(r[0]).toMatchObject({
+      topic: "Logaritmos",
+      generated: 10,
+      completed: 4,
+      abandonPct: 60,
+    });
     expect(r[1].abandonPct).toBe(0); // Álgebra 5/5
     expect(globalAbandonment(evs)).toBe(40); // 15 gen, 9 done
   });
@@ -174,10 +218,12 @@ describe("buildAlerts", () => {
   });
 
   it("no alerta si todo está bien", () => {
-    expect(buildAlerts({
-      abandonment: [{ topic: "X", generated: 10, completed: 9, abandonPct: 10 }],
-      accuracy: [{ topic: "Y", correct: 9, total: 10, accuracyPct: 90 }],
-      featureCounts: [{ feature: "f", label: "F", count: 50 }],
-    })).toHaveLength(0);
+    expect(
+      buildAlerts({
+        abandonment: [{ topic: "X", generated: 10, completed: 9, abandonPct: 10 }],
+        accuracy: [{ topic: "Y", correct: 9, total: 10, accuracyPct: 90 }],
+        featureCounts: [{ feature: "f", label: "F", count: 50 }],
+      }),
+    ).toHaveLength(0);
   });
 });

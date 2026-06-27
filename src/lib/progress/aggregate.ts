@@ -166,12 +166,18 @@ export function generateInsights(aggregates: TopicAggregate[]): Insight[] {
 
   const improving = aggregates.find((t) => t.trend === "mejorando");
   if (improving) {
-    insights.push({ kind: "improving", message: `Tu precisión mejoró esta semana en ${improving.topic.name}.` });
+    insights.push({
+      kind: "improving",
+      message: `Tu precisión mejoró esta semana en ${improving.topic.name}.`,
+    });
   }
 
   const fresh = aggregates.find((t) => t.totalAttempts >= 1 && t.totalAttempts < 5);
   if (fresh && !improving) {
-    insights.push({ kind: "new-topic", message: `Estás empezando ${fresh.topic.name} — seguí practicando.` });
+    insights.push({
+      kind: "new-topic",
+      message: `Estás empezando ${fresh.topic.name} — seguí practicando.`,
+    });
   }
 
   return insights.slice(0, 4);

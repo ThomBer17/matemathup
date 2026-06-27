@@ -7,9 +7,14 @@ import { sanitizeMathText } from "./sanitize-text";
 import { checkArtificialPatterns, checkStatementMutation } from "./quality-checks";
 import { checkRequiredExpression } from "./structural";
 import { validateDiversity } from "./diversity";
-import { assertWithinFreemiumLimit } from "@/lib/billing/usage";
-import { rateLimit } from "./rate-limit";
+import {
+  assertWithinFreemiumLimit,
+  finishAIGeneration,
+  reserveAIGeneration,
+} from "@/lib/billing/usage";
+import { persistentRateLimit } from "./rate-limit";
 import { classifyMaterial } from "@/lib/materials/classify";
+import { errorFields, log } from "@/lib/observability/log";
 import type { GeneratedActivities, DifficultyLevel } from "./types";
 
 const ActivitySchema = z.object({
@@ -24,7 +29,9 @@ const ResultSchema = z.object({
 type Parsed = z.infer<typeof ResultSchema>;
 
 const NIVEL_TO_DIFFICULTY: Record<DifficultyLevel, number> = {
-  básico: 1, intermedio: 3, alto: 5,
+  básico: 1,
+  intermedio: 3,
+  alto: 5,
 };
 
 /**
@@ -40,9 +47,11 @@ function validateMaterialBatch(parsed: Parsed) {
     };
     const combined = `${act.titulo} ${act.enunciado}`;
     const artifact = checkArtificialPatterns(combined);
-    if (!artifact.ok) return { ok: false as const, reason: `patrón artificial "${artifact.matched}"` };
+    if (!artifact.ok)
+      return { ok: false as const, reason: `patrón artificial "${artifact.matched}"` };
     const mutation = checkStatementMutation(combined);
-    if (!mutation.ok) return { ok: false as const, reason: `statement_mutation_attempt "${mutation.matched}"` };
+    if (!mutation.ok)
+      return { ok: false as const, reason: `statement_mutation_attempt "${mutation.matched}"` };
     const expr = checkRequiredExpression(act.enunciado);
     if (!expr.ok) return { ok: false as const, reason: expr.reason };
   }
@@ -57,7 +66,12 @@ async function generateOnce(
   nivel: DifficultyLevel,
   retryReason?: string,
 ): Promise<Parsed> {
-  const { systemPrompt, userPrompt } = buildMaterialActivitiesPrompt(materialText, topicHint, nivel, retryReason);
+  const { systemPrompt, userPrompt } = buildMaterialActivitiesPrompt(
+    materialText,
+    topicHint,
+    nivel,
+    retryReason,
+  );
   const raw = await callAI<GeneratedActivities>({
     systemPrompt,
     userPrompt,
@@ -77,7 +91,7 @@ export const generateFromMaterial = createServerFn({ method: "POST" })
     // Material-based cuenta como una tanda IA en el modelo freemium.
     await assertWithinFreemiumLimit(supabase, userId, "tanda");
 
-    const rl = rateLimit(userId, "generate", 15);
+    const rl = await persistentRateLimit(supabase, userId, "generate", 15);
     if (!rl.ok) throw new Error(`Estás generando muy seguido. Probá en ${rl.retryInSec}s.`);
 
     const { data: material } = await supabase
@@ -95,18 +109,40 @@ export const generateFromMaterial = createServerFn({ method: "POST" })
     // Guardrail: solo generamos desde contenido que parezca matemático.
     const classification = classifyMaterial(text);
     if (!classification.isMath) {
-      console.log(`[generateFromMaterial] rechazado: no es contenido matemático (score ${classification.mathScore})`);
-      throw new Error("Este material no parece contener matemática. Subí una guía o ejercicios de matemática.");
+      log.warn("material_generation_rejected_non_math", { mathScore: classification.mathScore });
+      throw new Error(
+        "Este material no parece contener matemática. Subí una guía o ejercicios de matemática.",
+      );
     }
     const topicHint = material.detected_topic ?? "";
+    const generationLogId = await reserveAIGeneration(supabase, {
+      userId,
+      topicId: null,
+      difficulty: NIVEL_TO_DIFFICULTY[nivel],
+      model: getAIConfig().model,
+      metadata: { materialId, kind: "material_tanda" },
+    });
 
     let parsed: Parsed;
     try {
       parsed = await generateOnce(text, topicHint, nivel);
     } catch (e) {
+      await finishAIGeneration(supabase, generationLogId, {
+        status: "error",
+        errorMessage: e instanceof Error ? e.message : "generate_from_material_failed",
+      });
       if (e instanceof FatalAIError) throw e; // cuota/credenciales: mensaje real
-      console.warn("[generateFromMaterial] parse error, retrying", e);
-      parsed = await generateOnce(text, topicHint, nivel, "JSON inválido o campos faltantes — devolvé el objeto exacto del schema").catch((e2) => {
+      log.warn("material_generation_parse_failed_retrying", {
+        ...errorFields(e),
+        materialId,
+        nivel,
+      });
+      parsed = await generateOnce(
+        text,
+        topicHint,
+        nivel,
+        "JSON inválido o campos faltantes — devolvé el objeto exacto del schema",
+      ).catch((e2) => {
         if (e2 instanceof FatalAIError) throw e2;
         throw new Error("La IA devolvió un formato inválido. Probá de nuevo.");
       });
@@ -114,22 +150,37 @@ export const generateFromMaterial = createServerFn({ method: "POST" })
 
     let check = validateMaterialBatch(parsed);
     if (!check.ok) {
-      console.warn("[generateFromMaterial] validación falló, reintentando:", check.reason);
-      parsed = await generateOnce(text, topicHint, nivel, check.reason);
+      log.warn("material_generation_validation_failed_retrying", {
+        reason: check.reason,
+        materialId,
+        nivel,
+      });
+      parsed = await generateOnce(text, topicHint, nivel, check.reason).catch(async (e) => {
+        await finishAIGeneration(supabase, generationLogId, {
+          status: "error",
+          errorMessage: e instanceof Error ? e.message : "generate_from_material_retry_failed",
+        });
+        throw e;
+      });
       check = validateMaterialBatch(parsed);
       if (!check.ok) {
-        console.error("[generateFromMaterial] falló tras retry:", check.reason);
+        await finishAIGeneration(supabase, generationLogId, {
+          status: "error",
+          generatedExercise: parsed,
+          errorMessage: check.reason,
+        });
+        log.error("material_generation_failed_after_retry", {
+          reason: check.reason,
+          materialId,
+          nivel,
+        });
         throw new Error("No pudimos generar ejercicios válidos del material. Reintentá.");
       }
     }
 
-    void supabase.from("ai_generation_log").insert({
-      user_id: userId,
-      topic_id: null,
-      difficulty: NIVEL_TO_DIFFICULTY[nivel],
-      model: getAIConfig().model,
+    void finishAIGeneration(supabase, generationLogId, {
       status: "success",
-      generated_exercise: { material_id: materialId, count: parsed.actividades.length },
+      generatedExercise: { material_id: materialId, count: parsed.actividades.length },
     });
 
     return parsed;

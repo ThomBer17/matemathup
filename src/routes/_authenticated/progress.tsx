@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { motion } from "motion/react";
 import { LineChart, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/auth-context";
 import { ProgressOverview } from "@/components/progress/ProgressOverview";
 import { TopicProgressCard } from "@/components/progress/TopicProgressCard";
 import { ProgressInsights } from "@/components/progress/ProgressInsights";
@@ -116,7 +116,9 @@ function ProgressPage() {
           animate={{ opacity: 1, y: 0 }}
           className="mt-10 rounded-2xl border border-destructive/30 bg-destructive/5 p-6 text-center shadow-soft"
         >
-          <p className="font-display text-lg font-semibold text-destructive">No se pudo cargar tu progreso</p>
+          <p className="font-display text-lg font-semibold text-destructive">
+            No se pudo cargar tu progreso
+          </p>
           <p className="mt-2 text-sm text-muted-foreground">
             {(attemptsQuery.error as Error | null)?.message ??
               (topicsQuery.error as Error | null)?.message ??
@@ -131,8 +133,8 @@ function ProgressPage() {
         >
           <p className="font-display text-lg font-semibold">Todavía no resolviste ejercicios</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Andá a un tema y resolvé tu primera práctica adaptativa o tanda IA.
-            Tu progreso aparece acá automáticamente.
+            Andá a un tema y resolvé tu primera práctica adaptativa o tanda IA. Tu progreso aparece
+            acá automáticamente.
           </p>
         </motion.div>
       ) : (

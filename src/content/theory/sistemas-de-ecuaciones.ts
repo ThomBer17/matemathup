@@ -16,9 +16,18 @@ Para resolverlos usamos tres métodos equivalentes: **sustitución** (despejar u
     "Sistemas compatibles, incompatibles e indeterminados",
   ],
   formulas: [
-    { label: "Sistema lineal 2×2", latex: String.raw`\begin{cases} a_1 x + b_1 y = c_1 \\ a_2 x + b_2 y = c_2 \end{cases}` },
-    { label: "Única solución (rectas que se cruzan)", latex: String.raw`\frac{a_1}{a_2} \neq \frac{b_1}{b_2}` },
-    { label: "Sin solución (paralelas)", latex: String.raw`\frac{a_1}{a_2} = \frac{b_1}{b_2} \neq \frac{c_1}{c_2}` },
+    {
+      label: "Sistema lineal 2×2",
+      latex: String.raw`\begin{cases} a_1 x + b_1 y = c_1 \\ a_2 x + b_2 y = c_2 \end{cases}`,
+    },
+    {
+      label: "Única solución (rectas que se cruzan)",
+      latex: String.raw`\frac{a_1}{a_2} \neq \frac{b_1}{b_2}`,
+    },
+    {
+      label: "Sin solución (paralelas)",
+      latex: String.raw`\frac{a_1}{a_2} = \frac{b_1}{b_2} \neq \frac{c_1}{c_2}`,
+    },
   ],
   examples: [
     {

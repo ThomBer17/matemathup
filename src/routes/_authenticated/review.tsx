@@ -1,15 +1,26 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ArrowLeft, Loader2, RotateCcw, Check, X, Eye, Sparkles, BookOpenCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  Loader2,
+  RotateCcw,
+  Check,
+  X,
+  Eye,
+  Sparkles,
+  BookOpenCheck,
+} from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/auth-context";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { MathRich } from "@/components/math/MathRich";
 import { StepByStepExplanation } from "@/components/math/StepByStepExplanation";
-import { applyReview, type SrsState } from "@/lib/review/srs";
+import { gradeReviewItem } from "@/lib/review/srs.functions";
 import { hasTheory } from "@/content/theory";
 import { BookText } from "lucide-react";
 
@@ -35,6 +46,7 @@ interface DueItem {
 function ReviewPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const gradeReviewItemFn = useServerFn(gradeReviewItem);
 
   const { data: items = [], isPending } = useQuery({
     queryKey: ["srs-due-full", user?.id],
@@ -42,7 +54,9 @@ function ReviewPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("srs_items")
-        .select("id, box, reviews, due_at, exercise:exercises(statement, options, correct_answer, explanation, type), topic:topics(name, slug)")
+        .select(
+          "id, box, reviews, due_at, exercise:exercises(statement, options, correct_answer, explanation, type), topic:topics(name, slug)",
+        )
         .eq("user_id", user!.id)
         .lte("due_at", new Date().toISOString())
         .order("due_at", { ascending: true })
@@ -60,15 +74,11 @@ function ReviewPage() {
 
   const grade = async (knewIt: boolean) => {
     if (!item || !user) return;
-    const prev: SrsState = { box: item.box, dueAt: item.due_at, reviews: item.reviews };
-    const next = applyReview(prev, knewIt);
-    void supabase
-      .from("srs_items")
-      .update({ box: next.box, due_at: next.dueAt, reviews: next.reviews, updated_at: new Date().toISOString() })
-      .eq("id", item.id)
-      .then(({ error }) => {
-        if (error) console.warn("[review] update falló", error.message);
-      });
+    void gradeReviewItemFn({ data: { itemId: item.id, knewIt } }).catch((e) => {
+      const msg = e instanceof Error ? e.message : "No se pudo actualizar el repaso.";
+      toast.error(msg);
+      queryClient.invalidateQueries({ queryKey: ["srs-due-full", user.id] });
+    });
     setDone((d) => d + 1);
     setRevealed(false);
     setIndex((i) => i + 1);
@@ -76,7 +86,11 @@ function ReviewPage() {
   };
 
   if (isPending) {
-    return <div className="grid min-h-[60vh] place-items-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+    return (
+      <div className="grid min-h-[60vh] place-items-center">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
   }
 
   // Sin nada pendiente (o terminó la tanda).
@@ -94,7 +108,10 @@ function ReviewPage() {
             ? `Repasaste ${done} ejercicio${done === 1 ? "" : "s"}. Volvé cuando te toque la próxima ronda.`
             : "Cuando falles ejercicios en la práctica, aparecen acá para repasarlos en el momento justo."}
         </p>
-        <Link to="/topics" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90">
+        <Link
+          to="/topics"
+          className="mt-6 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
+        >
           <Sparkles className="h-4 w-4" /> Ir a practicar
         </Link>
       </div>
@@ -106,10 +123,15 @@ function ReviewPage() {
   return (
     <div className="mx-auto max-w-2xl px-6 py-8 md:py-12">
       <div className="flex items-center justify-between">
-        <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        <Link
+          to="/dashboard"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        >
           <ArrowLeft className="h-3.5 w-3.5" /> Salir
         </Link>
-        <span className="text-xs font-medium tabular-nums text-muted-foreground">{index + 1} / {valid.length}</span>
+        <span className="text-xs font-medium tabular-nums text-muted-foreground">
+          {index + 1} / {valid.length}
+        </span>
       </div>
       <Progress value={(index / valid.length) * 100} className="mt-3 h-1.5" />
 
@@ -126,7 +148,9 @@ function ReviewPage() {
           transition={{ duration: 0.2 }}
           className="mt-3"
         >
-          {item.topic && <p className="text-[11px] font-medium text-muted-foreground">{item.topic.name}</p>}
+          {item.topic && (
+            <p className="text-[11px] font-medium text-muted-foreground">{item.topic.name}</p>
+          )}
           <h1 className="mt-1 font-display text-2xl font-semibold leading-snug tracking-tight">
             <MathRich text={ex.statement} />
           </h1>
@@ -151,10 +175,15 @@ function ReviewPage() {
               <Eye className="h-4 w-4" /> Mostrar respuesta
             </button>
           ) : (
-            <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mt-6">
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-6"
+            >
               <div className="rounded-2xl border border-success/30 bg-success/5 p-5">
                 <p className="text-sm font-semibold">
-                  Respuesta correcta: <MathRich text={ex.correct_answer} className="text-foreground" />
+                  Respuesta correcta:{" "}
+                  <MathRich text={ex.correct_answer} className="text-foreground" />
                 </p>
                 <StepByStepExplanation text={ex.explanation} className="mt-4 border-t pt-4" />
                 {item.topic && hasTheory(item.topic.slug) && (
@@ -168,7 +197,9 @@ function ReviewPage() {
                 )}
               </div>
 
-              <p className="mt-5 text-center text-sm text-muted-foreground">¿Lo entendiste esta vez?</p>
+              <p className="mt-5 text-center text-sm text-muted-foreground">
+                ¿Lo entendiste esta vez?
+              </p>
               <div className="mt-2 grid grid-cols-2 gap-2.5">
                 <button
                   type="button"

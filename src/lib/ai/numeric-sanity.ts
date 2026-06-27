@@ -84,7 +84,12 @@ export function checkNumericSanity(text: string): SanityResult {
       if (!isApprox && !hasOperator) continue;
 
       // Signo invertido (ej: 0.207 ≈ -2.144)
-      if (lhs !== 0 && rhs !== 0 && Math.sign(lhs) !== Math.sign(rhs) && Math.abs(lhs - rhs) > 0.1) {
+      if (
+        lhs !== 0 &&
+        rhs !== 0 &&
+        Math.sign(lhs) !== Math.sign(rhs) &&
+        Math.abs(lhs - rhs) > 0.1
+      ) {
         return {
           ok: false,
           reason: `numeric_sanity_failed: aproximación con signo invertido "${left} ${ch} ${rightRaw}" (real ${round(lhs)})`,

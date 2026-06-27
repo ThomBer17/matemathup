@@ -146,10 +146,7 @@ describe("checkArtificialPatterns — debe DETECTAR (label específico)", () => 
 
 describe("checkArtificialPatterns — debe DETECTAR (label ambiguo)", () => {
   // Casos que matchean varios patrones; basta con confirmar detección.
-  const ambiguos = [
-    "en realidad la respuesta era 5",
-    "pero en realidad la respuesta es 3",
-  ];
+  const ambiguos = ["en realidad la respuesta era 5", "pero en realidad la respuesta es 3"];
 
   for (const texto of ambiguos) {
     it(`detecta "${texto}"`, () => {

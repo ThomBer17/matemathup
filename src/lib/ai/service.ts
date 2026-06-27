@@ -1,3 +1,5 @@
+import { errorFields, log } from "@/lib/observability/log";
+
 const DEFAULT_BASE_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL = "openai/gpt-oss-120b:free";
 
@@ -15,9 +17,7 @@ export interface AIConfig {
 export function getAIConfig(): AIConfig {
   const apiKey = process.env.AI_API_KEY;
   if (!apiKey) {
-    throw new Error(
-      "Falta AI_API_KEY en el entorno. Configurala en .env (ver .env.example).",
-    );
+    throw new Error("Falta AI_API_KEY en el entorno. Configurala en .env (ver .env.example).");
   }
   const model = process.env.AI_MODEL ?? DEFAULT_MODEL;
   return {
@@ -97,7 +97,11 @@ export async function callAI<T>(options: AICallOptions): Promise<T> {
         // "Please pass a valid API key" cuando la key está mal/vencida).
         const errBody = await res.text().catch(() => "");
         const lower = errBody.toLowerCase();
-        console.warn(`[AI:${tag}] HTTP ${res.status} · ${errBody.slice(0, 300)}`);
+        log.warn("ai_call_http_error", {
+          tag,
+          status: res.status,
+          body: errBody.slice(0, 300),
+        });
 
         // No recuperables (no sirve reintentar): credenciales / permisos / sin crédito.
         const isAuth =
@@ -138,15 +142,22 @@ export async function callAI<T>(options: AICallOptions): Promise<T> {
       const content = json.choices?.[0]?.message?.content ?? "";
       const finishReason = json.choices?.[0]?.finish_reason ?? "?";
       const elapsed = Date.now() - start;
-      console.log(
-        `[AI:${tag}] attempt ${attempt}/${maxAttempts} · ${elapsed}ms · model=${model} · in≈${inputTokensEst}tok · out=${content.length}ch · finish=${finishReason}`,
-      );
+      log.info("ai_call_completed", {
+        tag,
+        attempt,
+        maxAttempts,
+        elapsedMs: elapsed,
+        model,
+        inputTokensEst,
+        outputChars: content.length,
+        finishReason,
+      });
 
       // Respuesta vacía (a veces Gemini devuelve content "" con finish="length"
       // porque el thinking consumió todo el presupuesto) → reintentamos.
       if (!content.trim()) {
         lastError = new Error("Respuesta vacía de la IA");
-        console.warn(`[AI:${tag}] content vacío en intento ${attempt} · finish=${finishReason}`);
+        log.warn("ai_call_empty_content", { tag, attempt, finishReason });
         await backoff(attempt, maxAttempts);
         continue;
       }
@@ -164,22 +175,24 @@ export async function callAI<T>(options: AICallOptions): Promise<T> {
         }
       }
       lastError = new Error("Respuesta no parseable");
-      console.warn(
-        `[AI:${tag}] parse falló en intento ${attempt} · finish=${finishReason} · contenido:`,
-        content.slice(0, 200),
-      );
+      log.warn("ai_call_parse_failed", {
+        tag,
+        attempt,
+        finishReason,
+        contentPreview: content.slice(0, 200),
+      });
       await backoff(attempt, maxAttempts);
       continue;
     } catch (e) {
       if (e instanceof FatalAIError) throw e;
       // Error de red u otro → reintentamos.
       lastError = e instanceof Error ? e : new Error(String(e));
-      console.warn(`[AI:${tag}] error en intento ${attempt}:`, lastError.message);
+      log.warn("ai_call_attempt_failed", { tag, attempt, ...errorFields(lastError) });
       await backoff(attempt, maxAttempts);
     }
   }
 
-  console.error(`[AI:${tag}] agotó ${maxAttempts} intentos`, lastError);
+  log.error("ai_call_exhausted", { tag, maxAttempts, ...errorFields(lastError) });
   throw new Error("La IA no respondió correctamente. Probá de nuevo en unos segundos.");
 }
 
@@ -198,10 +211,14 @@ function backoff(attempt: number, maxAttempts: number): Promise<void> {
 export function extractJson(raw: string): string {
   let s = raw.trim();
   // strip markdown fences
-  s = s.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
+  s = s
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/```\s*$/i, "")
+    .trim();
   const firstObj = s.indexOf("{");
   const firstArr = s.indexOf("[");
-  const start = firstObj === -1 ? firstArr : firstArr === -1 ? firstObj : Math.min(firstObj, firstArr);
+  const start =
+    firstObj === -1 ? firstArr : firstArr === -1 ? firstObj : Math.min(firstObj, firstArr);
   if (start === -1) return s;
   const open = s[start];
   const close = open === "{" ? "}" : "]";
@@ -270,9 +287,18 @@ export function fixJsonBackslashes(raw: string): string {
       continue;
     }
     // Caracteres de control crudos dentro del string → escaparlos.
-    if (ch === "\n") { out += "\\n"; continue; }
-    if (ch === "\r") { out += "\\r"; continue; }
-    if (ch === "\t") { out += "\\t"; continue; }
+    if (ch === "\n") {
+      out += "\\n";
+      continue;
+    }
+    if (ch === "\r") {
+      out += "\\r";
+      continue;
+    }
+    if (ch === "\t") {
+      out += "\\t";
+      continue;
+    }
     out += ch;
   }
   return out;

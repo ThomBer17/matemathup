@@ -8,8 +8,13 @@ import { getTopicScope, validateInScope } from "@/lib/curriculum";
 import { checkArtificialPatterns, checkStatementMutation } from "./quality-checks";
 import { checkRequiredExpression } from "./structural";
 import { validateDiversity, mostSimilar } from "./diversity";
-import { rateLimit } from "./rate-limit";
-import { assertWithinFreemiumLimit } from "@/lib/billing/usage";
+import { persistentRateLimit } from "./rate-limit";
+import {
+  assertWithinFreemiumLimit,
+  finishAIGeneration,
+  reserveAIGeneration,
+} from "@/lib/billing/usage";
+import { errorFields, log } from "@/lib/observability/log";
 import type { GeneratedActivities, DifficultyLevel } from "./types";
 
 const SIMILARITY_THRESHOLD = 0.7;
@@ -72,11 +77,7 @@ function validateCore(parsed: Parsed, scope: ReturnType<typeof getTopicScope>) {
   return { ok: true as const };
 }
 
-function validateBatch(
-  parsed: Parsed,
-  scope: ReturnType<typeof getTopicScope>,
-  avoid: string[],
-) {
+function validateBatch(parsed: Parsed, scope: ReturnType<typeof getTopicScope>, avoid: string[]) {
   const core = validateCore(parsed, scope);
   if (!core.ok) return core;
   if (avoid.length) {
@@ -100,7 +101,13 @@ async function generateOnce(
   avoid: string[],
   retryReason?: string,
 ): Promise<Parsed> {
-  const { systemPrompt, userPrompt } = buildGenerateActivitiesPrompt(tema, nivel, scope, avoid, retryReason);
+  const { systemPrompt, userPrompt } = buildGenerateActivitiesPrompt(
+    tema,
+    nivel,
+    scope,
+    avoid,
+    retryReason,
+  );
   const raw = await callAI<GeneratedActivities>({
     systemPrompt,
     userPrompt,
@@ -112,9 +119,7 @@ async function generateOnce(
 
 export const generateActivities = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
-    (input: { tema: string; nivel: DifficultyLevel; force?: boolean }) => input,
-  )
+  .inputValidator((input: { tema: string; nivel: DifficultyLevel; force?: boolean }) => input)
   .handler(async ({ data, context }) => {
     const { tema, nivel, force } = data;
     const { userId, supabase } = context;
@@ -132,24 +137,33 @@ export const generateActivities = createServerFn({ method: "POST" })
     await assertWithinFreemiumLimit(supabase, userId, "tanda");
 
     // Rate limit: 15 generaciones por minuto por user (es la operación más cara)
-    const rl = rateLimit(userId, "generate", 15);
+    const rl = await persistentRateLimit(supabase, userId, "generate", 15);
     if (!rl.ok) {
       throw new Error(`Estás generando muy seguido. Probá en ${rl.retryInSec}s.`);
     }
 
     // Cuando regenerás con force, la tanda cacheada se usa como "no repitas estos enunciados".
-    const avoid = force && cached
-      ? cached.data.actividades.map((a) => a.enunciado)
-      : [];
+    const avoid = force && cached ? cached.data.actividades.map((a) => a.enunciado) : [];
 
     const scope = getTopicScope(tema);
+    const generationLogId = await reserveAIGeneration(supabase, {
+      userId,
+      topicId: null,
+      difficulty: NIVEL_TO_DIFFICULTY[nivel],
+      model: getAIConfig().model,
+      metadata: { tema, nivel, kind: "tanda" },
+    });
 
     let parsed: Parsed;
     try {
       parsed = await generateOnce(tema, nivel, scope, avoid);
     } catch (e) {
+      await finishAIGeneration(supabase, generationLogId, {
+        status: "error",
+        errorMessage: e instanceof Error ? e.message : "generate_activities_failed",
+      });
       if (e instanceof FatalAIError) throw e; // cuota/credenciales: mensaje real
-      console.warn("[generateActivities] parse error (first attempt), retrying", e);
+      log.warn("activities_parse_failed_retrying", { ...errorFields(e), tema, nivel });
       try {
         parsed = await generateOnce(
           tema,
@@ -159,45 +173,49 @@ export const generateActivities = createServerFn({ method: "POST" })
           "JSON inválido o campos faltantes — devolvé el objeto exacto del schema",
         );
       } catch (e2) {
+        await finishAIGeneration(supabase, generationLogId, {
+          status: "error",
+          errorMessage: e2 instanceof Error ? e2.message : "generate_activities_retry_failed",
+        });
         if (e2 instanceof FatalAIError) throw e2;
-        console.error("[generateActivities] parse error (after retry)", e2);
+        log.error("activities_parse_failed_after_retry", { ...errorFields(e2), tema, nivel });
         throw new Error("La IA devolvió un formato inválido. Probá de nuevo.");
       }
     }
 
-    let check = validateBatch(parsed, scope, avoid);
+    const check = validateBatch(parsed, scope, avoid);
     if (!check.ok) {
-      console.warn("[generateActivities] validación falló, reintentando:", check.reason);
+      log.warn("activities_validation_failed_retrying", { reason: check.reason, tema, nivel });
       try {
         parsed = await generateOnce(tema, nivel, scope, avoid, check.reason);
       } catch (e) {
+        await finishAIGeneration(supabase, generationLogId, {
+          status: "error",
+          errorMessage: e instanceof Error ? e.message : "generate_activities_validation_failed",
+        });
         if (e instanceof FatalAIError) throw e;
-        console.error("[generateActivities] parse error (retry)", e);
+        log.error("activities_validation_retry_parse_failed", { ...errorFields(e), tema, nivel });
         throw new Error("La IA devolvió un formato inválido. Probá de nuevo.");
       }
       // En el retry, la similitud es best-effort: solo exigimos consistencia core.
       const coreRetry = validateCore(parsed, scope);
       if (!coreRetry.ok) {
-        console.error("[generateActivities] core falló tras retry:", coreRetry.reason);
+        await finishAIGeneration(supabase, generationLogId, {
+          status: "error",
+          generatedExercise: parsed,
+          errorMessage: coreRetry.reason,
+        });
+        log.error("activities_core_failed_after_retry", { reason: coreRetry.reason, tema, nivel });
         throw new Error("La IA generó una tanda inconsistente. Probá de nuevo.");
       }
     }
 
     cache.set(key, { data: parsed, ts: Date.now() });
 
-    void supabase
-      .from("ai_generation_log")
-      .insert({
-        user_id: userId,
-        topic_id: null,
-        difficulty: NIVEL_TO_DIFFICULTY[nivel],
-        model: getAIConfig().model,
-        status: "success",
-        generated_exercise: { tema, nivel, count: parsed.actividades.length },
-      })
-      .then(({ error }) => {
-        if (error) console.warn("[generateActivities] log insert failed", error);
-      });
+    void finishAIGeneration(supabase, generationLogId, {
+      status: "success",
+      generatedExercise: { tema, nivel, count: parsed.actividades.length },
+    });
 
     return parsed;
   });

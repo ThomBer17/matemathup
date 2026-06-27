@@ -71,10 +71,7 @@ describe("computeOverall", () => {
   });
 
   it("ignora intentos con topic_id null en topicsTouched", () => {
-    const attempts: AttemptRow[] = [
-      attempt({ topic_id: META.id }),
-      attempt({ topic_id: null }),
-    ];
+    const attempts: AttemptRow[] = [attempt({ topic_id: META.id }), attempt({ topic_id: null })];
     const o = computeOverall(attempts);
     expect(o.topicsTouched).toBe(1);
   });
@@ -122,7 +119,10 @@ describe("aggregateByTopic", () => {
       attempt({ topic_id: META.id, is_correct: false, status: "incorrect" }),
       attempt({ topic_id: META2.id, is_correct: true }),
     ];
-    const meta = new Map([[META.id, META], [META2.id, META2]]);
+    const meta = new Map([
+      [META.id, META],
+      [META2.id, META2],
+    ]);
     const aggs = aggregateByTopic(attempts, meta);
     expect(aggs).toHaveLength(2);
 
@@ -139,7 +139,10 @@ describe("aggregateByTopic", () => {
       attempt({ topic_id: META2.id }),
       attempt({ topic_id: META2.id }),
     ];
-    const meta = new Map([[META.id, META], [META2.id, META2]]);
+    const meta = new Map([
+      [META.id, META],
+      [META2.id, META2],
+    ]);
     const aggs = aggregateByTopic(attempts, meta);
     expect(aggs[0].topic.id).toBe(META2.id);
   });
@@ -162,31 +165,35 @@ describe("generateInsights", () => {
   });
 
   it("genera 'strength' para tema con ≥80% y ≥5 intentos", () => {
-    const aggs = [{
-      topic: META,
-      totalAttempts: 10,
-      correctAttempts: 9,
-      partialAttempts: 0,
-      accuracy: 90,
-      lastAttemptAt: new Date(),
-      trend: "estable" as const,
-      estimatedLevel: 4 as const,
-    }];
+    const aggs = [
+      {
+        topic: META,
+        totalAttempts: 10,
+        correctAttempts: 9,
+        partialAttempts: 0,
+        accuracy: 90,
+        lastAttemptAt: new Date(),
+        trend: "estable" as const,
+        estimatedLevel: 4 as const,
+      },
+    ];
     const insights = generateInsights(aggs);
     expect(insights.some((i) => i.kind === "strength")).toBe(true);
   });
 
   it("genera 'needs-work' para tema con <50% y ≥3 intentos", () => {
-    const aggs = [{
-      topic: META,
-      totalAttempts: 5,
-      correctAttempts: 1,
-      partialAttempts: 0,
-      accuracy: 20,
-      lastAttemptAt: new Date(),
-      trend: "refuerzo" as const,
-      estimatedLevel: 1 as const,
-    }];
+    const aggs = [
+      {
+        topic: META,
+        totalAttempts: 5,
+        correctAttempts: 1,
+        partialAttempts: 0,
+        accuracy: 20,
+        lastAttemptAt: new Date(),
+        trend: "refuerzo" as const,
+        estimatedLevel: 1 as const,
+      },
+    ];
     const insights = generateInsights(aggs);
     expect(insights.some((i) => i.kind === "needs-work")).toBe(true);
   });

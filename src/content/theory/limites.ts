@@ -18,7 +18,10 @@ Los límites permiten detectar **asíntotas** (rectas a las que la curva se apro
   formulas: [
     { label: "Definición (notación)", latex: String.raw`\lim_{x\to a} f(x) = L` },
     { label: "Continuidad en un punto", latex: String.raw`\lim_{x\to a} f(x) = f(a)` },
-    { label: "Asíntota horizontal", latex: String.raw`\lim_{x\to \infty} f(x) = L \;\Rightarrow\; y = L` },
+    {
+      label: "Asíntota horizontal",
+      latex: String.raw`\lim_{x\to \infty} f(x) = L \;\Rightarrow\; y = L`,
+    },
   ],
   examples: [
     {

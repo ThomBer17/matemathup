@@ -1,17 +1,14 @@
 /**
- * Conteo de uso server-side, defensivo.
+ * Conteo de uso server-side.
  *
- * NO usamos contadores separados (se desincronizan): contamos filas reales
- * ya persistidas, así solo cuenta el "uso real":
- *  - adaptativa → exercise_attempts (source='adaptive') → 1 fila por ejercicio respondido
- *  - tanda IA   → ai_generation_log (topic_id null, status='success') → 1 fila por tanda generada OK
- *
- * Generaciones sin responder, fallos de IA y requests rotas NO crean estas filas,
- * por lo tanto no cuentan.
+ * adaptive: ejercicios respondidos.
+ * adaptive_generation: llamadas IA adaptativas que consumen costo.
+ * tanda: tandas IA generadas.
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { errorFields, log } from "@/lib/observability/log";
 import {
   type Plan,
   type UsageKind,
@@ -46,14 +43,19 @@ export async function countUsageToday(
     return count ?? 0;
   }
 
-  // tanda: ai_generation_log con topic_id null (las tandas se loguean sin topic_id)
-  const { count } = await supabase
+  const query = supabase
     .from("ai_generation_log")
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
-    .is("topic_id", null)
-    .eq("status", "success")
+    .in("status", ["pending", "success", "error"])
     .gte("created_at", since);
+
+  if (kind === "adaptive_generation") {
+    const { count } = await query.not("topic_id", "is", null);
+    return count ?? 0;
+  }
+
+  const { count } = await query.is("topic_id", null);
   return count ?? 0;
 }
 
@@ -77,21 +79,81 @@ export async function getUsageSnapshot(
   return { plan, kind, used, limit: limitFor(plan, kind), allowed: withinLimit(plan, kind, used) };
 }
 
-/**
- * Lanza el error de límite (código estable) si el usuario free agotó su cuota.
- * Llamar ANTES de la operación cara (generar). Premium nunca lanza.
- */
 export async function assertWithinFreemiumLimit(
   supabase: DBClient,
   userId: string,
   kind: UsageKind,
 ): Promise<void> {
   const snap = await getUsageSnapshot(supabase, userId, kind);
-  console.log(
-    `[freemium] user=${userId} kind=${kind} plan=${snap.plan} used=${snap.used}/${snap.limit ?? "∞"} allowed=${snap.allowed}`,
-  );
+  log.info("freemium_check", {
+    userId,
+    kind,
+    plan: snap.plan,
+    used: snap.used,
+    limit: snap.limit,
+    allowed: snap.allowed,
+  });
   if (!snap.allowed) {
-    console.log(`[freemium] LÍMITE ALCANZADO user=${userId} kind=${kind} (plan ${snap.plan})`);
+    log.info("freemium_limit_reached", { userId, kind, plan: snap.plan });
     throw new Error(FREEMIUM_LIMIT_ERROR[kind]);
+  }
+}
+
+export async function reserveAIGeneration(
+  supabase: DBClient,
+  input: {
+    userId: string;
+    topicId: string | null;
+    difficulty: number | null;
+    model: string | null;
+    metadata?: Record<string, unknown>;
+  },
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("ai_generation_log")
+    .insert({
+      user_id: input.userId,
+      topic_id: input.topicId,
+      difficulty: input.difficulty,
+      model: input.model,
+      status: "pending",
+      generated_exercise: JSON.parse(JSON.stringify(input.metadata ?? {})),
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    log.warn("ai_generation_reserve_failed", {
+      userId: input.userId,
+      topicId: input.topicId,
+      ...errorFields(error),
+    });
+    return null;
+  }
+  return data.id;
+}
+
+export async function finishAIGeneration(
+  supabase: DBClient,
+  id: string | null,
+  input: {
+    status: "success" | "error";
+    generatedExercise?: unknown;
+    errorMessage?: string;
+  },
+): Promise<void> {
+  if (!id) return;
+
+  const update: Database["public"]["Tables"]["ai_generation_log"]["Update"] = {
+    status: input.status,
+    error_message: input.errorMessage?.slice(0, 500) ?? null,
+  };
+  if (input.generatedExercise !== undefined) {
+    update.generated_exercise = JSON.parse(JSON.stringify(input.generatedExercise));
+  }
+
+  const { error } = await supabase.from("ai_generation_log").update(update).eq("id", id);
+  if (error) {
+    log.warn("ai_generation_finish_failed", { id, ...errorFields(error) });
   }
 }

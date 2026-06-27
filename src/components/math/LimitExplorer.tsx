@@ -15,7 +15,7 @@ export function LimitExplorer() {
       { id: "left", latex: `(c-0.1, f(c-0.1))`, color: "#10B981", label: "x → c⁻" },
       { id: "right", latex: `(c+0.1, f(c+0.1))`, color: "#EF4444", label: "x → c⁺" },
     ],
-    [fn, c]
+    [fn, c],
   );
 
   return (
@@ -41,7 +41,8 @@ export function LimitExplorer() {
         bounds={{ left: -8, right: 8, bottom: -8, top: 8 }}
       />
       <p className="text-xs text-muted-foreground">
-        Aproximación por izquierda (verde) y derecha (rojo) a x = c. La recta gris marca la asíntota vertical.
+        Aproximación por izquierda (verde) y derecha (rojo) a x = c. La recta gris marca la asíntota
+        vertical.
       </p>
     </div>
   );

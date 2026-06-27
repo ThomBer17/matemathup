@@ -11,62 +11,62 @@ El objetivo del proyecto es ofrecer una experiencia similar a la de un tutor per
 
 ### 🧠 Práctica Adaptativa
 
-* Generación dinámica de ejercicios mediante IA.
-* Ajuste automático de dificultad según desempeño.
-* Corrección inteligente de respuestas.
-* Pistas y explicaciones paso a paso.
-* Validaciones matemáticas para garantizar coherencia.
+- Generación dinámica de ejercicios mediante IA.
+- Ajuste automático de dificultad según desempeño.
+- Corrección inteligente de respuestas.
+- Pistas y explicaciones paso a paso.
+- Validaciones matemáticas para garantizar coherencia.
 
 ### 🎯 Tandas IA
 
-* Generación de múltiples actividades por tema.
-* Niveles:
+- Generación de múltiples actividades por tema.
+- Niveles:
+  - Básico
+  - Intermedio
+  - Alto
 
-  * Básico
-  * Intermedio
-  * Alto
-* Evaluación y retroalimentación automática.
+- Evaluación y retroalimentación automática.
 
 ### 📈 Seguimiento de Progreso
 
-* Dominio por tema.
-* Historial de ejercicios.
-* Métricas de aprendizaje.
-* Dashboard de progreso.
+- Dominio por tema.
+- Historial de ejercicios.
+- Métricas de aprendizaje.
+- Dashboard de progreso.
 
 ### 📝 Workspace Matemático
 
 Panel lateral integrado para:
 
-* Realizar cálculos.
-* Tomar notas.
-* Utilizar símbolos matemáticos.
-* Guardado automático local.
+- Realizar cálculos.
+- Tomar notas.
+- Utilizar símbolos matemáticos.
+- Guardado automático local.
 
 ### 📂 Material Propio
 
 Los usuarios pueden subir:
 
-* PDF
-* JPG
-* PNG
-* WEBP
+- PDF
+- JPG
+- PNG
+- WEBP
 
 El sistema:
 
-* Extrae texto automáticamente.
-* Realiza OCR en imágenes.
-* Detecta el tema del contenido.
-* Genera ejercicios basados en el material cargado.
+- Extrae texto automáticamente.
+- Realiza OCR en imágenes.
+- Detecta el tema del contenido.
+- Genera ejercicios basados en el material cargado.
 
 ### 🤖 Generación desde Material Propio
 
 Permite practicar directamente sobre:
 
-* Guías de estudio.
-* Parciales anteriores.
-* Apuntes.
-* Material personalizado.
+- Guías de estudio.
+- Parciales anteriores.
+- Apuntes.
+- Material personalizado.
 
 Utilizando el contenido extraído como contexto para la IA.
 
@@ -74,11 +74,11 @@ Utilizando el contenido extraído como contexto para la IA.
 
 Los usuarios pueden reportar:
 
-* Errores matemáticos.
-* Problemas de evaluación.
-* Ejercicios defectuosos.
-* Problemas visuales.
-* Sugerencias de mejora.
+- Errores matemáticos.
+- Problemas de evaluación.
+- Ejercicios defectuosos.
+- Problemas visuales.
+- Sugerencias de mejora.
 
 ---
 
@@ -86,39 +86,39 @@ Los usuarios pueden reportar:
 
 ### Frontend
 
-* React
-* TypeScript
-* Tailwind CSS
-* TanStack Router
-* TanStack Query
+- React
+- TypeScript
+- Tailwind CSS
+- TanStack Router
+- TanStack Query
 
 ### Backend
 
-* Supabase
-* PostgreSQL
-* Storage
-* Row Level Security (RLS)
+- Supabase
+- PostgreSQL
+- Storage
+- Row Level Security (RLS)
 
 ### IA
 
 Arquitectura compatible con proveedores OpenAI-compatible:
 
-* OpenAI
-* Groq
-* OpenRouter
+- OpenAI
+- Groq
+- OpenRouter
 
 Funcionalidades IA:
 
-* Generación de ejercicios
-* Corrección
-* Pistas
-* Explicaciones
-* Generación basada en material propio
+- Generación de ejercicios
+- Corrección
+- Pistas
+- Explicaciones
+- Generación basada en material propio
 
 ### Procesamiento de documentos
 
-* PDF.js
-* Tesseract.js
+- PDF.js
+- Tesseract.js
 
 ---
 
@@ -126,14 +126,14 @@ Funcionalidades IA:
 
 MatemathUp incorpora múltiples capas de validación para evitar:
 
-* Ejercicios fuera de tema.
-* Respuestas incorrectamente evaluadas.
-* Explicaciones contradictorias.
-* Consignas incompletas.
-* Opciones múltiples inválidas.
-* Selección de respuestas "más cercanas".
-* Mutaciones de la consigna original.
-* Narrativas artificiales o inventadas.
+- Ejercicios fuera de tema.
+- Respuestas incorrectamente evaluadas.
+- Explicaciones contradictorias.
+- Consignas incompletas.
+- Opciones múltiples inválidas.
+- Selección de respuestas "más cercanas".
+- Mutaciones de la consigna original.
+- Narrativas artificiales o inventadas.
 
 ---
 
@@ -154,15 +154,19 @@ npm install
 
 ### Configurar variables de entorno
 
-Crear archivo `.env`:
+Crear archivo `.env` desde `.env.example` y completar:
 
 ```env
 VITE_SUPABASE_URL=
-VITE_SUPABASE_ANON_KEY=
+VITE_SUPABASE_PUBLISHABLE_KEY=
+VITE_SUPABASE_PROJECT_ID=
+
+SUPABASE_URL=
+SUPABASE_PUBLISHABLE_KEY=
 
 AI_API_KEY=
-AI_MODEL=
 AI_BASE_URL=
+AI_MODEL=
 ```
 
 ### Ejecutar en desarrollo
@@ -205,14 +209,14 @@ npm run build
 
 ### Próximamente
 
-* Planes de estudio inteligentes.
-* Calendario de exámenes.
-* Recomendaciones automáticas.
-* Freemium y planes premium.
-* Importación avanzada de contenido.
-* Generación por secciones de material.
-* RAG completo con embeddings y búsqueda semántica.
-* Integración con calendarios externos.
+- Planes de estudio inteligentes.
+- Calendario de exámenes.
+- Recomendaciones automáticas.
+- Freemium y planes premium.
+- Importación avanzada de contenido.
+- Generación por secciones de material.
+- RAG completo con embeddings y búsqueda semántica.
+- Integración con calendarios externos.
 
 ---
 

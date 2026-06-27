@@ -14,7 +14,7 @@ import {
   Star,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/auth-context";
 import { Progress } from "@/components/ui/progress";
 import { getTopicIcon, topicGradient } from "@/lib/topic-icons";
 import { RecommendedCard } from "@/components/progress/RecommendedCard";

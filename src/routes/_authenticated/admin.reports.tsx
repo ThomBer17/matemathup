@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { ShieldAlert, Inbox, Flag, TrendingUp, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/auth-context";
 import {
   REPORT_TYPE_OPTIONS,
   REPORT_STATUS_META,
@@ -12,6 +14,7 @@ import {
   statusLabel,
   type ReportStatus,
 } from "@/lib/feedback/report-types";
+import { updateFeedbackReportStatus } from "@/lib/feedback/feedback.functions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/reports")({
@@ -34,6 +37,7 @@ interface ReportRow {
 function AdminReportsPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const updateFeedbackReportStatusFn = useServerFn(updateFeedbackReportStatus);
 
   const { data: isAdmin, isPending: roleLoading } = useQuery({
     queryKey: ["is-admin", user?.id],
@@ -68,7 +72,8 @@ function AdminReportsPage() {
 
   const filtered = useMemo(() => {
     const now = Date.now();
-    const cutoff = dateFilter === "7d" ? now - 7 * 864e5 : dateFilter === "30d" ? now - 30 * 864e5 : 0;
+    const cutoff =
+      dateFilter === "7d" ? now - 7 * 864e5 : dateFilter === "30d" ? now - 30 * 864e5 : 0;
     return reports.filter(
       (r) =>
         (statusFilter === "all" || r.status === statusFilter) &&
@@ -80,8 +85,13 @@ function AdminReportsPage() {
   const analytics = useMemo(() => computeAnalytics(reports), [reports]);
 
   const updateStatus = async (id: string, status: ReportStatus) => {
-    const { error } = await supabase.from("feedback_reports").update({ status }).eq("id", id);
-    if (!error) queryClient.invalidateQueries({ queryKey: ["feedback-reports"] });
+    try {
+      await updateFeedbackReportStatusFn({ data: { reportId: id, status } });
+      queryClient.invalidateQueries({ queryKey: ["feedback-reports"] });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "No se pudo actualizar el reporte.";
+      toast.error(msg);
+    }
   };
 
   if (roleLoading) {
@@ -112,7 +122,9 @@ function AdminReportsPage() {
         </div>
         <div>
           <h1 className="font-display text-3xl font-bold">Reportes</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Feedback de usuarios para mejora continua.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Feedback de usuarios para mejora continua.
+          </p>
         </div>
       </div>
 
@@ -133,7 +145,9 @@ function AdminReportsPage() {
               {analytics.topTopics.map((t) => (
                 <li key={t.key} className="flex items-center justify-between text-sm">
                   <span className="truncate">{t.key}</span>
-                  <span className="font-semibold tabular-nums text-muted-foreground">{t.count}</span>
+                  <span className="font-semibold tabular-nums text-muted-foreground">
+                    {t.count}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -147,7 +161,9 @@ function AdminReportsPage() {
               {analytics.byTypeList.map((t) => (
                 <li key={t.key} className="flex items-center justify-between text-sm">
                   <span className="truncate">{reportTypeLabel(t.key)}</span>
-                  <span className="font-semibold tabular-nums text-muted-foreground">{t.count}</span>
+                  <span className="font-semibold tabular-nums text-muted-foreground">
+                    {t.count}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -160,17 +176,27 @@ function AdminReportsPage() {
         <FilterSelect
           value={statusFilter}
           onChange={(v) => setStatusFilter(v as "all" | ReportStatus)}
-          options={[["all", "Todos los estados"], ...REPORT_STATUSES.map((s) => [s, statusLabel(s)] as [string, string])]}
+          options={[
+            ["all", "Todos los estados"],
+            ...REPORT_STATUSES.map((s) => [s, statusLabel(s)] as [string, string]),
+          ]}
         />
         <FilterSelect
           value={typeFilter}
           onChange={setTypeFilter}
-          options={[["all", "Todos los tipos"], ...REPORT_TYPE_OPTIONS.map((o) => [o.value, o.label] as [string, string])]}
+          options={[
+            ["all", "Todos los tipos"],
+            ...REPORT_TYPE_OPTIONS.map((o) => [o.value, o.label] as [string, string]),
+          ]}
         />
         <FilterSelect
           value={dateFilter}
           onChange={(v) => setDateFilter(v as "all" | "7d" | "30d")}
-          options={[["all", "Todo el período"], ["7d", "Últimos 7 días"], ["30d", "Últimos 30 días"]]}
+          options={[
+            ["all", "Todo el período"],
+            ["7d", "Últimos 7 días"],
+            ["30d", "Últimos 30 días"],
+          ]}
         />
         <span className="ml-auto text-xs text-muted-foreground">{filtered.length} reporte(s)</span>
       </div>
@@ -193,9 +219,16 @@ function AdminReportsPage() {
   );
 }
 
-function ReportCard({ report, onStatus }: { report: ReportRow; onStatus: (id: string, s: ReportStatus) => void }) {
+function ReportCard({
+  report,
+  onStatus,
+}: {
+  report: ReportRow;
+  onStatus: (id: string, s: ReportStatus) => void;
+}) {
   const meta = report.metadata ?? {};
-  const tone = REPORT_STATUS_META[report.status as ReportStatus]?.tone ?? "bg-muted text-muted-foreground";
+  const tone =
+    REPORT_STATUS_META[report.status as ReportStatus]?.tone ?? "bg-muted text-muted-foreground";
   return (
     <div className="rounded-2xl border bg-card p-4 shadow-soft">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -220,7 +253,9 @@ function ReportCard({ report, onStatus }: { report: ReportRow; onStatus: (id: st
             className="rounded-md border bg-background px-2 py-1 text-xs"
           >
             {REPORT_STATUSES.map((s) => (
-              <option key={s} value={s}>{statusLabel(s)}</option>
+              <option key={s} value={s}>
+                {statusLabel(s)}
+              </option>
             ))}
           </select>
         </div>
@@ -230,12 +265,26 @@ function ReportCard({ report, onStatus }: { report: ReportRow; onStatus: (id: st
 
       {Boolean(meta.statement || meta.correct_answer || meta.user_answer) && (
         <div className="mt-3 space-y-1 rounded-lg border bg-muted/20 p-3 text-xs text-muted-foreground">
-          {meta.statement != null && <p><span className="font-medium">Enunciado:</span> {String(meta.statement)}</p>}
-          {meta.correct_answer != null && <p><span className="font-medium">Correcta:</span> {String(meta.correct_answer)}</p>}
-          {meta.user_answer != null && String(meta.user_answer).trim() !== "" && (
-            <p><span className="font-medium">Respuesta del usuario:</span> {String(meta.user_answer)}</p>
+          {meta.statement != null && (
+            <p>
+              <span className="font-medium">Enunciado:</span> {String(meta.statement)}
+            </p>
           )}
-          {meta.source != null && <p><span className="font-medium">Origen:</span> {String(meta.source)}</p>}
+          {meta.correct_answer != null && (
+            <p>
+              <span className="font-medium">Correcta:</span> {String(meta.correct_answer)}
+            </p>
+          )}
+          {meta.user_answer != null && String(meta.user_answer).trim() !== "" && (
+            <p>
+              <span className="font-medium">Respuesta del usuario:</span> {String(meta.user_answer)}
+            </p>
+          )}
+          {meta.source != null && (
+            <p>
+              <span className="font-medium">Origen:</span> {String(meta.source)}
+            </p>
+          )}
         </div>
       )}
 
@@ -255,7 +304,15 @@ function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
-function Panel({ title, icon: Icon, children }: { title: string; icon: typeof Inbox; children: React.ReactNode }) {
+function Panel({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  icon: typeof Inbox;
+  children: React.ReactNode;
+}) {
   return (
     <div className="rounded-2xl border bg-card p-4 shadow-soft">
       <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
@@ -287,7 +344,9 @@ function FilterSelect({
       className="rounded-lg border bg-background px-3 py-1.5 text-xs font-medium"
     >
       {options.map(([v, l]) => (
-        <option key={v} value={v}>{l}</option>
+        <option key={v} value={v}>
+          {l}
+        </option>
       ))}
     </select>
   );

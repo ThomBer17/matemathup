@@ -1,23 +1,53 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { motion } from "motion/react";
 import {
-  ArrowLeft, Loader2, CalendarDays, Check, Play, RotateCcw,
-  Trophy, Dumbbell, BookOpen, ClipboardCheck, Trash2, Clock, Hand, Sparkles,
+  ArrowLeft,
+  Loader2,
+  CalendarDays,
+  Check,
+  Play,
+  RotateCcw,
+  Trophy,
+  Dumbbell,
+  BookOpen,
+  ClipboardCheck,
+  Trash2,
+  Clock,
+  Hand,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/auth-context";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import {
-  computePlanProgress, daysUntil, todayArgentina, replanTasks,
-  deriveTaskState, shouldAutoComplete, canCompleteTask, toArgentinaDate,
-  type TaskKind, type TaskViewState,
+  computePlanProgress,
+  daysUntil,
+  todayArgentina,
+  deriveTaskState,
+  shouldAutoComplete,
+  canCompleteTask,
+  type TaskKind,
+  type TaskViewState,
 } from "@/lib/study/plan";
+import {
+  countCorrectAttemptsByTask,
+  countOverdueTasks,
+  earliestTaskDate,
+  groupTasksByDate,
+} from "@/lib/study/view";
 import { track, EV } from "@/lib/analytics/events";
+import {
+  autoCompleteStudyTask,
+  completeStudyTaskManually,
+  deleteStudyPlan,
+  replanStudyTasks,
+} from "@/lib/study/tasks.functions";
 
 export const Route = createFileRoute("/_authenticated/study/$id")({
   component: StudyPlanDetail,
@@ -37,8 +67,6 @@ interface Task {
   order_index: number;
 }
 
-const AUTO_XP = 15;
-
 const KIND_META: Record<TaskKind, { Icon: typeof Dumbbell; tone: string }> = {
   practice: { Icon: Dumbbell, tone: "text-rose-500" },
   review: { Icon: BookOpen, tone: "text-sky-500" },
@@ -50,8 +78,14 @@ const STATE_BADGE: Record<TaskViewState, { label: string; cls: string }> = {
   upcoming: { label: "Próxima", cls: "bg-muted text-muted-foreground" },
   pending: { label: "Pendiente", cls: "bg-muted text-muted-foreground" },
   in_progress: { label: "En progreso", cls: "bg-sky-500/15 text-sky-700 dark:text-sky-300" },
-  done_auto: { label: "Completada", cls: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" },
-  done_manual: { label: "Marcada a mano", cls: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
+  done_auto: {
+    label: "Completada",
+    cls: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+  },
+  done_manual: {
+    label: "Marcada a mano",
+    cls: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+  },
 };
 
 function StudyPlanDetail() {
@@ -59,12 +93,21 @@ function StudyPlanDetail() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const today = todayArgentina();
+  const autoCompleteTaskFn = useServerFn(autoCompleteStudyTask);
+  const completeTaskManuallyFn = useServerFn(completeStudyTaskManually);
+  const replanTasksFn = useServerFn(replanStudyTasks);
+  const deleteStudyPlanFn = useServerFn(deleteStudyPlan);
 
   const planQuery = useQuery({
     queryKey: ["study-plan", id],
     enabled: !!user,
     queryFn: async () => {
-      const { data } = await supabase.from("study_plans").select("*").eq("id", id).eq("user_id", user!.id).maybeSingle();
+      const { data } = await supabase
+        .from("study_plans")
+        .select("*")
+        .eq("id", id)
+        .eq("user_id", user!.id)
+        .maybeSingle();
       return data;
     },
   });
@@ -87,10 +130,7 @@ function StudyPlanDetail() {
   const plan = planQuery.data;
 
   // La fecha más temprana del plan acota cuántos intentos traemos (estudio "del plan").
-  const earliestDate = useMemo(
-    () => (tasks.length ? tasks.reduce((m, t) => (t.date < m ? t.date : m), tasks[0].date) : today),
-    [tasks, today],
-  );
+  const earliestDate = useMemo(() => earliestTaskDate(tasks, today), [tasks, today]);
 
   // Mapa slug → topic_id, para contar intentos por tema.
   const topicsQuery = useQuery({
@@ -103,7 +143,7 @@ function StudyPlanDetail() {
       return map;
     },
   });
-  const slugToId = topicsQuery.data ?? {};
+  const slugToId = useMemo(() => topicsQuery.data ?? {}, [topicsQuery.data]);
 
   // Intentos CORRECTOS desde el inicio del plan (para medir estudio real).
   const attemptsQuery = useQuery({
@@ -123,36 +163,15 @@ function StudyPlanDetail() {
   // correctos por tarea = intentos correctos del tema (o de cualquier tema para
   // repaso general/simulacro) hechos EN o DESPUÉS de la fecha de la tarea.
   const correctByTask = useMemo(() => {
-    const map = new Map<string, number>();
-    const attempts = attemptsQuery.data ?? [];
-    for (const t of tasks) {
-      const topicId = t.topic_slug ? slugToId[t.topic_slug] : null;
-      let n = 0;
-      for (const a of attempts) {
-        if (toArgentinaDate(a.created_at) < t.date) continue;
-        if (topicId && a.topic_id !== topicId) continue; // tareas de tema: solo ese tema
-        n++;
-      }
-      map.set(t.id, n);
-    }
-    return map;
+    return countCorrectAttemptsByTask(tasks, attemptsQuery.data ?? [], slugToId);
   }, [tasks, attemptsQuery.data, slugToId]);
 
   const progress = computePlanProgress(tasks);
 
-  const overdue = useMemo(
-    () => tasks.filter((t) => t.status !== "done" && t.date < today).length,
-    [tasks, today],
-  );
+  const overdue = useMemo(() => countOverdueTasks(tasks, today), [tasks, today]);
 
   const byDate = useMemo(() => {
-    const map = new Map<string, Task[]>();
-    for (const t of tasks) {
-      const arr = map.get(t.date) ?? [];
-      arr.push(t);
-      map.set(t.date, arr);
-    }
-    return Array.from(map.entries());
+    return groupTasksByDate(tasks);
   }, [tasks]);
 
   const refetch = () => {
@@ -176,24 +195,28 @@ function StudyPlanDetail() {
 
   const autoComplete = async (task: Task) => {
     if (!user) return;
-    // Solo marca si SEGUÍA pendiente: evita doble XP ante carreras/recargas.
-    const { data: updated } = await supabase
-      .from("study_plan_tasks")
-      .update({ status: "done", completion_type: "auto", completed_at: new Date().toISOString() })
-      .eq("id", task.id)
-      .eq("status", "pending")
-      .select();
-    if (!updated || updated.length === 0) return; // ya estaba hecha → sin XP
-
-    const { data: prof } = await supabase.from("profiles").select("xp").eq("id", user.id).single();
-    if (prof) {
-      const newXp = (prof.xp ?? 0) + AUTO_XP;
-      await supabase.from("profiles").update({ xp: newXp, level: 1 + Math.floor(newXp / 100) }).eq("id", user.id);
-      queryClient.invalidateQueries({ queryKey: ["profile-mini", user.id] });
+    let result;
+    try {
+      result = await autoCompleteTaskFn({ data: { taskId: task.id } });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "No se pudo completar la tarea.";
+      toast.error(msg);
+      return;
     }
-    track(EV.taskAutoCompleted, { entityType: "task", entityId: task.id, metadata: { kind: task.kind, topic: task.topic_name } });
-    track(EV.xpGained, { metadata: { amount: AUTO_XP, source: "study_task_auto" } });
-    toast.success(`¡Tarea completada estudiando! +${AUTO_XP} XP`);
+    if (!result.completed) return;
+
+    track(EV.taskAutoCompleted, {
+      entityType: "task",
+      entityId: task.id,
+      metadata: { kind: task.kind, topic: task.topic_name },
+    });
+    track(EV.xpGained, { metadata: { amount: result.xpGain, source: "study_task_auto" } });
+    if (result.leveledUp && result.newLevel != null) {
+      track(EV.levelUp, { metadata: { level: result.newLevel } });
+    }
+    toast.success(`Tarea completada estudiando! +${result.xpGain} XP`);
+    queryClient.invalidateQueries({ queryKey: ["profile-mini", user.id] });
+    queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
     refetch();
   };
 
@@ -202,28 +225,37 @@ function StudyPlanDetail() {
     if (!user || task.status === "done") return;
     if (!canCompleteTask(task.date, today)) return; // nunca futuras
     const ok = window.confirm(
-      "Marcar como completada manualmente NO suma XP (el XP es solo por estudio real). ¿Continuar?",
+      "Marcar como completada manualmente NO suma XP (el XP es solo por estudio real). Continuar?",
     );
     if (!ok) return;
-    const { error } = await supabase
-      .from("study_plan_tasks")
-      .update({ status: "done", completion_type: "manual", completed_at: new Date().toISOString() })
-      .eq("id", task.id);
-    if (error) { toast.error("No se pudo marcar como hecha."); return; }
-    track(EV.taskManualCompleted, { entityType: "task", entityId: task.id, metadata: { kind: task.kind, topic: task.topic_name } });
+
+    let result;
+    try {
+      result = await completeTaskManuallyFn({ data: { taskId: task.id } });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "No se pudo marcar como hecha.";
+      toast.error(msg);
+      return;
+    }
+    if (!result.completed) return;
+
+    track(EV.taskManualCompleted, {
+      entityType: "task",
+      entityId: task.id,
+      metadata: { kind: task.kind, topic: task.topic_name },
+    });
     toast.success("Tarea marcada a mano (sin XP).");
     refetch();
   };
 
   const replan = async () => {
     if (!plan) return;
-    const updates = replanTasks(
-      tasks.map((t) => ({ id: t.id, status: t.status, orderIndex: t.order_index })),
-      today,
-      plan.exam_date,
-    );
-    for (const u of updates) {
-      await supabase.from("study_plan_tasks").update({ date: u.date }).eq("id", u.id);
+    try {
+      await replanTasksFn({ data: { planId: id } });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "No se pudo replanificar.";
+      toast.error(msg);
+      return;
     }
     track(EV.replanUsed, { entityType: "plan", entityId: id });
     toast.success("Plan replanificado. Redistribuimos lo que quedaba.");
@@ -232,19 +264,31 @@ function StudyPlanDetail() {
 
   const deletePlan = async () => {
     if (!window.confirm("¿Eliminar este plan?")) return;
-    await supabase.from("study_plans").delete().eq("id", id);
+    try {
+      await deleteStudyPlanFn({ data: { planId: id } });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "No se pudo eliminar el plan.";
+      toast.error(msg);
+      return;
+    }
     queryClient.invalidateQueries({ queryKey: ["study-plans", user?.id] });
     window.history.back();
   };
 
   if (planQuery.isPending || tasksQuery.isPending) {
-    return <div className="grid min-h-[50vh] place-items-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+    return (
+      <div className="grid min-h-[50vh] place-items-center">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
   }
   if (!plan) {
     return (
       <div className="mx-auto max-w-md px-6 py-20 text-center">
         <p className="font-display text-lg font-semibold">Plan no encontrado</p>
-        <Link to="/study" className="mt-4 inline-block text-sm text-primary hover:underline">Volver</Link>
+        <Link to="/study" className="mt-4 inline-block text-sm text-primary hover:underline">
+          Volver
+        </Link>
       </div>
     );
   }
@@ -253,7 +297,10 @@ function StudyPlanDetail() {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 md:py-12">
-      <Link to="/study" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <Link
+        to="/study"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      >
         <ArrowLeft className="h-3.5 w-3.5" /> Mis planes
       </Link>
 
@@ -266,7 +313,12 @@ function StudyPlanDetail() {
             {left === 0 ? "es hoy o ya pasó" : `faltan ${left} día${left === 1 ? "" : "s"}`}
           </p>
         </div>
-        <Button variant="ghost" size="sm" onClick={deletePlan} className="gap-1.5 text-destructive hover:text-destructive">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={deletePlan}
+          className="gap-1.5 text-destructive hover:text-destructive"
+        >
           <Trash2 className="h-3.5 w-3.5" /> Eliminar
         </Button>
       </div>
@@ -278,16 +330,20 @@ function StudyPlanDetail() {
           <span className="font-semibold tabular-nums">{progress.pct}%</span>
         </div>
         <Progress value={progress.pct} className="mt-2 h-2" />
-        <p className="mt-2 text-xs text-muted-foreground">{progress.done} de {progress.total} tareas completadas</p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          {progress.done} de {progress.total} tareas completadas
+        </p>
         <p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
           <Sparkles className="h-3 w-3 text-primary" />
-          Las tareas se completan solas cuando resolvés los ejercicios del tema. El XP es solo por estudio real.
+          Las tareas se completan solas cuando resolvés los ejercicios del tema. El XP es solo por
+          estudio real.
         </p>
 
         {overdue > 0 && (
           <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
             <p className="text-xs text-amber-700 dark:text-amber-300">
-              Tenés {overdue} tarea{overdue === 1 ? "" : "s"} atrasada{overdue === 1 ? "" : "s"}. Podemos reacomodar el plan.
+              Tenés {overdue} tarea{overdue === 1 ? "" : "s"} atrasada{overdue === 1 ? "" : "s"}.
+              Podemos reacomodar el plan.
             </p>
             <Button size="sm" variant="outline" onClick={replan} className="gap-1.5">
               <RotateCcw className="h-3.5 w-3.5" /> Replanificar
@@ -304,9 +360,17 @@ function StudyPlanDetail() {
             <div key={date}>
               <div className="mb-2 flex items-center gap-2">
                 <span className={cn("text-sm font-semibold capitalize", isToday && "text-primary")}>
-                  {new Date(date + "T00:00:00").toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "short" })}
+                  {new Date(date + "T00:00:00").toLocaleDateString("es-AR", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "short",
+                  })}
                 </span>
-                {isToday && <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">Hoy</span>}
+                {isToday && (
+                  <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                    Hoy
+                  </span>
+                )}
               </div>
               <div className="space-y-2">
                 {dayTasks.map((t) => (
@@ -328,7 +392,10 @@ function StudyPlanDetail() {
 }
 
 function TaskCard({
-  task, today, correct, onManual,
+  task,
+  today,
+  correct,
+  onManual,
 }: {
   task: Task;
   today: string;
@@ -373,9 +440,13 @@ function TaskCard({
           <span className="truncate">{task.title}</span>
         </p>
         <div className="mt-0.5 flex flex-wrap items-center gap-2">
-          <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-semibold", badge.cls)}>{badge.label}</span>
+          <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-semibold", badge.cls)}>
+            {badge.label}
+          </span>
           {(state === "pending" || state === "in_progress") && (
-            <span className="text-[11px] text-muted-foreground tabular-nums">{progress}/{target} ejercicios correctos</span>
+            <span className="text-[11px] text-muted-foreground tabular-nums">
+              {progress}/{target} ejercicios correctos
+            </span>
           )}
           {task.objective && state !== "in_progress" && state !== "pending" && (
             <span className="truncate text-[11px] text-muted-foreground">{task.objective}</span>
@@ -386,7 +457,10 @@ function TaskCard({
       {/* Acciones */}
       {state === "upcoming" && (
         <span className="shrink-0 text-[11px] text-muted-foreground">
-          {new Date(task.date + "T00:00:00").toLocaleDateString("es-AR", { day: "numeric", month: "short" })}
+          {new Date(task.date + "T00:00:00").toLocaleDateString("es-AR", {
+            day: "numeric",
+            month: "short",
+          })}
         </span>
       )}
       {(state === "pending" || state === "in_progress") && (
@@ -395,7 +469,13 @@ function TaskCard({
             <Link
               to="/topics/$slug"
               params={{ slug: task.topic_slug }}
-              onClick={() => track(EV.taskStarted, { entityType: "task", entityId: task.id, metadata: { kind: task.kind, topic: task.topic_name } })}
+              onClick={() =>
+                track(EV.taskStarted, {
+                  entityType: "task",
+                  entityId: task.id,
+                  metadata: { kind: task.kind, topic: task.topic_name },
+                })
+              }
               className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
             >
               <Play className="h-3 w-3" /> Comenzar

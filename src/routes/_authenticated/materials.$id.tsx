@@ -1,13 +1,29 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { lazy, Suspense } from "react";
 import { ArrowLeft, FileText, Image as ImageIcon, Loader2, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
-import { MaterialExerciseGenerator } from "@/components/materials/MaterialExerciseGenerator";
+import { useAuth } from "@/hooks/auth-context";
 import { isMathematicalContent } from "@/lib/materials/classify";
-import { CalculatorFAB } from "@/components/calculator/CalculatorFAB";
-import { FormulasFAB } from "@/components/formulas/FormulasFAB";
-import { MathWorkspace } from "@/components/workspace/MathWorkspace";
+
+const MaterialExerciseGenerator = lazy(() =>
+  import("@/components/materials/MaterialExerciseGenerator").then((module) => ({
+    default: module.MaterialExerciseGenerator,
+  })),
+);
+const CalculatorFAB = lazy(() =>
+  import("@/components/calculator/CalculatorFAB").then((module) => ({
+    default: module.CalculatorFAB,
+  })),
+);
+const FormulasFAB = lazy(() =>
+  import("@/components/formulas/FormulasFAB").then((module) => ({ default: module.FormulasFAB })),
+);
+const MathWorkspace = lazy(() =>
+  import("@/components/workspace/MathWorkspace").then((module) => ({
+    default: module.MathWorkspace,
+  })),
+);
 
 export const Route = createFileRoute("/_authenticated/materials/$id")({
   component: MaterialDetailPage,
@@ -97,7 +113,18 @@ function MaterialDetailPage() {
       {/* Generador desde el material */}
       <div className="mt-8 rounded-2xl border bg-card p-6 shadow-soft md:p-8">
         {ready && hasText && isMath ? (
-          <MaterialExerciseGenerator materialId={material.id} topicHint={material.detected_topic} />
+          <Suspense
+            fallback={
+              <div className="grid min-h-32 place-items-center">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            }
+          >
+            <MaterialExerciseGenerator
+              materialId={material.id}
+              topicHint={material.detected_topic}
+            />
+          </Suspense>
         ) : material.status === "processing" ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" /> Procesando el material…
@@ -135,9 +162,11 @@ function MaterialDetailPage() {
       )}
 
       {/* Herramientas de estudio mientras resolvés (mismas que en los temas) */}
-      <CalculatorFAB />
-      <FormulasFAB />
-      <MathWorkspace storageKey={`mathup:workspace:material-${material.id}`} />
+      <Suspense fallback={null}>
+        <CalculatorFAB />
+        <FormulasFAB />
+        <MathWorkspace storageKey={`mathup:workspace:material-${material.id}`} />
+      </Suspense>
     </div>
   );
 }

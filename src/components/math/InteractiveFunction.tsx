@@ -29,8 +29,8 @@ export function InteractiveFunction({
   title,
   description,
 }: Props) {
-  const [values, setValues] = useState<Record<string, number>>(
-    () => Object.fromEntries(params.map((p) => [p.key, p.default]))
+  const [values, setValues] = useState<Record<string, number>>(() =>
+    Object.fromEntries(params.map((p) => [p.key, p.default])),
   );
 
   const expressions = useMemo<GraphExpression[]>(() => {

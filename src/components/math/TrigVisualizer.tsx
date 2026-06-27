@@ -50,8 +50,22 @@ export function TrigVisualizer() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <SliderCard label="Amplitud (A)" value={A} setValue={setA} min={-3} max={3} step={0.1} />
         <SliderCard label="Frecuencia (B)" value={B} setValue={setB} min={0.1} max={4} step={0.1} />
-        <SliderCard label="Desp. horizontal (C)" value={C} setValue={setC} min={-Math.PI} max={Math.PI} step={0.1} />
-        <SliderCard label="Desp. vertical (D)" value={D} setValue={setD} min={-3} max={3} step={0.1} />
+        <SliderCard
+          label="Desp. horizontal (C)"
+          value={C}
+          setValue={setC}
+          min={-Math.PI}
+          max={Math.PI}
+          step={0.1}
+        />
+        <SliderCard
+          label="Desp. vertical (D)"
+          value={D}
+          setValue={setD}
+          min={-3}
+          max={3}
+          step={0.1}
+        />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
@@ -84,7 +98,13 @@ function SliderCard({
         <span className="font-medium">{label}</span>
         <span className="font-mono text-primary">{value.toFixed(2)}</span>
       </div>
-      <Slider min={min} max={max} step={step} value={[value]} onValueChange={([v]) => setValue(v)} />
+      <Slider
+        min={min}
+        max={max}
+        step={step}
+        value={[value]}
+        onValueChange={([v]) => setValue(v)}
+      />
     </div>
   );
 }

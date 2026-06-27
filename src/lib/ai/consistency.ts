@@ -38,20 +38,21 @@ const CHAR = {
   divide: String.fromCharCode(0x00f7), // ÷
   sqrt: String.fromCharCode(0x221a), // √
 };
-const SQRT_RE = new RegExp(
-  `${CHAR.sqrt}\\s*\\(?\\s*(\\d+(?:[.,]\\d+)?)\\s*\\)?`,
-  "g",
-);
+const SQRT_RE = new RegExp(`${CHAR.sqrt}\\s*\\(?\\s*(\\d+(?:[.,]\\d+)?)\\s*\\)?`, "g");
 
 export function parseNumericValue(raw: string): number | null {
   let s = raw.trim().toLowerCase();
   if (!s) return null;
 
   s = s
-    .split(CHAR.minus).join("-")
-    .split(CHAR.middot).join("*")
-    .split(CHAR.times).join("*")
-    .split(CHAR.divide).join("/")
+    .split(CHAR.minus)
+    .join("-")
+    .split(CHAR.middot)
+    .join("*")
+    .split(CHAR.times)
+    .join("*")
+    .split(CHAR.divide)
+    .join("/")
     // OJO con el orden: primero el sqrt() textual, después el √ unicode.
     // Si fuera al revés, el √ produce "Math.sqrt(n)" y el regex textual
     // re-matchearía ese "sqrt(n)" generando "Math.Math.sqrt(n)".
@@ -64,7 +65,6 @@ export function parseNumericValue(raw: string): number | null {
   if (safe.length > 0) return null;
 
   try {
-    // eslint-disable-next-line no-new-func
     const val = new Function(`"use strict"; return (${s});`)();
     if (typeof val === "number" && isFinite(val)) return val;
     return null;
@@ -104,7 +104,8 @@ function inInterval(value: number, iv: Interval): boolean {
   return aboveLo && belowHi;
 }
 
-const INTERVAL_TOKEN = /([[(])\s*(-?\d+(?:[.,]\d+)?(?:\/\d+)?)\s*[;,]\s*(-?\d+(?:[.,]\d+)?(?:\/\d+)?)\s*([\])])/g;
+const INTERVAL_TOKEN =
+  /([[(])\s*(-?\d+(?:[.,]\d+)?(?:\/\d+)?)\s*[;,]\s*(-?\d+(?:[.,]\d+)?(?:\/\d+)?)\s*([\])])/g;
 
 /** Todos los intervalos presentes en un texto (sin requerir la palabra "intervalo"). */
 export function findIntervals(text: string): Interval[] {
@@ -126,7 +127,10 @@ export function findIntervals(text: string): Interval[] {
 }
 
 function intervalsEqual(a: Interval, b: Interval): boolean {
-  const tol = Math.max(1e-6, 1e-4 * Math.max(Math.abs(a.lo), Math.abs(a.hi), Math.abs(b.lo), Math.abs(b.hi), 1));
+  const tol = Math.max(
+    1e-6,
+    1e-4 * Math.max(Math.abs(a.lo), Math.abs(a.hi), Math.abs(b.lo), Math.abs(b.hi), 1),
+  );
   return (
     Math.abs(a.lo - b.lo) <= tol &&
     Math.abs(a.hi - b.hi) <= tol &&
@@ -201,7 +205,12 @@ function intervalTokens(textRaw: string): { toks: IvTok[]; text: string } {
     const hi = parseNumericValue(m[3]);
     if (lo === null || hi === null) continue;
     toks.push({
-      iv: { lo: Math.min(lo, hi), hi: Math.max(lo, hi), loOpen: m[1] === "(", hiOpen: m[4] === ")" },
+      iv: {
+        lo: Math.min(lo, hi),
+        hi: Math.max(lo, hi),
+        loOpen: m[1] === "(",
+        hiOpen: m[4] === ")",
+      },
       start: m.index,
       end: m.index + m[0].length,
     });
@@ -209,7 +218,8 @@ function intervalTokens(textRaw: string): { toks: IvTok[]; text: string } {
 
   // Desigualdad de dos lados: num <op> var <op> num. La variable es UNA letra
   // (así "x-1 ≤ 3" como paso intermedio NO matchea; sí matchea "−2 ≤ x < 4").
-  const reI = /(-?\d+(?:\.\d+)?(?:\/\d+)?)\s*(<=|<)\s*[a-zA-Z]\s*(<=|<)\s*(-?\d+(?:\.\d+)?(?:\/\d+)?)/g;
+  const reI =
+    /(-?\d+(?:\.\d+)?(?:\/\d+)?)\s*(<=|<)\s*[a-zA-Z]\s*(<=|<)\s*(-?\d+(?:\.\d+)?(?:\/\d+)?)/g;
   while ((m = reI.exec(text)) !== null) {
     const lo = parseNumericValue(m[1]);
     const hi = parseNumericValue(m[4]);
@@ -239,7 +249,8 @@ function fmtSet(ivs: Interval[]): string {
 }
 
 // Marcadores de conclusión: si aparecen, miramos solo lo que viene DESPUÉS del último.
-const CONCLUSION_MARKER = /(solución|solucion|resultado|respuesta|por lo tanto|finalmente|en conclusión|en conclusion|conjunto soluci|intervalo soluci)/gi;
+const CONCLUSION_MARKER =
+  /(solución|solucion|resultado|respuesta|por lo tanto|finalmente|en conclusión|en conclusion|conjunto soluci|intervalo soluci)/gi;
 
 /** Conjunto-solución que CONCLUYE la explicación (grupo de intervalos del final). */
 function explanationConclusionSet(explanation: string): Interval[] {

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { lazy, Suspense } from "react";
 import { motion } from "motion/react";
 import {
   ArrowLeft,
@@ -12,11 +13,24 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HubCard } from "@/components/HubCard";
-import { FormulaSolver } from "@/components/formulas/FormulaSolver";
-import { CalculatorFAB } from "@/components/calculator/CalculatorFAB";
-import { MathWorkspace } from "@/components/workspace/MathWorkspace";
 import { appendToWorkspace } from "@/components/workspace/panel-store";
 import { formulasByTopic, getFormula } from "@/lib/formulas";
+
+const FormulaSolver = lazy(() =>
+  import("@/components/formulas/FormulaSolver").then((module) => ({
+    default: module.FormulaSolver,
+  })),
+);
+const CalculatorFAB = lazy(() =>
+  import("@/components/calculator/CalculatorFAB").then((module) => ({
+    default: module.CalculatorFAB,
+  })),
+);
+const MathWorkspace = lazy(() =>
+  import("@/components/workspace/MathWorkspace").then((module) => ({
+    default: module.MathWorkspace,
+  })),
+);
 
 export const Route = createFileRoute("/_authenticated/tools/formulas")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -50,9 +64,17 @@ function FormulasPage() {
           <ArrowLeft className="h-4 w-4" />
           Todas las fórmulas
         </Button>
-        <FormulaSolver formula={selected} onSend={(t) => appendToWorkspace(t)} />
-        <CalculatorFAB />
-        <MathWorkspace storageKey="mathup:workspace:formulas" />
+        <Suspense
+          fallback={
+            <div className="grid min-h-64 place-items-center">
+              <Sigma className="h-5 w-5 animate-pulse text-muted-foreground" />
+            </div>
+          }
+        >
+          <FormulaSolver formula={selected} onSend={(t) => appendToWorkspace(t)} />
+          <CalculatorFAB />
+          <MathWorkspace storageKey="mathup:workspace:formulas" />
+        </Suspense>
       </div>
     );
   }

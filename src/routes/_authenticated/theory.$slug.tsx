@@ -16,7 +16,7 @@ import {
   LineChart,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/auth-context";
 import { getTopicIcon, topicGradient } from "@/lib/topic-icons";
 import { getTheory } from "@/content/theory";
 import { getRelated } from "@/content/theory/related";

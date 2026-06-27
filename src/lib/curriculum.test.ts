@@ -37,7 +37,10 @@ describe("validateInScope", () => {
 
   it("permite vocabulario propio del tema", () => {
     const scope = getTopicScope("numeros-reales");
-    const res = validateInScope("Clasificá los siguientes números como racionales o irracionales", scope);
+    const res = validateInScope(
+      "Clasificá los siguientes números como racionales o irracionales",
+      scope,
+    );
     expect(res.inScope).toBe(true);
   });
 

@@ -5,31 +5,103 @@
  */
 
 const GREEK: Record<string, string> = {
-  alpha: "α", beta: "β", gamma: "γ", delta: "δ", epsilon: "ε", varepsilon: "ε",
-  zeta: "ζ", eta: "η", theta: "θ", vartheta: "θ", iota: "ι", kappa: "κ",
-  lambda: "λ", mu: "μ", nu: "ν", xi: "ξ", pi: "π", rho: "ρ", sigma: "σ",
-  tau: "τ", upsilon: "υ", phi: "φ", varphi: "φ", chi: "χ", psi: "ψ", omega: "ω",
-  Gamma: "Γ", Delta: "Δ", Theta: "Θ", Lambda: "Λ", Xi: "Ξ", Pi: "Π",
-  Sigma: "Σ", Phi: "Φ", Psi: "Ψ", Omega: "Ω",
+  alpha: "α",
+  beta: "β",
+  gamma: "γ",
+  delta: "δ",
+  epsilon: "ε",
+  varepsilon: "ε",
+  zeta: "ζ",
+  eta: "η",
+  theta: "θ",
+  vartheta: "θ",
+  iota: "ι",
+  kappa: "κ",
+  lambda: "λ",
+  mu: "μ",
+  nu: "ν",
+  xi: "ξ",
+  pi: "π",
+  rho: "ρ",
+  sigma: "σ",
+  tau: "τ",
+  upsilon: "υ",
+  phi: "φ",
+  varphi: "φ",
+  chi: "χ",
+  psi: "ψ",
+  omega: "ω",
+  Gamma: "Γ",
+  Delta: "Δ",
+  Theta: "Θ",
+  Lambda: "Λ",
+  Xi: "Ξ",
+  Pi: "Π",
+  Sigma: "Σ",
+  Phi: "Φ",
+  Psi: "Ψ",
+  Omega: "Ω",
 };
 
 const SYMBOLS: Record<string, string> = {
-  cdot: "·", times: "×", div: "÷", pm: "±", mp: "∓",
-  leq: "≤", le: "≤", geq: "≥", ge: "≥", neq: "≠", ne: "≠",
-  approx: "≈", infty: "∞", to: "→", rightarrow: "→", Rightarrow: "⇒",
-  in: "∈", notin: "∉", subset: "⊂", cup: "∪", cap: "∩", forall: "∀", exists: "∃",
-  circ: "°", degree: "°", angle: "∠", perp: "⊥", parallel: "∥",
-  sum: "Σ", prod: "Π", int: "∫", partial: "∂", nabla: "∇",
-  ldots: "…", cdots: "…", dots: "…", quad: " ", qquad: "  ",
-  left: "", right: "", displaystyle: "", limits: "",
+  cdot: "·",
+  times: "×",
+  div: "÷",
+  pm: "±",
+  mp: "∓",
+  leq: "≤",
+  le: "≤",
+  geq: "≥",
+  ge: "≥",
+  neq: "≠",
+  ne: "≠",
+  approx: "≈",
+  infty: "∞",
+  to: "→",
+  rightarrow: "→",
+  Rightarrow: "⇒",
+  in: "∈",
+  notin: "∉",
+  subset: "⊂",
+  cup: "∪",
+  cap: "∩",
+  forall: "∀",
+  exists: "∃",
+  circ: "°",
+  degree: "°",
+  angle: "∠",
+  perp: "⊥",
+  parallel: "∥",
+  sum: "Σ",
+  prod: "Π",
+  int: "∫",
+  partial: "∂",
+  nabla: "∇",
+  ldots: "…",
+  cdots: "…",
+  dots: "…",
+  quad: " ",
+  qquad: "  ",
+  left: "",
+  right: "",
+  displaystyle: "",
+  limits: "",
 };
 
-const SUPERSCRIPT: Record<string, string> = { "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" };
+const SUPERSCRIPT: Record<string, string> = {
+  "0": "⁰",
+  "1": "¹",
+  "2": "²",
+  "3": "³",
+  "4": "⁴",
+  "5": "⁵",
+  "6": "⁶",
+  "7": "⁷",
+  "8": "⁸",
+  "9": "⁹",
+};
 
-export function sanitizeMathText(
-  input: string,
-  opts: { trim?: boolean } = {},
-): string {
+export function sanitizeMathText(input: string, opts: { trim?: boolean } = {}): string {
   if (!input) return input;
   const trim = opts.trim ?? true;
   let s = input;
@@ -69,5 +141,8 @@ export function sanitizeMathText(
 }
 
 function toSuperscript(digits: string): string {
-  return digits.split("").map((d) => SUPERSCRIPT[d] ?? d).join("");
+  return digits
+    .split("")
+    .map((d) => SUPERSCRIPT[d] ?? d)
+    .join("");
 }

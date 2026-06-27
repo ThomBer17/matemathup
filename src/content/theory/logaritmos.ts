@@ -17,7 +17,10 @@ Los logaritmos aparecen en todo lo que crece o decrece de forma exponencial: int
   ],
   formulas: [
     { label: "Definición", latex: String.raw`\log_b a = c \iff b^c = a` },
-    { label: "Producto y cociente", latex: String.raw`\log_b(xy) = \log_b x + \log_b y \qquad \log_b\!\frac{x}{y} = \log_b x - \log_b y` },
+    {
+      label: "Producto y cociente",
+      latex: String.raw`\log_b(xy) = \log_b x + \log_b y \qquad \log_b\!\frac{x}{y} = \log_b x - \log_b y`,
+    },
     { label: "Potencia", latex: String.raw`\log_b(x^n) = n\,\log_b x` },
     { label: "Cambio de base", latex: String.raw`\log_b a = \frac{\log a}{\log b}` },
   ],

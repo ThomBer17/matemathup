@@ -25,7 +25,9 @@ describe("hasMathExpression", () => {
 
 describe("checkRequiredExpression", () => {
   it("rechaza 'Factoriza...' sin polinomio", () => {
-    const r = checkRequiredExpression("Factoriza el siguiente polinomio y elegí la forma correcta.");
+    const r = checkRequiredExpression(
+      "Factoriza el siguiente polinomio y elegí la forma correcta.",
+    );
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.reason).toContain("missing_expression");
   });
@@ -39,14 +41,18 @@ describe("checkRequiredExpression", () => {
     expect(checkRequiredExpression("Resolvé la ecuación 2x + 3 = 7.").ok).toBe(true);
   });
   it("no exige expresión a consignas auto-contenidas", () => {
-    expect(checkRequiredExpression("Calculá el área de un triángulo de base 5 y altura 4.").ok).toBe(true);
+    expect(
+      checkRequiredExpression("Calculá el área de un triángulo de base 5 y altura 4.").ok,
+    ).toBe(true);
     expect(checkRequiredExpression("Clasificá si pi es racional o irracional.").ok).toBe(true);
   });
 
   it("no bloquea preguntas conceptuales / método general", () => {
     expect(checkRequiredExpression("¿Cómo se resuelve una ecuación cuadrática?").ok).toBe(true);
     expect(checkRequiredExpression("Explicá qué es factorizar un polinomio.").ok).toBe(true);
-    expect(checkRequiredExpression("¿Cuál es el método para factorizar un trinomio?").ok).toBe(true);
+    expect(checkRequiredExpression("¿Cuál es el método para factorizar un trinomio?").ok).toBe(
+      true,
+    );
   });
 
   it("sigue bloqueando la consigna imperativa sin objeto", () => {
@@ -57,7 +63,9 @@ describe("checkRequiredExpression", () => {
 
 describe("validateStructure", () => {
   it("rechaza enunciado vacío/corto", () => {
-    expect(validateStructure({ statement: "Hola", type: "open", correct_answer: "x" }).ok).toBe(false);
+    expect(validateStructure({ statement: "Hola", type: "open", correct_answer: "x" }).ok).toBe(
+      false,
+    );
   });
   it("rechaza MC sin opciones suficientes", () => {
     const r = validateStructure({
@@ -98,7 +106,13 @@ describe("validateStructure", () => {
     expect(r.ok).toBe(true);
   });
   it("rechaza true_false sin afirmación", () => {
-    expect(validateStructure({ statement: "¿Verdadero o falso?", type: "true_false", correct_answer: "Verdadero" }).ok).toBe(false);
+    expect(
+      validateStructure({
+        statement: "¿Verdadero o falso?",
+        type: "true_false",
+        correct_answer: "Verdadero",
+      }).ok,
+    ).toBe(false);
   });
   it("acepta true_false con afirmación", () => {
     expect(

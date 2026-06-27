@@ -2,7 +2,15 @@ import { describe, it, expect } from "vitest";
 import { scoreExam, examGrade, shuffle, type ExamQuestion } from "./score";
 
 function q(id: string, topicName: string): ExamQuestion {
-  return { id, topicId: id, topicName, statement: "", options: [], correctAnswer: "x", explanation: "" };
+  return {
+    id,
+    topicId: id,
+    topicName,
+    statement: "",
+    options: [],
+    correctAnswer: "x",
+    explanation: "",
+  };
 }
 
 describe("scoreExam", () => {

@@ -6,12 +6,49 @@
 import type { Activity } from "./types";
 
 const STOPWORDS = new Set([
-  "el", "la", "los", "las", "un", "una", "unos", "unas",
-  "de", "del", "en", "a", "al", "y", "o", "u",
-  "que", "es", "se", "su", "sus", "lo", "le", "les",
-  "para", "con", "por", "como", "si", "más", "menos",
-  "este", "esta", "estos", "estas", "ese", "esa", "eso",
-  "ser", "ha", "han", "no", "sí",
+  "el",
+  "la",
+  "los",
+  "las",
+  "un",
+  "una",
+  "unos",
+  "unas",
+  "de",
+  "del",
+  "en",
+  "a",
+  "al",
+  "y",
+  "o",
+  "u",
+  "que",
+  "es",
+  "se",
+  "su",
+  "sus",
+  "lo",
+  "le",
+  "les",
+  "para",
+  "con",
+  "por",
+  "como",
+  "si",
+  "más",
+  "menos",
+  "este",
+  "esta",
+  "estos",
+  "estas",
+  "ese",
+  "esa",
+  "eso",
+  "ser",
+  "ha",
+  "han",
+  "no",
+  "sí",
 ]);
 
 export function tokenize(text: string): Set<string> {
@@ -40,10 +77,7 @@ const NEAR_DUP_THRESHOLD = 0.6;
  * Devuelve el item de `pool` con mayor similitud Jaccard contra `text`.
  * Útil para chequear si una nueva generación es parecida a ejercicios pasados.
  */
-export function mostSimilar(
-  text: string,
-  pool: string[],
-): { text: string; score: number } | null {
+export function mostSimilar(text: string, pool: string[]): { text: string; score: number } | null {
   if (pool.length === 0) return null;
   const t = tokenize(text);
   let best: { text: string; score: number } | null = null;

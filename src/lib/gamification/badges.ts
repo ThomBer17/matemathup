@@ -6,8 +6,16 @@
 import type { TopicAggregate, OverallStats } from "@/lib/progress/aggregate";
 
 export type BadgeIconName =
-  | "flame" | "trophy" | "target" | "zap" | "star"
-  | "graduation-cap" | "telescope" | "rocket" | "medal" | "award";
+  | "flame"
+  | "trophy"
+  | "target"
+  | "zap"
+  | "star"
+  | "graduation-cap"
+  | "telescope"
+  | "rocket"
+  | "medal"
+  | "award";
 
 export interface BadgeDefinition {
   id: string;
@@ -40,32 +48,44 @@ function clamp01(n: number) {
 export const BADGES: BadgeDefinition[] = [
   // --- Volumen ---
   {
-    id: "first-steps", name: "Primeros pasos", description: "Resolvé 1 ejercicio.",
-    icon: "rocket", tier: 1,
+    id: "first-steps",
+    name: "Primeros pasos",
+    description: "Resolvé 1 ejercicio.",
+    icon: "rocket",
+    tier: 1,
     check: ({ overall }) => ({
       earned: overall.totalAttempts >= 1,
       progress: clamp01((overall.totalAttempts / 1) * 100),
     }),
   },
   {
-    id: "warmed-up", name: "Calentando motores", description: "Resolvé 10 ejercicios.",
-    icon: "zap", tier: 1,
+    id: "warmed-up",
+    name: "Calentando motores",
+    description: "Resolvé 10 ejercicios.",
+    icon: "zap",
+    tier: 1,
     check: ({ overall }) => ({
       earned: overall.totalAttempts >= 10,
       progress: clamp01((overall.totalAttempts / 10) * 100),
     }),
   },
   {
-    id: "centurion", name: "Centurión", description: "Resolvé 100 ejercicios.",
-    icon: "medal", tier: 2,
+    id: "centurion",
+    name: "Centurión",
+    description: "Resolvé 100 ejercicios.",
+    icon: "medal",
+    tier: 2,
     check: ({ overall }) => ({
       earned: overall.totalAttempts >= 100,
       progress: clamp01((overall.totalAttempts / 100) * 100),
     }),
   },
   {
-    id: "marathoner", name: "Maratonista", description: "Resolvé 250 ejercicios.",
-    icon: "award", tier: 3,
+    id: "marathoner",
+    name: "Maratonista",
+    description: "Resolvé 250 ejercicios.",
+    icon: "award",
+    tier: 3,
     check: ({ overall }) => ({
       earned: overall.totalAttempts >= 250,
       progress: clamp01((overall.totalAttempts / 250) * 100),
@@ -74,24 +94,33 @@ export const BADGES: BadgeDefinition[] = [
 
   // --- Rachas ---
   {
-    id: "streak-3", name: "Constancia", description: "Practicá 3 días seguidos.",
-    icon: "flame", tier: 1,
+    id: "streak-3",
+    name: "Constancia",
+    description: "Practicá 3 días seguidos.",
+    icon: "flame",
+    tier: 1,
     check: ({ profile }) => ({
       earned: (profile?.longest_streak ?? 0) >= 3,
       progress: clamp01(((profile?.longest_streak ?? 0) / 3) * 100),
     }),
   },
   {
-    id: "streak-7", name: "Semana imparable", description: "Practicá 7 días seguidos.",
-    icon: "flame", tier: 2,
+    id: "streak-7",
+    name: "Semana imparable",
+    description: "Practicá 7 días seguidos.",
+    icon: "flame",
+    tier: 2,
     check: ({ profile }) => ({
       earned: (profile?.longest_streak ?? 0) >= 7,
       progress: clamp01(((profile?.longest_streak ?? 0) / 7) * 100),
     }),
   },
   {
-    id: "streak-30", name: "Mes de hierro", description: "Practicá 30 días seguidos.",
-    icon: "flame", tier: 3,
+    id: "streak-30",
+    name: "Mes de hierro",
+    description: "Practicá 30 días seguidos.",
+    icon: "flame",
+    tier: 3,
     check: ({ profile }) => ({
       earned: (profile?.longest_streak ?? 0) >= 30,
       progress: clamp01(((profile?.longest_streak ?? 0) / 30) * 100),
@@ -100,24 +129,33 @@ export const BADGES: BadgeDefinition[] = [
 
   // --- Dominio ---
   {
-    id: "mastered-first", name: "Tema dominado", description: "Llegá a ≥80% en algún tema.",
-    icon: "trophy", tier: 1,
+    id: "mastered-first",
+    name: "Tema dominado",
+    description: "Llegá a ≥80% en algún tema.",
+    icon: "trophy",
+    tier: 1,
     check: ({ aggregates }) => {
       const best = aggregates.reduce((m, a) => Math.max(m, a.accuracy), 0);
       return { earned: best >= 80, progress: clamp01((best / 80) * 100) };
     },
   },
   {
-    id: "mastered-three", name: "Triple corona", description: "Dominá 3 temas con ≥80%.",
-    icon: "trophy", tier: 2,
+    id: "mastered-three",
+    name: "Triple corona",
+    description: "Dominá 3 temas con ≥80%.",
+    icon: "trophy",
+    tier: 2,
     check: ({ aggregates }) => {
       const n = aggregates.filter((a) => a.accuracy >= 80 && a.totalAttempts >= 5).length;
       return { earned: n >= 3, progress: clamp01((n / 3) * 100) };
     },
   },
   {
-    id: "scholar", name: "Erudito", description: "Dominá todos los temas con ≥80%.",
-    icon: "graduation-cap", tier: 3,
+    id: "scholar",
+    name: "Erudito",
+    description: "Dominá todos los temas con ≥80%.",
+    icon: "graduation-cap",
+    tier: 3,
     check: ({ aggregates, totalTopics }) => {
       if (totalTopics === 0) return { earned: false, progress: 0 };
       const n = aggregates.filter((a) => a.accuracy >= 80 && a.totalAttempts >= 5).length;
@@ -127,16 +165,22 @@ export const BADGES: BadgeDefinition[] = [
 
   // --- Exploración ---
   {
-    id: "explorer", name: "Explorador", description: "Probá 3 temas distintos.",
-    icon: "telescope", tier: 1,
+    id: "explorer",
+    name: "Explorador",
+    description: "Probá 3 temas distintos.",
+    icon: "telescope",
+    tier: 1,
     check: ({ overall }) => ({
       earned: overall.topicsTouched >= 3,
       progress: clamp01((overall.topicsTouched / 3) * 100),
     }),
   },
   {
-    id: "polymath", name: "Polímata", description: "Probá 5 temas distintos.",
-    icon: "telescope", tier: 2,
+    id: "polymath",
+    name: "Polímata",
+    description: "Probá 5 temas distintos.",
+    icon: "telescope",
+    tier: 2,
     check: ({ overall }) => ({
       earned: overall.topicsTouched >= 5,
       progress: clamp01((overall.topicsTouched / 5) * 100),
@@ -145,8 +189,11 @@ export const BADGES: BadgeDefinition[] = [
 
   // --- Calidad ---
   {
-    id: "sharp", name: "Filoso", description: "Alcanzá 90% de precisión global con ≥20 intentos.",
-    icon: "target", tier: 2,
+    id: "sharp",
+    name: "Filoso",
+    description: "Alcanzá 90% de precisión global con ≥20 intentos.",
+    icon: "target",
+    tier: 2,
     check: ({ overall }) => {
       if (overall.totalAttempts < 20) {
         return { earned: false, progress: clamp01((overall.totalAttempts / 20) * 100) };
@@ -155,8 +202,11 @@ export const BADGES: BadgeDefinition[] = [
     },
   },
   {
-    id: "rising-star", name: "Estrella en ascenso", description: "Llegá al nivel 5 (500 XP).",
-    icon: "star", tier: 2,
+    id: "rising-star",
+    name: "Estrella en ascenso",
+    description: "Llegá al nivel 5 (500 XP).",
+    icon: "star",
+    tier: 2,
     check: ({ profile }) => ({
       earned: (profile?.level ?? 1) >= 5,
       progress: clamp01(((profile?.level ?? 1) / 5) * 100),

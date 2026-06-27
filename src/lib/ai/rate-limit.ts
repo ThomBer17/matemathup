@@ -1,10 +1,12 @@
 /**
- * Rate limiter en memoria, por user-id, ventana deslizante simple.
- * Vive en el proceso del runtime (Cloudflare Workers / Node).
- *
- * No es persistente — un reinicio del worker resetea las cuentas.
- * Para escala real conviene Durable Objects o Redis, pero para MVP basta.
+ * Rate limiter.
+ * - rateLimit: fallback en memoria y API sincrona usada por tests.
+ * - persistentRateLimit: usa Supabase/Postgres via RPC para serverless/escala.
  */
+
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+import { errorFields, log } from "@/lib/observability/log";
 
 interface Bucket {
   count: number;
@@ -43,10 +45,39 @@ export function rateLimit(
   return { ok: true, remaining: limit - b.count };
 }
 
-/**
- * Limpia buckets expirados para evitar fuga de memoria a largo plazo.
- * Llamala cada tanto si el proceso vive mucho tiempo.
- */
+export async function persistentRateLimit(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  bucket: string,
+  limit: number,
+  windowMs: number = 60_000,
+): Promise<RateLimitResult> {
+  const { data, error } = await supabase.rpc("check_ai_rate_limit", {
+    p_bucket: bucket,
+    p_limit: limit,
+    p_window_seconds: Math.ceil(windowMs / 1000),
+  });
+
+  if (error) {
+    log.warn("rate_limit_persistent_failed", {
+      bucket,
+      limit,
+      windowMs,
+      ...errorFields(error),
+    });
+    return rateLimit(userId, bucket, limit, windowMs);
+  }
+
+  const row = Array.isArray(data) ? data[0] : null;
+  if (!row) return rateLimit(userId, bucket, limit, windowMs);
+
+  return {
+    ok: row.ok,
+    retryInSec: row.retry_in_sec ?? undefined,
+    remaining: row.remaining ?? undefined,
+  };
+}
+
 export function pruneExpired(windowMs: number = 60_000) {
   const now = Date.now();
   for (const [key, b] of buckets) {
@@ -54,7 +85,6 @@ export function pruneExpired(windowMs: number = 60_000) {
   }
 }
 
-/** Solo para tests — vacía todo el estado. */
 export function _resetForTests() {
   buckets.clear();
 }

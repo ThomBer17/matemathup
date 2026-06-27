@@ -15,7 +15,7 @@ describe("fixJsonBackslashes", () => {
     expect(JSON.parse(fixJsonBackslashes(raw))).toEqual({ s: "$\\frac{1}{2}$" });
   });
 
-  it("conserva escapes JSON válidos (\\\\, \\\", \\uXXXX)", () => {
+  it('conserva escapes JSON válidos (\\\\, \\", \\uXXXX)', () => {
     expect(JSON.parse(fixJsonBackslashes('{"s":"a\\\\b"}'))).toEqual({ s: "a\\b" });
     expect(JSON.parse(fixJsonBackslashes('{"s":"a\\"b"}'))).toEqual({ s: 'a"b' });
     expect(JSON.parse(fixJsonBackslashes('{"s":"\\u00e9"}'))).toEqual({ s: "é" });

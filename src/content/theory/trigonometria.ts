@@ -16,11 +16,20 @@ Con estas herramientas resolvemos triángulos (encontrar lados o ángulos que fa
     "Teorema del seno y del coseno",
   ],
   formulas: [
-    { label: "Razones trigonométricas", latex: String.raw`\sin\theta=\frac{\text{op}}{\text{hip}}\quad \cos\theta=\frac{\text{ady}}{\text{hip}}\quad \tan\theta=\frac{\text{op}}{\text{ady}}` },
+    {
+      label: "Razones trigonométricas",
+      latex: String.raw`\sin\theta=\frac{\text{op}}{\text{hip}}\quad \cos\theta=\frac{\text{ady}}{\text{hip}}\quad \tan\theta=\frac{\text{op}}{\text{ady}}`,
+    },
     { label: "Identidad pitagórica", latex: String.raw`\sin^2\theta + \cos^2\theta = 1` },
-    { label: "Teorema del seno", latex: String.raw`\frac{a}{\sin A}=\frac{b}{\sin B}=\frac{c}{\sin C}` },
+    {
+      label: "Teorema del seno",
+      latex: String.raw`\frac{a}{\sin A}=\frac{b}{\sin B}=\frac{c}{\sin C}`,
+    },
     { label: "Teorema del coseno", latex: String.raw`c^2 = a^2 + b^2 - 2ab\cos C` },
-    { label: "Conversión a radianes", latex: String.raw`\text{rad} = \text{grados}\cdot\frac{\pi}{180^\circ}` },
+    {
+      label: "Conversión a radianes",
+      latex: String.raw`\text{rad} = \text{grados}\cdot\frac{\pi}{180^\circ}`,
+    },
   ],
   examples: [
     {

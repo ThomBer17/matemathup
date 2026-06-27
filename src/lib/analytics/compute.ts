@@ -186,7 +186,8 @@ export interface SessionMetrics {
 
 export function sessionMetrics(sessions: Session[]): SessionMetrics {
   const total = sessions.length;
-  if (total === 0) return { total: 0, avgDurationMin: 0, avgExercises: 0, avgTopics: 0, sessionsPerUser: 0 };
+  if (total === 0)
+    return { total: 0, avgDurationMin: 0, avgExercises: 0, avgTopics: 0, sessionsPerUser: 0 };
   const users = new Set(sessions.map((s) => s.userId)).size;
   const avg = (f: (s: Session) => number) => sessions.reduce((a, s) => a + f(s), 0) / total;
   return {
@@ -255,12 +256,21 @@ export function accuracyByTopic(events: AnalyticsEvent[], minAttempts = 3): Topi
   for (const e of events) {
     const topic = e.metadata?.topic;
     if (typeof topic !== "string" || !topic) continue;
-    if (e.event_type === "exercise_correct") { correct[topic] = (correct[topic] ?? 0) + 1; total[topic] = (total[topic] ?? 0) + 1; }
-    else if (e.event_type === "exercise_incorrect") { total[topic] = (total[topic] ?? 0) + 1; }
+    if (e.event_type === "exercise_correct") {
+      correct[topic] = (correct[topic] ?? 0) + 1;
+      total[topic] = (total[topic] ?? 0) + 1;
+    } else if (e.event_type === "exercise_incorrect") {
+      total[topic] = (total[topic] ?? 0) + 1;
+    }
   }
   return Object.entries(total)
     .filter(([, t]) => t >= minAttempts)
-    .map(([topic, t]) => ({ topic, correct: correct[topic] ?? 0, total: t, accuracyPct: Math.round(((correct[topic] ?? 0) / t) * 100) }))
+    .map(([topic, t]) => ({
+      topic,
+      correct: correct[topic] ?? 0,
+      total: t,
+      accuracyPct: Math.round(((correct[topic] ?? 0) / t) * 100),
+    }))
     .sort((a, b) => a.accuracyPct - b.accuracyPct);
 }
 
@@ -291,14 +301,17 @@ export function buildAlerts(args: {
 }): Alert[] {
   const out: Alert[] = [];
   for (const a of args.abandonment) {
-    if (a.abandonPct > 50) out.push({ level: "warning", text: `${a.topic} tiene ${a.abandonPct}% de abandono` });
+    if (a.abandonPct > 50)
+      out.push({ level: "warning", text: `${a.topic} tiene ${a.abandonPct}% de abandono` });
   }
   for (const a of args.accuracy) {
-    if (a.accuracyPct < 40) out.push({ level: "warning", text: `${a.topic} tiene ${a.accuracyPct}% de precisión` });
+    if (a.accuracyPct < 40)
+      out.push({ level: "warning", text: `${a.topic} tiene ${a.accuracyPct}% de precisión` });
   }
   const th = args.lowUsageThreshold ?? 3;
   for (const f of args.featureCounts) {
-    if (f.count < th) out.push({ level: "warning", text: `${f.label} se usa poco (${f.count} usos)` });
+    if (f.count < th)
+      out.push({ level: "warning", text: `${f.label} se usa poco (${f.count} usos)` });
   }
   return out;
 }

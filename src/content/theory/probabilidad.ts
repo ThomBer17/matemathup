@@ -16,10 +16,16 @@ La **estadística descriptiva** complementa el tema: organiza y resume datos. La
     "Frecuencia relativa",
   ],
   formulas: [
-    { label: "Probabilidad de Laplace", latex: String.raw`P(A) = \frac{\text{casos favorables}}{\text{casos totales}}` },
+    {
+      label: "Probabilidad de Laplace",
+      latex: String.raw`P(A) = \frac{\text{casos favorables}}{\text{casos totales}}`,
+    },
     { label: "Combinaciones", latex: String.raw`\binom{n}{k} = \frac{n!}{k!\,(n-k)!}` },
     { label: "Media (promedio)", latex: String.raw`\bar{x} = \frac{x_1 + x_2 + \cdots + x_n}{n}` },
-    { label: "Desvío estándar", latex: String.raw`\sigma = \sqrt{\frac{\sum (x_i - \bar{x})^2}{n}}` },
+    {
+      label: "Desvío estándar",
+      latex: String.raw`\sigma = \sqrt{\frac{\sum (x_i - \bar{x})^2}{n}}`,
+    },
   ],
   examples: [
     {

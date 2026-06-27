@@ -11,10 +11,12 @@ import {
 describe("limitFor", () => {
   it("free tiene límites finitos", () => {
     expect(limitFor("free", "adaptive")).toBe(20);
+    expect(limitFor("free", "adaptive_generation")).toBe(20);
     expect(limitFor("free", "tanda")).toBe(3);
   });
   it("premium es ilimitado (null)", () => {
     expect(limitFor("premium", "adaptive")).toBeNull();
+    expect(limitFor("premium", "adaptive_generation")).toBeNull();
     expect(limitFor("premium", "tanda")).toBeNull();
   });
 });
@@ -24,6 +26,7 @@ describe("withinLimit", () => {
     expect(withinLimit("free", "adaptive", 19)).toBe(true);
     expect(withinLimit("free", "adaptive", 20)).toBe(false);
     expect(withinLimit("free", "adaptive", 21)).toBe(false);
+    expect(withinLimit("free", "adaptive_generation", 20)).toBe(false);
   });
   it("free tanda", () => {
     expect(withinLimit("free", "tanda", 2)).toBe(true);
@@ -31,6 +34,7 @@ describe("withinLimit", () => {
   });
   it("premium nunca bloquea", () => {
     expect(withinLimit("premium", "adaptive", 9999)).toBe(true);
+    expect(withinLimit("premium", "adaptive_generation", 9999)).toBe(true);
     expect(withinLimit("premium", "tanda", 9999)).toBe(true);
   });
 });
@@ -50,6 +54,9 @@ describe("normalizePlan", () => {
 describe("isFreemiumLimitError", () => {
   it("detecta los códigos de límite", () => {
     expect(isFreemiumLimitError(FREEMIUM_LIMIT_ERROR.adaptive)).toBe("adaptive");
+    expect(isFreemiumLimitError(FREEMIUM_LIMIT_ERROR.adaptive_generation)).toBe(
+      "adaptive_generation",
+    );
     expect(isFreemiumLimitError(FREEMIUM_LIMIT_ERROR.tanda)).toBe("tanda");
   });
   it("ignora otros mensajes", () => {

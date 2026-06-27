@@ -61,11 +61,17 @@ const CONCEPTUAL =
  * objeto esté presente. Ignora preguntas conceptuales ("¿cómo se resuelve...?").
  * Usado en práctica adaptativa y en tandas.
  */
-export function checkRequiredExpression(statement: string): { ok: true } | { ok: false; reason: string } {
+export function checkRequiredExpression(
+  statement: string,
+): { ok: true } | { ok: false; reason: string } {
   if (CONCEPTUAL.test(statement)) return { ok: true }; // pregunta/método general
   const needsExpr = REQUIRES_EXPRESSION.test(statement) || POINTER_NOUN.test(statement);
   if (needsExpr && !hasMathExpression(statement)) {
-    return { ok: false, reason: "missing_expression: el enunciado pide operar sobre un objeto matemático que no está presente" };
+    return {
+      ok: false,
+      reason:
+        "missing_expression: el enunciado pide operar sobre un objeto matemático que no está presente",
+    };
   }
   return { ok: true };
 }

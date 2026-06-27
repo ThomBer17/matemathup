@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Sparkles, Crown } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/auth-context";
 import { getUsageStatus } from "@/lib/billing/usage.functions";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +42,11 @@ export function PlanUsageCard({ className }: { className?: string }) {
 
       {!isPremium && (
         <div className="mt-4 space-y-3">
+          <UsageBar
+            label="Generaciones adaptativas hoy"
+            used={data.adaptiveGeneration.used}
+            limit={data.adaptiveGeneration.limit}
+          />
           <UsageBar label="Ejercicios hoy" used={data.adaptive.used} limit={data.adaptive.limit} />
           <UsageBar label="Tandas IA hoy" used={data.tanda.used} limit={data.tanda.limit} />
           <p className="text-[11px] text-muted-foreground">Tu uso se reinicia cada día.</p>
@@ -60,7 +65,12 @@ function UsageBar({ label, used, limit }: { label: string; used: number; limit: 
     <div className="space-y-1">
       <div className="flex items-center justify-between text-xs">
         <span className="text-muted-foreground">{label}</span>
-        <span className={cn("font-semibold tabular-nums", atLimit && "text-amber-600 dark:text-amber-400")}>
+        <span
+          className={cn(
+            "font-semibold tabular-nums",
+            atLimit && "text-amber-600 dark:text-amber-400",
+          )}
+        >
           {Math.min(used, limit)} / {limit}
         </span>
       </div>

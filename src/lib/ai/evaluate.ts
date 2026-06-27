@@ -2,8 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { callAI } from "./service";
-import { rateLimit } from "./rate-limit";
+import { persistentRateLimit } from "./rate-limit";
 import { buildEvaluateAnswerPrompt } from "./prompts";
+import { errorFields, log } from "@/lib/observability/log";
 import type { EvaluationResult } from "./types";
 
 const EvaluationSchema = z.object({
@@ -14,25 +15,19 @@ const EvaluationSchema = z.object({
 
 export const evaluateAnswer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
-    (input: { tema: string; enunciado: string; respuesta: string }) => input,
-  )
+  .inputValidator((input: { tema: string; enunciado: string; respuesta: string }) => input)
   .handler(async ({ data, context }) => {
     const { tema, enunciado, respuesta } = data;
     if (!respuesta.trim()) {
       throw new Error("Escribí una respuesta antes de enviar.");
     }
 
-    const rl = rateLimit(context.userId, "evaluate", 40);
+    const rl = await persistentRateLimit(context.supabase, context.userId, "evaluate", 40);
     if (!rl.ok) {
       throw new Error(`Estás evaluando muy seguido. Probá en ${rl.retryInSec}s.`);
     }
 
-    const { systemPrompt, userPrompt } = buildEvaluateAnswerPrompt(
-      tema,
-      enunciado,
-      respuesta,
-    );
+    const { systemPrompt, userPrompt } = buildEvaluateAnswerPrompt(tema, enunciado, respuesta);
 
     const raw = await callAI<EvaluationResult>({
       systemPrompt,
@@ -44,7 +39,7 @@ export const evaluateAnswer = createServerFn({ method: "POST" })
       // feedback/explicacion conservan su LaTeX $...$ (se renderizan con KaTeX).
       return EvaluationSchema.parse(raw);
     } catch (e) {
-      console.error("[evaluateAnswer] validation error", e, raw);
+      log.error("answer_evaluation_validation_failed", { ...errorFields(e), raw });
       throw new Error("La IA devolvió un formato inválido. Probá de nuevo.");
     }
   });

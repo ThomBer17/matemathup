@@ -19,12 +19,15 @@ dist-ssr
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
+supabase/.temp/
 
 # Env files (contain secrets — never commit)
 .env
 .env.local
+.env.production
 .env.*.local
 !.env.example
+!.env.production.example
 
 # Editor directories and files
 .vscode/*

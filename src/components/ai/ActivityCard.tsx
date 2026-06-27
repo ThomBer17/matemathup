@@ -106,7 +106,10 @@ export function ActivityCard({
       });
       setEvaluation(result);
       setShowExplicacion(result.estado !== "correcta");
-      track(EV.tandaAnswered, { entityType: "tanda", metadata: { topic: tema, estado: result.estado } });
+      track(EV.tandaAnswered, {
+        entityType: "tanda",
+        metadata: { topic: tema, estado: result.estado },
+      });
 
       void recordFn({
         data: {
@@ -234,7 +237,7 @@ export function ActivityCard({
                   onChange={(e) => setAnswer(e.target.value)}
                   placeholder="Escribí tu respuesta…"
                   rows={3}
-                  disabled={submitting || (evaluation?.estado === "correcta")}
+                  disabled={submitting || evaluation?.estado === "correcta"}
                   className="resize-none font-mono text-sm"
                 />
                 <MathInputHelper
@@ -285,12 +288,7 @@ export function ActivityCard({
                   </>
                 )}
                 {evaluation && evaluation.estado !== "correcta" && (
-                  <Button
-                    onClick={handleRetry}
-                    size="sm"
-                    variant="outline"
-                    className="gap-2"
-                  >
+                  <Button onClick={handleRetry} size="sm" variant="outline" className="gap-2">
                     <RotateCcw className="h-3.5 w-3.5" />
                     Intentar otra vez
                   </Button>
@@ -307,7 +305,9 @@ export function ActivityCard({
                     exit={{ opacity: 0 }}
                     className={`rounded-xl border p-4 ${STATUS_META[evaluation.estado].box}`}
                   >
-                    <div className={`flex items-center gap-2 text-sm font-semibold ${STATUS_META[evaluation.estado].tone}`}>
+                    <div
+                      className={`flex items-center gap-2 text-sm font-semibold ${STATUS_META[evaluation.estado].tone}`}
+                    >
                       {(() => {
                         const Icon = STATUS_META[evaluation.estado].Icon;
                         return <Icon className="h-4 w-4" />;

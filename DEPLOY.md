@@ -13,16 +13,16 @@ Esta app está armada para correr en **Cloudflare Pages** (gracias a `@cloudflar
 
 En Cloudflare Pages → tu proyecto → Settings → Environment variables, agregá estas para el environment **Production**:
 
-| Variable | Valor | Visibilidad |
-|---|---|---|
-| `VITE_SUPABASE_URL` | URL de tu Supabase prod | Plaintext |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Anon key (es safe que sea pública) | Plaintext |
-| `VITE_SUPABASE_PROJECT_ID` | El project ID | Plaintext |
-| `SUPABASE_URL` | Igual que VITE_SUPABASE_URL | Plaintext |
-| `SUPABASE_PUBLISHABLE_KEY` | Igual que VITE_... | Plaintext |
-| `AI_API_KEY` | Tu key OpenRouter | **Encrypted** ← importante |
-| `AI_BASE_URL` | `https://openrouter.ai/api/v1/chat/completions` | Plaintext |
-| `AI_MODEL` | `openai/gpt-oss-120b:free` o el que prefieras | Plaintext |
+| Variable                        | Valor                                           | Visibilidad                |
+| ------------------------------- | ----------------------------------------------- | -------------------------- |
+| `VITE_SUPABASE_URL`             | URL de tu Supabase prod                         | Plaintext                  |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Anon key (es safe que sea pública)              | Plaintext                  |
+| `VITE_SUPABASE_PROJECT_ID`      | El project ID                                   | Plaintext                  |
+| `SUPABASE_URL`                  | Igual que VITE_SUPABASE_URL                     | Plaintext                  |
+| `SUPABASE_PUBLISHABLE_KEY`      | Igual que VITE\_...                             | Plaintext                  |
+| `AI_API_KEY`                    | Tu key OpenRouter                               | **Encrypted** ← importante |
+| `AI_BASE_URL`                   | `https://openrouter.ai/api/v1/chat/completions` | Plaintext                  |
+| `AI_MODEL`                      | `openai/gpt-oss-120b:free` o el que prefieras   | Plaintext                  |
 
 Las `VITE_*` se embeben en el bundle del cliente al build. Las otras solo se leen server-side. **`AI_API_KEY` siempre como Encrypted** — si alguien clona tu CF dashboard la ve si está en Plaintext.
 

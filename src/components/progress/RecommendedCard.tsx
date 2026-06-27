@@ -4,11 +4,26 @@ import { ArrowRight, Sparkles, AlertTriangle, RefreshCw, Trophy, Compass } from 
 import { getTopicIcon, topicGradient } from "@/lib/topic-icons";
 import type { Recommendation, RecommendationReason } from "@/lib/progress/recommendations";
 
-const REASON_META: Record<RecommendationReason, { Icon: typeof Sparkles; label: string; tone: string }> = {
-  refuerzo: { Icon: AlertTriangle, label: "Recomendado para reforzar", tone: "text-amber-600 dark:text-amber-400" },
+const REASON_META: Record<
+  RecommendationReason,
+  { Icon: typeof Sparkles; label: string; tone: string }
+> = {
+  refuerzo: {
+    Icon: AlertTriangle,
+    label: "Recomendado para reforzar",
+    tone: "text-amber-600 dark:text-amber-400",
+  },
   continuar: { Icon: RefreshCw, label: "Seguí desde donde dejaste", tone: "text-primary" },
-  mantener: { Icon: Trophy, label: "Mantené el nivel", tone: "text-emerald-600 dark:text-emerald-400" },
-  explorar: { Icon: Compass, label: "Empezá algo nuevo", tone: "text-violet-600 dark:text-violet-400" },
+  mantener: {
+    Icon: Trophy,
+    label: "Mantené el nivel",
+    tone: "text-emerald-600 dark:text-emerald-400",
+  },
+  explorar: {
+    Icon: Compass,
+    label: "Empezá algo nuevo",
+    tone: "text-violet-600 dark:text-violet-400",
+  },
 };
 
 export function RecommendedCard({ rec }: { rec: Recommendation }) {
@@ -17,10 +32,7 @@ export function RecommendedCard({ rec }: { rec: Recommendation }) {
   const ReasonIcon = meta.Icon;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-    >
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
       <Link
         to="/topics/$slug"
         params={{ slug: rec.topic.slug }}
@@ -32,7 +44,9 @@ export function RecommendedCard({ rec }: { rec: Recommendation }) {
         </div>
 
         <div className="mt-3 flex items-start gap-4">
-          <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br ${topicGradient(rec.topic.color)}`}>
+          <div
+            className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br ${topicGradient(rec.topic.color)}`}
+          >
             <Icon className="h-6 w-6" />
           </div>
           <div className="min-w-0 flex-1">

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/auth-context";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -41,11 +41,25 @@ function LoginPage() {
       <form onSubmit={onSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vos@ejemplo.com" />
+          <Input
+            id="email"
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="vos@ejemplo.com"
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="password">Contraseña</Label>
-          <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+          <Input
+            id="password"
+            type="password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+          />
         </div>
         <Button type="submit" className="w-full" disabled={submitting}>
           {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -62,13 +76,24 @@ function LoginPage() {
   );
 }
 
-export function AuthShell({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+export function AuthShell({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="relative min-h-screen bg-background">
       <div className="bg-grid-soft pointer-events-none absolute inset-0 opacity-50" />
       <div className="pointer-events-none absolute -top-40 right-1/3 h-[420px] w-[620px] rounded-full bg-primary/20 blur-3xl" />
       <div className="relative z-10 mx-auto flex min-h-screen max-w-md flex-col px-6 py-10">
-        <Link to="/" className="mb-10 inline-flex items-center gap-2 self-start font-display font-bold">
+        <Link
+          to="/"
+          className="mb-10 inline-flex items-center gap-2 self-start font-display font-bold"
+        >
           <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground">
             <GraduationCap className="h-4 w-4" />
           </div>

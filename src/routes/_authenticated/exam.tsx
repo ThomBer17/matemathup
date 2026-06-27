@@ -1,17 +1,23 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { ArrowLeft, Loader2, Trophy, Clock, Check, X, Play, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { MathRich } from "@/components/math/MathRich";
 import { StepByStepExplanation } from "@/components/math/StepByStepExplanation";
 import { answersEqual } from "@/lib/answer-normalize";
-import { newItem } from "@/lib/review/srs";
-import { scoreExam, examGrade, shuffle, type ExamQuestion, type ExamAnswer } from "@/lib/exam/score";
+import { recordExamResults } from "@/lib/progress/attempts";
+import {
+  scoreExam,
+  examGrade,
+  shuffle,
+  type ExamQuestion,
+  type ExamAnswer,
+} from "@/lib/exam/score";
 
 export const Route = createFileRoute("/_authenticated/exam")({
   component: ExamPage,
@@ -24,7 +30,7 @@ const LETTERS = ["A", "B", "C", "D", "E"];
 type Phase = "setup" | "running" | "results";
 
 function ExamPage() {
-  const { user } = useAuth();
+  const recordExamResultsFn = useServerFn(recordExamResults);
   const [phase, setPhase] = useState<Phase>("setup");
 
   const { data: topics = [] } = useQuery({
@@ -63,7 +69,7 @@ function ExamPage() {
         .map((e) => ({
           id: e.id as string,
           topicId: e.topic_id as string | null,
-          topicName: e.topic_id ? nameById.get(e.topic_id) ?? null : null,
+          topicName: e.topic_id ? (nameById.get(e.topic_id) ?? null) : null,
           statement: e.statement as string,
           options: e.options as string[],
           correctAnswer: e.correct_answer as string,
@@ -71,7 +77,9 @@ function ExamPage() {
         }));
 
       if (pool.length === 0) {
-        toast.error("Todavía no hay ejercicios para el simulacro de esos temas. Practicá un poco primero.");
+        toast.error(
+          "Todavía no hay ejercicios para el simulacro de esos temas. Practicá un poco primero.",
+        );
         setLoading(false);
         return;
       }
@@ -111,7 +119,8 @@ function ExamPage() {
         return {
           question: q,
           selected: selectedOpt,
-          correct: selectedOpt != null && answersEqual(selectedOpt, q.correctAnswer, "multiple_choice"),
+          correct:
+            selectedOpt != null && answersEqual(selectedOpt, q.correctAnswer, "multiple_choice"),
         };
       }),
     [questions, picks],
@@ -122,36 +131,19 @@ function ExamPage() {
     finishedRef.current = true;
     setPhase("results");
 
-    if (user) {
-      const now = new Date().toISOString();
-      // Registrar intentos + encolar los fallados al repaso espaciado.
-      const attemptRows = answers.map((a) => ({
-        user_id: user.id,
-        exercise_id: a.question.id,
-        topic_id: a.question.topicId,
-        user_answer: a.selected ?? "",
-        is_correct: a.correct,
-        status: a.correct ? "correct" : "incorrect",
-        source: "exam",
-      }));
-      void supabase.from("exercise_attempts").insert(attemptRows);
-
-      const wrong = answers.filter((a) => !a.correct);
-      if (wrong.length) {
-        const init = newItem();
-        void supabase.from("srs_items").upsert(
-          wrong.map((a) => ({
-            user_id: user.id,
-            exercise_id: a.question.id,
-            topic_id: a.question.topicId,
-            box: init.box,
-            due_at: init.dueAt,
-            updated_at: now,
-          })),
-          { onConflict: "user_id,exercise_id" },
-        );
-      }
-    }
+    void recordExamResultsFn({
+      data: {
+        answers: answers.map((answer) => ({
+          exerciseId: answer.question.id,
+          topicId: answer.question.topicId,
+          userAnswer: answer.selected ?? "",
+          correct: answer.correct,
+        })),
+      },
+    }).catch((e) => {
+      const msg = e instanceof Error ? e.message : "No se pudo registrar el simulacro.";
+      toast.error(msg);
+    });
   };
 
   if (phase === "results") {
@@ -169,7 +161,12 @@ function ExamPage() {
           <span className="text-sm font-medium text-muted-foreground tabular-nums">
             {answered}/{questions.length} respondidas
           </span>
-          <span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-sm font-bold tabular-nums", low ? "bg-destructive/15 text-destructive" : "bg-primary/10 text-primary")}>
+          <span
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-sm font-bold tabular-nums",
+              low ? "bg-destructive/15 text-destructive" : "bg-primary/10 text-primary",
+            )}
+          >
             <Clock className="h-4 w-4" /> {mm}:{ss}
           </span>
         </div>
@@ -179,7 +176,9 @@ function ExamPage() {
             <div key={q.id} className="rounded-2xl border bg-card p-5 shadow-soft">
               <div className="flex items-baseline gap-2">
                 <span className="text-xs font-bold text-primary">{qi + 1}.</span>
-                <p className="font-display text-base font-semibold leading-snug"><MathRich text={q.statement} /></p>
+                <p className="font-display text-base font-semibold leading-snug">
+                  <MathRich text={q.statement} />
+                </p>
               </div>
               <div className="mt-3 space-y-2">
                 {q.options.map((opt, i) => {
@@ -194,13 +193,19 @@ function ExamPage() {
                         isPicked && "border-primary ring-2 ring-primary/20",
                       )}
                     >
-                      <span className={cn(
-                        "grid h-6 w-6 shrink-0 place-items-center rounded-lg border text-xs font-bold",
-                        isPicked ? "border-primary bg-primary text-primary-foreground" : "border-border bg-muted/50 text-muted-foreground",
-                      )}>
+                      <span
+                        className={cn(
+                          "grid h-6 w-6 shrink-0 place-items-center rounded-lg border text-xs font-bold",
+                          isPicked
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-muted/50 text-muted-foreground",
+                        )}
+                      >
                         {LETTERS[i] ?? i + 1}
                       </span>
-                      <span className="min-w-0 flex-1"><MathRich text={opt} /></span>
+                      <span className="min-w-0 flex-1">
+                        <MathRich text={opt} />
+                      </span>
                     </button>
                   );
                 })}
@@ -225,7 +230,10 @@ function ExamPage() {
   // --- Setup ---
   return (
     <div className="mx-auto max-w-2xl px-6 py-8 md:py-12">
-      <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <Link
+        to="/dashboard"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      >
         <ArrowLeft className="h-3.5 w-3.5" /> Volver
       </Link>
 
@@ -235,7 +243,9 @@ function ExamPage() {
         </div>
         <div>
           <h1 className="font-display text-3xl font-bold tracking-tight">Simulacro de examen</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">Cronometrado, como el día del examen. Al final, tu nota y repaso.</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Cronometrado, como el día del examen. Al final, tu nota y repaso.
+          </p>
         </div>
       </div>
 
@@ -258,10 +268,19 @@ function ExamPage() {
               <button
                 key={t.id}
                 type="button"
-                onClick={() => setSelected((s) => { const n = new Set(s); n.has(t.id) ? n.delete(t.id) : n.add(t.id); return n; })}
+                onClick={() =>
+                  setSelected((s) => {
+                    const n = new Set(s);
+                    if (n.has(t.id)) n.delete(t.id);
+                    else n.add(t.id);
+                    return n;
+                  })
+                }
                 className={cn(
                   "rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
-                  on ? "border-primary bg-primary/10 text-primary" : "bg-background hover:border-primary/40",
+                  on
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "bg-background hover:border-primary/40",
                 )}
               >
                 {t.name}
@@ -281,11 +300,15 @@ function ExamPage() {
               onClick={() => setCount(c)}
               className={cn(
                 "flex-1 rounded-xl border px-4 py-3 text-center transition-colors",
-                count === c ? "border-primary bg-primary/10" : "bg-background hover:border-primary/40",
+                count === c
+                  ? "border-primary bg-primary/10"
+                  : "bg-background hover:border-primary/40",
               )}
             >
               <span className="font-display text-lg font-bold tabular-nums">{c}</span>
-              <span className="block text-[11px] text-muted-foreground">{Math.round((c * SECONDS_PER_Q) / 60)} min</span>
+              <span className="block text-[11px] text-muted-foreground">
+                {Math.round((c * SECONDS_PER_Q) / 60)} min
+              </span>
             </button>
           ))}
         </div>
@@ -293,7 +316,8 @@ function ExamPage() {
 
       <div className="mt-6 flex items-start gap-2 rounded-xl border bg-muted/30 p-3 text-xs text-muted-foreground">
         <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-        El simulacro usa ejercicios que ya practicaste o se generaron. Si un tema es nuevo, va a tener menos preguntas.
+        El simulacro usa ejercicios que ya practicaste o se generaron. Si un tema es nuevo, va a
+        tener menos preguntas.
       </div>
 
       <button
@@ -316,40 +340,81 @@ function ExamResults({ answers, onRetry }: { answers: ExamAnswer[]; onRetry: () 
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-8 md:py-12">
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-center">
-        <div className={cn("mx-auto grid h-16 w-16 place-items-center rounded-2xl text-white", pass ? "bg-gradient-to-br from-emerald-500 to-green-600" : "bg-gradient-to-br from-amber-500 to-orange-600")}>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center"
+      >
+        <div
+          className={cn(
+            "mx-auto grid h-16 w-16 place-items-center rounded-2xl text-white",
+            pass
+              ? "bg-gradient-to-br from-emerald-500 to-green-600"
+              : "bg-gradient-to-br from-amber-500 to-orange-600",
+          )}
+        >
           <Trophy className="h-8 w-8" />
         </div>
-        <p className="mt-4 font-display text-5xl font-bold tabular-nums">{grade}<span className="text-2xl text-muted-foreground">/10</span></p>
+        <p className="mt-4 font-display text-5xl font-bold tabular-nums">
+          {grade}
+          <span className="text-2xl text-muted-foreground">/10</span>
+        </p>
         <p className="mt-1 text-sm text-muted-foreground">
           {score.correct} de {score.total} correctas · {score.pct}%
         </p>
       </motion.div>
 
       <div className="mt-8 space-y-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Por tema</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Por tema
+        </h2>
         {score.byTopic.map((t) => (
-          <div key={t.topicName} className="flex items-center justify-between rounded-xl border bg-card p-3 text-sm shadow-soft">
+          <div
+            key={t.topicName}
+            className="flex items-center justify-between rounded-xl border bg-card p-3 text-sm shadow-soft"
+          >
             <span className="font-medium">{t.topicName}</span>
-            <span className="tabular-nums text-muted-foreground">{t.correct}/{t.total}</span>
+            <span className="tabular-nums text-muted-foreground">
+              {t.correct}/{t.total}
+            </span>
           </div>
         ))}
       </div>
 
       <div className="mt-8 space-y-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Revisión</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Revisión
+        </h2>
         {answers.map((a, i) => (
-          <div key={a.question.id} className={cn("rounded-2xl border p-4 shadow-soft", a.correct ? "border-success/30 bg-success/5" : "border-destructive/30 bg-destructive/5")}>
+          <div
+            key={a.question.id}
+            className={cn(
+              "rounded-2xl border p-4 shadow-soft",
+              a.correct
+                ? "border-success/30 bg-success/5"
+                : "border-destructive/30 bg-destructive/5",
+            )}
+          >
             <div className="flex items-baseline gap-2">
               <span className={cn("mt-0.5", a.correct ? "text-success" : "text-destructive")}>
                 {a.correct ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
               </span>
-              <p className="text-sm font-medium leading-snug"><span className="text-muted-foreground">{i + 1}. </span><MathRich text={a.question.statement} /></p>
+              <p className="text-sm font-medium leading-snug">
+                <span className="text-muted-foreground">{i + 1}. </span>
+                <MathRich text={a.question.statement} />
+              </p>
             </div>
             {!a.correct && (
               <div className="mt-2 pl-6 text-sm">
-                <p className="text-muted-foreground">Tu respuesta: <span className="text-foreground">{a.selected ? <MathRich text={a.selected} /> : "—"}</span></p>
-                <p className="text-muted-foreground">Correcta: <MathRich text={a.question.correctAnswer} className="text-foreground" /></p>
+                <p className="text-muted-foreground">
+                  Tu respuesta:{" "}
+                  <span className="text-foreground">
+                    {a.selected ? <MathRich text={a.selected} /> : "—"}
+                  </span>
+                </p>
+                <p className="text-muted-foreground">
+                  Correcta: <MathRich text={a.question.correctAnswer} className="text-foreground" />
+                </p>
                 <StepByStepExplanation text={a.question.explanation} className="mt-2" />
               </div>
             )}
@@ -358,10 +423,16 @@ function ExamResults({ answers, onRetry }: { answers: ExamAnswer[]; onRetry: () 
       </div>
 
       <div className="mt-8 flex flex-col gap-2 sm:flex-row">
-        <button onClick={onRetry} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90">
+        <button
+          onClick={onRetry}
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
+        >
           <Play className="h-4 w-4" /> Otro simulacro
         </button>
-        <Link to="/review" className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border bg-background px-4 py-2.5 text-sm font-semibold hover:border-primary/40">
+        <Link
+          to="/review"
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border bg-background px-4 py-2.5 text-sm font-semibold hover:border-primary/40"
+        >
           Repasar los errores
         </Link>
       </div>

@@ -1,3 +1,5 @@
+import { errorFields, log } from "@/lib/observability/log";
+
 /**
  * Procesamiento de material en el CLIENTE (browser). Extrae texto de PDF (pdfjs)
  * e imágenes (OCR con tesseract). Las librerías pesadas se cargan con dynamic import
@@ -30,7 +32,7 @@ export async function extractFromFile(file: File, kind: MaterialKind): Promise<E
     if (kind === "pdf") return await extractPdf(file);
     return await extractImage(file);
   } catch (e) {
-    console.warn("[materials] extracción falló, se cataloga sin texto:", e);
+    log.warn("material_text_extraction_failed", { ...errorFields(e), kind, fileName: file.name });
     return { text: "", pageCount: null };
   }
 }
@@ -50,9 +52,7 @@ async function extractPdf(file: File): Promise<ExtractResult> {
   for (let i = 1; i <= limit; i++) {
     const page = await doc.getPage(i);
     const content = await page.getTextContent();
-    text += content.items
-      .map((it) => ("str" in it ? it.str : ""))
-      .join(" ");
+    text += content.items.map((it) => ("str" in it ? it.str : "")).join(" ");
     text += "\n";
   }
   return { text: text.trim(), pageCount };

@@ -23,10 +23,7 @@ describe("checkSolutionSetMatch — conjunto-solución vs answer key", () => {
   });
 
   it("DETECTA con la conclusión en corchetes [-2,4) y key unión", () => {
-    const r = checkSolutionSetMatch(
-      `Resolviendo, la solución es [-2, 4).`,
-      `[-5,-1] ${CUP} [1,4]`,
-    );
+    const r = checkSolutionSetMatch(`Resolviendo, la solución es [-2, 4).`, `[-5,-1] ${CUP} [1,4]`);
     expect(r.ok).toBe(false);
   });
 
@@ -52,7 +49,10 @@ describe("checkSolutionSetMatch — conjunto-solución vs answer key", () => {
   });
 
   it("no bloquea si la explicación no concluye un intervalo", () => {
-    expect(checkSolutionSetMatch("Aplicamos la definición de valor absoluto.", `[-5,-1] ${CUP} [1,4]`).ok).toBe(true);
+    expect(
+      checkSolutionSetMatch("Aplicamos la definición de valor absoluto.", `[-5,-1] ${CUP} [1,4]`)
+        .ok,
+    ).toBe(true);
   });
 
   it("ignora pasos intermedios y mira la conclusión tras el marcador", () => {
@@ -76,9 +76,7 @@ describe("checkAnswerKeyConsistency — MATH > ANSWER KEY", () => {
   });
 
   it("acepta cuando la explicación concluye lo mismo que la key", () => {
-    expect(
-      checkAnswerKeyConsistency("Evaluamos y el resultado es 0.", "0").ok,
-    ).toBe(true);
+    expect(checkAnswerKeyConsistency("Evaluamos y el resultado es 0.", "0").ok).toBe(true);
   });
 
   it("ignora keys no numéricas (algebraicas / texto)", () => {
@@ -95,9 +93,7 @@ describe("checkAnswerKeyConsistency — MATH > ANSWER KEY", () => {
   });
 
   it("NO falsea positivo con coeficientes tras 'entonces' (3x=6, key 2)", () => {
-    expect(
-      checkAnswerKeyConsistency("Despejamos: 3x = 6, entonces x = 2.", "2").ok,
-    ).toBe(true);
+    expect(checkAnswerKeyConsistency("Despejamos: 3x = 6, entonces x = 2.", "2").ok).toBe(true);
   });
 
   it("acepta resultado final con unidades", () => {
@@ -111,18 +107,13 @@ describe("checkAnswerKeyConsistency — MATH > ANSWER KEY", () => {
 
 describe("checkIntervalAnswerKey — intervalos (caso MC más cercana)", () => {
   it("detecta key intervalo distinta al resultado de la explicación", () => {
-    const r = checkIntervalAnswerKey(
-      "Calculando el rango obtenemos [-10, 17].",
-      "[-7,35]",
-    );
+    const r = checkIntervalAnswerKey("Calculando el rango obtenemos [-10, 17].", "[-7,35]");
     expect(r.ok).toBe(false);
     expect(r.reason).toContain("answer_key_mismatch");
   });
 
   it("acepta cuando el intervalo coincide", () => {
-    expect(
-      checkIntervalAnswerKey("El rango es [-10, 17].", "[-10,17]").ok,
-    ).toBe(true);
+    expect(checkIntervalAnswerKey("El rango es [-10, 17].", "[-10,17]").ok).toBe(true);
   });
 
   it("la apertura importa: (3,5) ≠ [3,5]", () => {
@@ -182,8 +173,14 @@ describe("parseIntervalFromStatement", () => {
   });
 
   it("parsea intervalo cerrado y semiabierto", () => {
-    expect(parseIntervalFromStatement("intervalo [0, 5]")).toMatchObject({ loOpen: false, hiOpen: false });
-    expect(parseIntervalFromStatement("intervalo (0, 5]")).toMatchObject({ loOpen: true, hiOpen: false });
+    expect(parseIntervalFromStatement("intervalo [0, 5]")).toMatchObject({
+      loOpen: false,
+      hiOpen: false,
+    });
+    expect(parseIntervalFromStatement("intervalo (0, 5]")).toMatchObject({
+      loOpen: true,
+      hiOpen: false,
+    });
   });
 
   it("no confunde (-3/4) sin coma con un intervalo", () => {

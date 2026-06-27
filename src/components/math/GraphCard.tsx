@@ -80,10 +80,7 @@ export function GraphCard({ expressions, bounds, height = 360, className, option
 
   return (
     <div
-      className={cn(
-        "relative overflow-hidden rounded-2xl border bg-card shadow-soft",
-        className
-      )}
+      className={cn("relative overflow-hidden rounded-2xl border bg-card shadow-soft", className)}
       style={{ height }}
     >
       {!ready && (

@@ -20,15 +20,24 @@ export interface TopicScope {
 }
 
 const FALLBACK_OUT_OF_SCOPE = [
-  "taylor", "maclaurin", "fourier", "transformada",
-  "ecuación diferencial", "ecuaciones diferenciales",
-  "matriz", "determinante", "tensorial",
-  "topología", "homomorfismo", "isomorfismo",
+  "taylor",
+  "maclaurin",
+  "fourier",
+  "transformada",
+  "ecuación diferencial",
+  "ecuaciones diferenciales",
+  "matriz",
+  "determinante",
+  "tensorial",
+  "topología",
+  "homomorfismo",
+  "isomorfismo",
 ];
 
 const CURRICULUM: Record<string, TopicScope> = {
   "numeros-reales": {
-    description: "Conjuntos numéricos, operaciones, intervalos, valor absoluto, raíces y propiedades del orden.",
+    description:
+      "Conjuntos numéricos, operaciones, intervalos, valor absoluto, raíces y propiedades del orden.",
     concepts: [
       "clasificación N / Z / Q / I / R",
       "operaciones combinadas con reales",
@@ -41,14 +50,23 @@ const CURRICULUM: Record<string, TopicScope> = {
       "densidad de Q en R",
     ],
     outOfScopeKeywords: [
-      "taylor", "maclaurin", "serie infinita", "series infinitas",
-      "derivada", "integral", "límite de una función",
-      "matriz", "determinante", "vectorial", "transformada",
+      "taylor",
+      "maclaurin",
+      "serie infinita",
+      "series infinitas",
+      "derivada",
+      "integral",
+      "límite de una función",
+      "matriz",
+      "determinante",
+      "vectorial",
+      "transformada",
     ],
   },
 
-  "funciones": {
-    description: "Concepto de función, dominio e imagen, funciones lineales, cuadráticas, racionales, exponenciales y logarítmicas elementales.",
+  funciones: {
+    description:
+      "Concepto de función, dominio e imagen, funciones lineales, cuadráticas, racionales, exponenciales y logarítmicas elementales.",
     concepts: [
       "definición de función, dominio e imagen",
       "función lineal y cuadrática",
@@ -59,13 +77,18 @@ const CURRICULUM: Record<string, TopicScope> = {
       "gráficos cartesianos",
     ],
     outOfScopeKeywords: [
-      "taylor", "serie", "transformada", "derivada parcial",
-      "integral definida", "convergencia uniforme",
+      "taylor",
+      "serie",
+      "transformada",
+      "derivada parcial",
+      "integral definida",
+      "convergencia uniforme",
     ],
   },
 
-  "trigonometria": {
-    description: "Razones trigonométricas, identidades, resolución de triángulos, ecuaciones trigonométricas básicas.",
+  trigonometria: {
+    description:
+      "Razones trigonométricas, identidades, resolución de triángulos, ecuaciones trigonométricas básicas.",
     concepts: [
       "razones trigonométricas (sen, cos, tan, sec, csc, cot)",
       "círculo trigonométrico y radianes",
@@ -76,12 +99,15 @@ const CURRICULUM: Record<string, TopicScope> = {
       "gráficas de seno, coseno y tangente",
     ],
     outOfScopeKeywords: [
-      "serie de fourier", "transformada", "derivada de", "integral de",
+      "serie de fourier",
+      "transformada",
+      "derivada de",
+      "integral de",
       "ecuación diferencial",
     ],
   },
 
-  "logaritmos": {
+  logaritmos: {
     description: "Definición y propiedades de logaritmos, ecuaciones logarítmicas y exponenciales.",
     concepts: [
       "definición de logaritmo",
@@ -90,13 +116,12 @@ const CURRICULUM: Record<string, TopicScope> = {
       "ecuaciones exponenciales",
       "modelado de crecimiento/decrecimiento exponencial",
     ],
-    outOfScopeKeywords: [
-      "derivada", "integral", "serie de taylor", "logaritmo complejo",
-    ],
+    outOfScopeKeywords: ["derivada", "integral", "serie de taylor", "logaritmo complejo"],
   },
 
-  "limites": {
-    description: "Concepto intuitivo y formal de límite, cálculo de límites, asíntotas, continuidad.",
+  limites: {
+    description:
+      "Concepto intuitivo y formal de límite, cálculo de límites, asíntotas, continuidad.",
     concepts: [
       "noción intuitiva de límite",
       "cálculo de límites finitos e infinitos",
@@ -106,13 +131,18 @@ const CURRICULUM: Record<string, TopicScope> = {
       "continuidad de funciones elementales",
     ],
     outOfScopeKeywords: [
-      "derivada de", "integral", "serie de taylor", "regla de l'hôpital",
-      "epsilon-delta", "convergencia uniforme",
+      "derivada de",
+      "integral",
+      "serie de taylor",
+      "regla de l'hôpital",
+      "epsilon-delta",
+      "convergencia uniforme",
     ],
   },
 
-  "derivadas": {
-    description: "Definición de derivada, reglas de derivación, aplicaciones (recta tangente, máximos/mínimos, monotonía).",
+  derivadas: {
+    description:
+      "Definición de derivada, reglas de derivación, aplicaciones (recta tangente, máximos/mínimos, monotonía).",
     concepts: [
       "definición de derivada como límite",
       "derivadas de funciones elementales",
@@ -123,13 +153,17 @@ const CURRICULUM: Record<string, TopicScope> = {
       "problemas de optimización simples",
     ],
     outOfScopeKeywords: [
-      "integral", "ecuación diferencial", "derivada parcial",
-      "serie de taylor", "jacobiano",
+      "integral",
+      "ecuación diferencial",
+      "derivada parcial",
+      "serie de taylor",
+      "jacobiano",
     ],
   },
 
-  "integrales": {
-    description: "Integral indefinida, integrales inmediatas, integral definida y aplicaciones (área bajo la curva).",
+  integrales: {
+    description:
+      "Integral indefinida, integrales inmediatas, integral definida y aplicaciones (área bajo la curva).",
     concepts: [
       "antiderivada e integral indefinida",
       "integrales inmediatas",
@@ -139,12 +173,16 @@ const CURRICULUM: Record<string, TopicScope> = {
       "cálculo de áreas",
     ],
     outOfScopeKeywords: [
-      "integral múltiple", "integral de superficie", "integral de línea",
-      "ecuación diferencial", "transformada", "serie de fourier",
+      "integral múltiple",
+      "integral de superficie",
+      "integral de línea",
+      "ecuación diferencial",
+      "transformada",
+      "serie de fourier",
     ],
   },
 
-  "algebra": {
+  algebra: {
     description: "Polinomios, factorización, ecuaciones e inecuaciones algebraicas.",
     concepts: [
       "polinomios y operaciones",
@@ -155,13 +193,19 @@ const CURRICULUM: Record<string, TopicScope> = {
       "teorema del resto y Ruffini",
     ],
     outOfScopeKeywords: [
-      "grupo abeliano", "anillo", "cuerpo", "extensión de cuerpos",
-      "matriz", "determinante", "espacio vectorial",
+      "grupo abeliano",
+      "anillo",
+      "cuerpo",
+      "extensión de cuerpos",
+      "matriz",
+      "determinante",
+      "espacio vectorial",
     ],
   },
 
-  "geometria": {
-    description: "Geometría plana y del espacio: triángulos, polígonos, círculos, áreas, volúmenes, semejanza, Pitágoras.",
+  geometria: {
+    description:
+      "Geometría plana y del espacio: triángulos, polígonos, círculos, áreas, volúmenes, semejanza, Pitágoras.",
     concepts: [
       "triángulos y polígonos",
       "teorema de Pitágoras",
@@ -172,13 +216,17 @@ const CURRICULUM: Record<string, TopicScope> = {
       "coordenadas cartesianas en el plano",
     ],
     outOfScopeKeywords: [
-      "topología", "variedad diferenciable", "curvatura gaussiana",
-      "geometría no euclidiana", "tensor",
+      "topología",
+      "variedad diferenciable",
+      "curvatura gaussiana",
+      "geometría no euclidiana",
+      "tensor",
     ],
   },
 
   "sistemas-de-ecuaciones": {
-    description: "Sistemas de ecuaciones lineales 2×2 y 3×3, métodos de resolución, interpretación geométrica.",
+    description:
+      "Sistemas de ecuaciones lineales 2×2 y 3×3, métodos de resolución, interpretación geométrica.",
     concepts: [
       "sistema 2x2 y 3x3",
       "método de sustitución",
@@ -188,12 +236,15 @@ const CURRICULUM: Record<string, TopicScope> = {
       "interpretación geométrica (rectas, planos)",
     ],
     outOfScopeKeywords: [
-      "matriz inversa", "determinante", "rango", "espacio vectorial",
+      "matriz inversa",
+      "determinante",
+      "rango",
+      "espacio vectorial",
       "Cramer con matrices",
     ],
   },
 
-  "probabilidad": {
+  probabilidad: {
     description: "Probabilidad clásica, combinatoria básica, estadística descriptiva.",
     concepts: [
       "probabilidad clásica de Laplace",
@@ -204,8 +255,11 @@ const CURRICULUM: Record<string, TopicScope> = {
       "frecuencia relativa y acumulada",
     ],
     outOfScopeKeywords: [
-      "distribución normal multivariante", "teorema central del límite",
-      "cadena de markov", "bayes complejo", "función generatriz",
+      "distribución normal multivariante",
+      "teorema central del límite",
+      "cadena de markov",
+      "bayes complejo",
+      "función generatriz",
     ],
   },
 };
@@ -221,16 +275,16 @@ function normalize(s: string): string {
 
 // Aliases comunes (nombre alternativo → slug canónico)
 const ALIASES: Record<string, string> = {
-  "numeros": "numeros-reales",
-  "reales": "numeros-reales",
+  numeros: "numeros-reales",
+  reales: "numeros-reales",
   "logaritmos-y-exponenciales": "logaritmos",
-  "exponenciales": "logaritmos",
-  "trigo": "trigonometria",
-  "polinomios": "algebra",
-  "ecuaciones": "algebra",
+  exponenciales: "logaritmos",
+  trigo: "trigonometria",
+  polinomios: "algebra",
+  ecuaciones: "algebra",
   "probabilidad-y-estadistica": "probabilidad",
-  "estadistica": "probabilidad",
-  "sistemas": "sistemas-de-ecuaciones",
+  estadistica: "probabilidad",
+  sistemas: "sistemas-de-ecuaciones",
 };
 
 export function getTopicScope(topicNameOrSlug: string): TopicScope {
@@ -258,9 +312,15 @@ export function validateInScope(
   text: string,
   scope: TopicScope,
 ): { inScope: true } | { inScope: false; matched: string } {
-  const normalized = text.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+  const normalized = text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
   for (const kw of scope.outOfScopeKeywords) {
-    const normalizedKw = kw.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+    const normalizedKw = kw
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "");
     const escaped = normalizedKw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const pattern = new RegExp(`\\b${escaped}\\b`, "i");
     if (pattern.test(normalized)) {

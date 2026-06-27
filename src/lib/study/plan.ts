@@ -93,9 +93,7 @@ export function buildTopicSequence(topics: StudyTopicInput[], n: number): StudyT
   let assigned = counts.reduce((a, b) => a + b, 0);
 
   // Reparte el resto por mayor fracción (largest remainder).
-  const rem = raw
-    .map((r, i) => ({ i, frac: r - Math.floor(r) }))
-    .sort((a, b) => b.frac - a.frac);
+  const rem = raw.map((r, i) => ({ i, frac: r - Math.floor(r) })).sort((a, b) => b.frac - a.frac);
   let k = 0;
   while (assigned < n) {
     counts[rem[k % rem.length].i]++;
@@ -129,7 +127,12 @@ export function buildTopicSequence(topics: StudyTopicInput[], n: number): StudyT
   return seq;
 }
 
-function practiceTask(date: string, topic: StudyTopicInput, order: number, minutes: number): PlanTask {
+function practiceTask(
+  date: string,
+  topic: StudyTopicInput,
+  order: number,
+  minutes: number,
+): PlanTask {
   const weak = topic.mastery < 60;
   return {
     date,

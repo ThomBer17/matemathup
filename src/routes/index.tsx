@@ -85,9 +85,21 @@ function Landing() {
           className="mx-auto mt-20 grid max-w-4xl gap-4 md:grid-cols-3"
         >
           {[
-            { icon: Brain, title: "IA pedagógica", desc: "Ejercicios y explicaciones generados según tu nivel." },
-            { icon: Target, title: "Adaptativo", desc: "Sube y baja la dificultad según tu desempeño." },
-            { icon: Flame, title: "Racha diaria", desc: "Gamificación que te motiva a seguir aprendiendo." },
+            {
+              icon: Brain,
+              title: "IA pedagógica",
+              desc: "Ejercicios y explicaciones generados según tu nivel.",
+            },
+            {
+              icon: Target,
+              title: "Adaptativo",
+              desc: "Sube y baja la dificultad según tu desempeño.",
+            },
+            {
+              icon: Flame,
+              title: "Racha diaria",
+              desc: "Gamificación que te motiva a seguir aprendiendo.",
+            },
           ].map((f, i) => (
             <motion.div
               key={f.title}

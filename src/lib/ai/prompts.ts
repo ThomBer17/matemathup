@@ -109,11 +109,7 @@ Devolvé JSON con esta estructura exacta:
   return { systemPrompt, userPrompt };
 }
 
-export function buildHintPrompt(
-  tema: string,
-  enunciado: string,
-  intentoAlumno?: string,
-) {
+export function buildHintPrompt(tema: string, enunciado: string, intentoAlumno?: string) {
   const systemPrompt = `Eres un tutor de matemática que da pistas progresivas a alumnos de secundaria.
 Una buena pista orienta el primer paso o el concepto clave SIN revelar la respuesta ni el método completo.
 SIEMPRE respondés en JSON válido.

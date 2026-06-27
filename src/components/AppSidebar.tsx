@@ -28,7 +28,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/auth-context";
 import { Button } from "@/components/ui/button";
 import { StreakWidget } from "@/components/gamification/StreakWidget";
 import { liveTools } from "@/lib/tools";

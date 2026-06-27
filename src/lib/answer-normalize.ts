@@ -2,15 +2,15 @@ import { parseNumericValue } from "@/lib/ai/consistency";
 
 export type ExerciseType = "multiple_choice" | "true_false" | "open";
 
-const TRUE_FORMS = new Set([
-  "true", "verdadero", "v", "t", "sí", "si", "yes", "y", "1",
-]);
-const FALSE_FORMS = new Set([
-  "false", "falso", "f", "no", "n", "0",
-]);
+const TRUE_FORMS = new Set(["true", "verdadero", "v", "t", "sí", "si", "yes", "y", "1"]);
+const FALSE_FORMS = new Set(["false", "falso", "f", "no", "n", "0"]);
 
 function basic(s: string): string {
-  return s.trim().toLowerCase().replace(/[.\s]+$/g, "").replace(/\s+/g, " ");
+  return s
+    .trim()
+    .toLowerCase()
+    .replace(/[.\s]+$/g, "")
+    .replace(/\s+/g, " ");
 }
 
 export function normalizeTrueFalse(value: string): "true" | "false" | null {

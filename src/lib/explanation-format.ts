@@ -62,7 +62,9 @@ const CONNECTORS = [
 
 // Conectores ordenados por longitud descendente para que "Por lo tanto" gane sobre "Por".
 const CONNECTOR_RE = new RegExp(
-  `(?<=^|[\\s${SENTINEL},.;:])(${CONNECTORS.slice().sort((a, b) => b.length - a.length).join("|")})\\b`,
+  `(?<=^|[\\s${SENTINEL},.;:])(${CONNECTORS.slice()
+    .sort((a, b) => b.length - a.length)
+    .join("|")})\\b`,
   "gi",
 );
 
@@ -78,12 +80,16 @@ function splitIntoSegments(raw: string): string[] {
   s = s.replace(/\n+/g, SENTINEL);
 
   // "Paso N" → corte antes.
-  s = s.replace(/(^|[\s])(Paso\s+\d+)/gi, (_m, pre: string, mark: string) =>
-    pre === "" ? mark : SENTINEL + mark,
+  s = s.replace(
+    new RegExp(`(^|[\\s${SENTINEL}])(Paso\\s+\\d+)`, "gi"),
+    (_m, pre: string, mark: string) => (pre === "" ? mark : SENTINEL + mark),
   );
 
   // Enumeraciones "1)" "2." "3-" al comienzo de una cláusula → corte antes.
-  s = s.replace(/(^|[\s])(\d{1,2}[).\-])\s+/g, (_m, _pre, mark: string) => `${SENTINEL}${mark} `);
+  s = s.replace(
+    new RegExp(`(^|[\\s${SENTINEL}])(\\d{1,2}[).-])\\s+`, "g"),
+    (_m, _pre, mark: string) => `${SENTINEL}${mark} `,
+  );
 
   // Conectores → corte antes (conservando la palabra conectora en el segmento siguiente).
   s = s.replace(CONNECTOR_RE, `${SENTINEL}$1`);
@@ -126,15 +132,32 @@ function mergeTinySegments(segs: string[]): string[] {
 /** Quita el marcador original del paso ("1)", "Paso 2:") ya que renumeramos nosotros. */
 function stripStepMarker(seg: string): string {
   return seg
-    .replace(/^Paso\s+\d+\s*[:.\-]?\s*/i, "")
-    .replace(/^\d{1,2}[).\-]\s*/, "")
+    .replace(/^Paso\s+\d+\s*[:.-]?\s*/i, "")
+    .replace(/^\d{1,2}[).-]\s*/, "")
     .replace(/^[,;:]\s*/, "")
     .trim();
 }
 
 // ---- Detección de expresiones matemáticas (chips) ----
 
-const OPERATORS = new Set(["=", "+", "×", "·", "*", "/", "^", "→", "±", "-", "−", "≤", "≥", "≠", "<", ">"]);
+const OPERATORS = new Set([
+  "=",
+  "+",
+  "×",
+  "·",
+  "*",
+  "/",
+  "^",
+  "→",
+  "±",
+  "-",
+  "−",
+  "≤",
+  "≥",
+  "≠",
+  "<",
+  ">",
+]);
 // Un "core" es matemático si contiene alguno de estos signos (evita chipear números sueltos como "5").
 const MATH_SIGNAL = /[=/^²³√()<>≤≥≠±°πθαβγλμφ]/u;
 // Caracteres permitidos dentro de un token matemático.

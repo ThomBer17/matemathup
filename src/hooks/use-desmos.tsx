@@ -27,7 +27,9 @@ function loadDesmos(): Promise<void> {
   if (w.Desmos) return Promise.resolve();
   if (loadPromise) return loadPromise;
   loadPromise = new Promise((resolve, reject) => {
-    const existing = document.querySelector(`script[src="${DESMOS_SRC}"]`) as HTMLScriptElement | null;
+    const existing = document.querySelector(
+      `script[src="${DESMOS_SRC}"]`,
+    ) as HTMLScriptElement | null;
     if (existing) {
       existing.addEventListener("load", () => resolve());
       existing.addEventListener("error", () => reject(new Error("Desmos load error")));
@@ -45,7 +47,7 @@ function loadDesmos(): Promise<void> {
 
 export function useDesmos() {
   const [ready, setReady] = useState(
-    typeof window !== "undefined" && !!(window as DesmosWindow).Desmos
+    typeof window !== "undefined" && !!(window as DesmosWindow).Desmos,
   );
   useEffect(() => {
     if (ready) return;

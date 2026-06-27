@@ -2,14 +2,31 @@ import { describe, it, expect } from "vitest";
 import { recommendNext } from "./recommendations";
 import type { TopicAggregate, TopicMeta } from "./aggregate";
 
-const T1: TopicMeta = { id: "t1", name: "Números Reales", slug: "numeros-reales", color: "sky", icon: "Sigma" };
-const T2: TopicMeta = { id: "t2", name: "Trigonometría", slug: "trigonometria", color: "violet", icon: "Triangle" };
+const T1: TopicMeta = {
+  id: "t1",
+  name: "Números Reales",
+  slug: "numeros-reales",
+  color: "sky",
+  icon: "Sigma",
+};
+const T2: TopicMeta = {
+  id: "t2",
+  name: "Trigonometría",
+  slug: "trigonometria",
+  color: "violet",
+  icon: "Triangle",
+};
 
 function agg(meta: TopicMeta, overrides: Partial<TopicAggregate>): TopicAggregate {
   return {
     topic: meta,
-    totalAttempts: 0, correctAttempts: 0, partialAttempts: 0,
-    accuracy: 0, lastAttemptAt: null, trend: "nuevo", estimatedLevel: 1,
+    totalAttempts: 0,
+    correctAttempts: 0,
+    partialAttempts: 0,
+    accuracy: 0,
+    lastAttemptAt: null,
+    trend: "nuevo",
+    estimatedLevel: 1,
     ...overrides,
   };
 }
@@ -43,7 +60,10 @@ describe("recommendNext", () => {
   it("tema dominado reciente → 'mantener' con difficulty+1", () => {
     const aggs = [
       agg(T1, {
-        totalAttempts: 20, accuracy: 85, trend: "estable", estimatedLevel: 4,
+        totalAttempts: 20,
+        accuracy: 85,
+        trend: "estable",
+        estimatedLevel: 4,
         lastAttemptAt: new Date(),
       }),
     ];
@@ -60,7 +80,13 @@ describe("recommendNext", () => {
 
   it("explorar prefiere temas no tocados", () => {
     const aggs = [
-      agg(T1, { totalAttempts: 50, accuracy: 70, trend: "estable", estimatedLevel: 3, lastAttemptAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000) }),
+      agg(T1, {
+        totalAttempts: 50,
+        accuracy: 70,
+        trend: "estable",
+        estimatedLevel: 3,
+        lastAttemptAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+      }),
     ];
     const rec = recommendNext(aggs, [T1, T2]);
     expect(rec?.topic.id).toBe(T2.id);

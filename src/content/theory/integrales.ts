@@ -16,9 +16,18 @@ Para integrar usamos primero las **integrales inmediatas** (las reglas básicas 
     "Método de sustitución",
   ],
   formulas: [
-    { label: "Regla de la potencia (integral)", latex: String.raw`\int x^n\,dx = \frac{x^{n+1}}{n+1} + C \quad (n\neq -1)` },
-    { label: "Teorema Fundamental del Cálculo", latex: String.raw`\int_a^b f(x)\,dx = F(b) - F(a)` },
-    { label: "Linealidad", latex: String.raw`\int \big(a\,f + b\,g\big)\,dx = a\!\int f\,dx + b\!\int g\,dx` },
+    {
+      label: "Regla de la potencia (integral)",
+      latex: String.raw`\int x^n\,dx = \frac{x^{n+1}}{n+1} + C \quad (n\neq -1)`,
+    },
+    {
+      label: "Teorema Fundamental del Cálculo",
+      latex: String.raw`\int_a^b f(x)\,dx = F(b) - F(a)`,
+    },
+    {
+      label: "Linealidad",
+      latex: String.raw`\int \big(a\,f + b\,g\big)\,dx = a\!\int f\,dx + b\!\int g\,dx`,
+    },
   ],
   examples: [
     {

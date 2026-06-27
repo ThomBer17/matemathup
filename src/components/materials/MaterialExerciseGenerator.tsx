@@ -35,7 +35,6 @@ export function MaterialExerciseGenerator({
 
   useEffect(() => {
     track(EV.materialSessionStarted, { entityType: "material", entityId: materialId });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [materialId]);
 
   const generate = async () => {
@@ -46,7 +45,11 @@ export function MaterialExerciseGenerator({
       const data = await genFn({ data: { materialId, nivel } });
       setResult(data);
       setBatchKey((k) => k + 1);
-      track(EV.materialExerciseGenerated, { entityType: "material", entityId: materialId, metadata: { nivel, count: data.actividades.length } });
+      track(EV.materialExerciseGenerated, {
+        entityType: "material",
+        entityId: materialId,
+        metadata: { nivel, count: data.actividades.length },
+      });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Error al generar ejercicios";
       if (isFreemiumLimitError(msg) === "tanda") setPaywallOpen(true);
@@ -71,7 +74,9 @@ export function MaterialExerciseGenerator({
       </div>
 
       <div className="space-y-2">
-        <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Nivel</label>
+        <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Nivel
+        </label>
         <div className="grid grid-cols-3 gap-2">
           {LEVELS.map((l) => (
             <button
@@ -80,7 +85,9 @@ export function MaterialExerciseGenerator({
               onClick={() => setNivel(l.value)}
               disabled={loading}
               className={`rounded-xl border p-2.5 text-sm font-semibold transition-all disabled:opacity-60 ${
-                nivel === l.value ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-primary/40"
+                nivel === l.value
+                  ? "border-primary bg-primary/5 ring-1 ring-primary"
+                  : "border-border hover:border-primary/40"
               }`}
             >
               {l.label}
@@ -91,17 +98,30 @@ export function MaterialExerciseGenerator({
 
       <Button onClick={generate} disabled={loading} className="w-full gap-2" size="lg">
         {loading ? (
-          <><Loader2 className="h-4 w-4 animate-spin" /> Generando ejercicios…</>
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" /> Generando ejercicios…
+          </>
         ) : (
-          <><Sparkles className="h-4 w-4" /> {result ? "Regenerar" : "Generar ejercicios"}</>
+          <>
+            <Sparkles className="h-4 w-4" /> {result ? "Regenerar" : "Generar ejercicios"}
+          </>
         )}
       </Button>
 
       <AnimatePresence>
         {loading && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-2">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="space-y-2"
+          >
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-14 animate-pulse rounded-xl border bg-muted/30" style={{ opacity: 1 - i * 0.2 }} />
+              <div
+                key={i}
+                className="h-14 animate-pulse rounded-xl border bg-muted/30"
+                style={{ opacity: 1 - i * 0.2 }}
+              />
             ))}
           </motion.div>
         )}
@@ -109,12 +129,25 @@ export function MaterialExerciseGenerator({
 
       <AnimatePresence mode="wait">
         {result && !loading && (
-          <motion.div key={batchKey} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-3">
+          <motion.div
+            key={batchKey}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="space-y-3"
+          >
             <div className="flex items-center justify-between">
               <p className="text-xs text-muted-foreground">
-                {result.actividades.length} actividades · nivel <span className="capitalize">{result.nivel}</span>
+                {result.actividades.length} actividades · nivel{" "}
+                <span className="capitalize">{result.nivel}</span>
               </p>
-              <Button variant="ghost" size="sm" onClick={generate} disabled={loading} className="h-7 gap-1.5 text-xs">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={generate}
+                disabled={loading}
+                className="h-7 gap-1.5 text-xs"
+              >
                 <RefreshCw className="h-3 w-3" /> Regenerar
               </Button>
             </div>

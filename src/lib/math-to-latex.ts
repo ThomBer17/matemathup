@@ -35,10 +35,7 @@ export function mathToLatex(input: string): string {
   }
 
   // 5) Auto-braces en exponentes: x^2 → x^{2}, x^(a+b) → x^{(a+b)}
-  s = s.replace(
-    /\^(\([^()]*\)|\d+\.?\d*|[a-zA-Z])/g,
-    (_m, body: string) => `^{${body}}`,
-  );
+  s = s.replace(/\^(\([^()]*\)|\d+\.?\d*|[a-zA-Z])/g, (_m, body: string) => `^{${body}}`);
 
   return s;
 }
@@ -46,20 +43,54 @@ export function mathToLatex(input: string): string {
 // --- Render de matemática "plana" (con unicode: √, ², θ) detectada en explicaciones ---
 
 const SUPERSCRIPT_CHARS: Record<string, string> = {
-  "⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4",
-  "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9",
+  "⁰": "0",
+  "¹": "1",
+  "²": "2",
+  "³": "3",
+  "⁴": "4",
+  "⁵": "5",
+  "⁶": "6",
+  "⁷": "7",
+  "⁸": "8",
+  "⁹": "9",
 };
 
 const GREEK_UNICODE: Record<string, string> = {
-  α: "\\alpha", β: "\\beta", γ: "\\gamma", δ: "\\delta", ε: "\\epsilon",
-  ζ: "\\zeta", η: "\\eta", θ: "\\theta", ι: "\\iota", κ: "\\kappa",
-  λ: "\\lambda", μ: "\\mu", ν: "\\nu", ξ: "\\xi", π: "\\pi", ρ: "\\rho",
-  σ: "\\sigma", τ: "\\tau", υ: "\\upsilon", φ: "\\phi", χ: "\\chi",
-  ψ: "\\psi", ω: "\\omega", Γ: "\\Gamma", Δ: "\\Delta", Θ: "\\Theta",
-  Λ: "\\Lambda", Π: "\\Pi", Σ: "\\Sigma", Φ: "\\Phi", Ω: "\\Omega",
+  α: "\\alpha",
+  β: "\\beta",
+  γ: "\\gamma",
+  δ: "\\delta",
+  ε: "\\epsilon",
+  ζ: "\\zeta",
+  η: "\\eta",
+  θ: "\\theta",
+  ι: "\\iota",
+  κ: "\\kappa",
+  λ: "\\lambda",
+  μ: "\\mu",
+  ν: "\\nu",
+  ξ: "\\xi",
+  π: "\\pi",
+  ρ: "\\rho",
+  σ: "\\sigma",
+  τ: "\\tau",
+  υ: "\\upsilon",
+  φ: "\\phi",
+  χ: "\\chi",
+  ψ: "\\psi",
+  ω: "\\omega",
+  Γ: "\\Gamma",
+  Δ: "\\Delta",
+  Θ: "\\Theta",
+  Λ: "\\Lambda",
+  Π: "\\Pi",
+  Σ: "\\Sigma",
+  Φ: "\\Phi",
+  Ω: "\\Omega",
 };
 
-const KNOWN_FN_RE = /\b(sin|cos|tan|cot|sec|csc|log|ln|sqrt|sen|tg|cotg|cosec|lim|max|min|mcd|mcm|exp)\b/gi;
+const KNOWN_FN_RE =
+  /\b(sin|cos|tan|cot|sec|csc|log|ln|sqrt|sen|tg|cotg|cosec|lim|max|min|mcd|mcm|exp)\b/gi;
 
 /**
  * ¿La expresión es matemática "compacta" (no prosa)? Si al sacar funciones conocidas
@@ -81,9 +112,7 @@ export function plainMathToLatex(input: string): string {
   let s = input.replace(/−/g, "-");
 
   // Superíndices unicode contiguos → ^{...}
-  s = s.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, (m) =>
-    `^{${[...m].map((c) => SUPERSCRIPT_CHARS[c]).join("")}}`,
-  );
+  s = s.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, (m) => `^{${[...m].map((c) => SUPERSCRIPT_CHARS[c]).join("")}}`);
 
   // Raíces: √(...) con matching de paréntesis; √token → \sqrt{token}
   let guard = 0;

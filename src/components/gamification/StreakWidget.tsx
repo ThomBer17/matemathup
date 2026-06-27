@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Flame, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/auth-context";
 
 export function StreakWidget() {
   const { user } = useAuth();
@@ -29,8 +29,12 @@ export function StreakWidget() {
     <div className="space-y-2 rounded-xl border bg-card p-3 group-data-[collapsible=icon]:hidden">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
-          <Flame className={`h-3.5 w-3.5 ${streak > 0 ? "text-rose-500" : "text-muted-foreground"}`} />
-          <span className="text-xs font-semibold">{streak} día{streak === 1 ? "" : "s"}</span>
+          <Flame
+            className={`h-3.5 w-3.5 ${streak > 0 ? "text-rose-500" : "text-muted-foreground"}`}
+          />
+          <span className="text-xs font-semibold">
+            {streak} día{streak === 1 ? "" : "s"}
+          </span>
         </div>
         <div className="flex items-center gap-1.5">
           <Star className="h-3.5 w-3.5 text-amber-500" />

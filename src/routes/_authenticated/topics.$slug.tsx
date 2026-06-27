@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   ArrowLeft,
@@ -17,20 +17,16 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/auth-context";
 import { useServerFn } from "@tanstack/react-start";
 import { generateExercise } from "@/lib/exercises.functions";
+import { recordAdaptiveAttempt } from "@/lib/progress/adaptive.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getTopicIcon, topicGradient } from "@/lib/topic-icons";
-import { GraphCard } from "@/components/math/GraphCard";
 import { detectFunctions } from "@/lib/math-detect";
-import { ActivityGenerator } from "@/components/ai/ActivityGenerator";
-import { CalculatorFAB } from "@/components/calculator/CalculatorFAB";
-import { FormulasFAB } from "@/components/formulas/FormulasFAB";
-import { MathWorkspace } from "@/components/workspace/MathWorkspace";
 import { ReportProblem } from "@/components/feedback/ReportProblem";
 import { MathInputHelper } from "@/components/math/MathInputHelper";
 import { MathPreview } from "@/components/math/MathPreview";
@@ -46,11 +42,36 @@ import { PaywallDialog } from "@/components/billing/PaywallDialog";
 import { isFreemiumLimitError } from "@/lib/billing/plans";
 import { track, EV } from "@/lib/analytics/events";
 import { cn } from "@/lib/utils";
-import { newItem } from "@/lib/review/srs";
 import { hasTheory } from "@/content/theory";
-import type { DifficultyLevel } from "@/lib/ai/types";
+import {
+  adaptiveDifficultyToLevel,
+  buildAdaptiveGraphExpressions,
+  isRenderableAdaptiveExercise,
+} from "@/lib/progress/adaptive-view";
 
 const LETTERS = ["A", "B", "C", "D", "E", "F"];
+
+const GraphCard = lazy(() =>
+  import("@/components/math/GraphCard").then((module) => ({ default: module.GraphCard })),
+);
+const ActivityGenerator = lazy(() =>
+  import("@/components/ai/ActivityGenerator").then((module) => ({
+    default: module.ActivityGenerator,
+  })),
+);
+const CalculatorFAB = lazy(() =>
+  import("@/components/calculator/CalculatorFAB").then((module) => ({
+    default: module.CalculatorFAB,
+  })),
+);
+const FormulasFAB = lazy(() =>
+  import("@/components/formulas/FormulasFAB").then((module) => ({ default: module.FormulasFAB })),
+);
+const MathWorkspace = lazy(() =>
+  import("@/components/workspace/MathWorkspace").then((module) => ({
+    default: module.MathWorkspace,
+  })),
+);
 
 export const Route = createFileRoute("/_authenticated/topics/$slug")({
   component: TopicPage,
@@ -73,6 +94,7 @@ function TopicPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const genFn = useServerFn(generateExercise);
+  const recordAttemptFn = useServerFn(recordAdaptiveAttempt);
 
   const { data: topic } = useQuery({
     queryKey: ["topic", slug],
@@ -172,13 +194,7 @@ function TopicPage() {
           ? await pf.promise.catch(() => fetchExercise(difficulty))
           : await fetchExercise(difficulty);
       // Render guard defensivo: nunca renderizar un ejercicio incompleto.
-      if (
-        !ex ||
-        !ex.statement ||
-        ex.statement.trim().length < 10 ||
-        !ex.correct_answer ||
-        (ex.type === "multiple_choice" && (!ex.options || ex.options.length < 2))
-      ) {
+      if (!isRenderableAdaptiveExercise(ex)) {
         throw new Error("No pudimos generar un ejercicio válido. Reintentá.");
       }
       setExercise(ex);
@@ -190,7 +206,8 @@ function TopicPage() {
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Error al generar el ejercicio";
       // Límite freemium → paywall amable, no error técnico.
-      if (isFreemiumLimitError(msg) === "adaptive") {
+      const limitKind = isFreemiumLimitError(msg);
+      if (limitKind === "adaptive" || limitKind === "adaptive_generation") {
         setAdaptiveLimited(true);
         setPaywallOpen(true);
       } else {
@@ -220,125 +237,51 @@ function TopicPage() {
       entityId: exercise.id,
       metadata: evMeta,
     });
-    if (correct) {
-      const xpGain = 10 + difficulty * 2;
-      setLastXp(xpGain);
-      track(EV.xpGained, { metadata: { amount: xpGain, source: "adaptive" } });
-      toast.success(`¡Correcto! +${xpGain} XP`);
-    } else {
-      toast.error("Casi. Mirá la explicación.");
-    }
-    persistAttempt(correct);
+    void persistAttempt(a, correct);
   };
 
-  const persistAttempt = async (correct: boolean) => {
+  const persistAttempt = async (submittedAnswer: string, optimisticCorrect: boolean) => {
     if (!exercise || !user || !topic) return;
-    const { error: attemptError } = await supabase.from("exercise_attempts").insert({
-      user_id: user.id,
-      exercise_id: exercise.id,
-      topic_id: topic.id,
-      user_answer: answer,
-      is_correct: correct,
-      status: correct ? "correct" : "incorrect",
-      source: "adaptive",
-      difficulty,
-      hint_used: hintIndex >= 0,
-    });
-    if (attemptError) {
-      console.error("[persistAttempt] insert exercise_attempts falló:", attemptError);
-      toast.error(`No se pudo guardar el intento: ${attemptError.message}`);
+    let result;
+    try {
+      result = await recordAttemptFn({
+        data: { exerciseId: exercise.id, userAnswer: submittedAnswer, hintUsed: hintIndex >= 0 },
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "No se pudo guardar el intento.";
+      toast.error(msg);
+      return;
     }
 
-    // Repaso espaciado: si lo falló, lo encolamos para revisar más adelante.
-    if (!correct) {
-      const init = newItem();
-      void supabase
-        .from("srs_items")
-        .upsert(
-          {
-            user_id: user.id,
-            exercise_id: exercise.id,
-            topic_id: topic.id,
-            box: init.box,
-            due_at: init.dueAt,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "user_id,exercise_id" },
-        )
-        .then(({ error }) => {
-          if (error) console.warn("[srs] enqueue falló", error.message);
-          else queryClient.invalidateQueries({ queryKey: ["srs-due", user.id] });
-        });
+    if (result.correct !== optimisticCorrect) {
+      setIsCorrect(result.correct);
     }
 
-    // adaptive: track recent results, adjust difficulty
-    const recent: boolean[] = Array.isArray(progressRow?.recent_results)
-      ? (progressRow!.recent_results as boolean[])
-      : [];
-    const newRecent = [...recent, correct].slice(-5);
-    let newDifficulty = difficulty;
-    const lastThree = newRecent.slice(-3);
-    if (lastThree.length === 3 && lastThree.every((r) => r) && difficulty < 5)
-      newDifficulty = difficulty + 1;
-    if (lastThree.length === 3 && lastThree.every((r) => !r) && difficulty > 1)
-      newDifficulty = difficulty - 1;
-
-    // Prefetch del próximo ejercicio mientras el alumno lee la explicación:
-    // usa la dificultad ya ajustada para que "Siguiente" sea instantáneo.
-    startPrefetch(newDifficulty);
-
-    const completed = (progressRow?.exercises_completed ?? 0) + 1;
-    const correctCount = (progressRow?.correct_count ?? 0) + (correct ? 1 : 0);
-    const masteryPct = Math.min(100, Math.round((correctCount / completed) * 100));
-
-    await supabase.from("user_progress").upsert(
-      {
-        user_id: user.id,
-        topic_id: topic.id,
-        current_difficulty: newDifficulty,
-        exercises_completed: completed,
-        correct_count: correctCount,
-        mastery_pct: masteryPct,
-        recent_results: newRecent,
-      },
-      { onConflict: "user_id,topic_id" },
-    );
-
-    // streak + xp on profile
-    const today = new Date().toISOString().slice(0, 10);
-    const { data: prof } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-    if (prof) {
-      const last = prof.last_activity_date;
-      const yest = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-      let streak = prof.current_streak ?? 0;
-      if (last !== today) streak = last === yest ? streak + 1 : 1;
-      const xpGain = correct ? 10 + difficulty * 2 : 2;
-      const newXp = (prof.xp ?? 0) + xpGain;
-      const newLevel = 1 + Math.floor(newXp / 100);
-      if (newLevel > (prof.level ?? 1)) {
-        track(EV.levelUp, { metadata: { level: newLevel } });
-      }
-      await supabase
-        .from("profiles")
-        .update({
-          current_streak: streak,
-          longest_streak: Math.max(prof.longest_streak ?? 0, streak),
-          last_activity_date: today,
-          xp: newXp,
-          level: newLevel,
-        })
-        .eq("id", user.id);
+    if (result.correct) {
+      setLastXp(result.xpGain);
+      track(EV.xpGained, { metadata: { amount: result.xpGain, source: "adaptive" } });
+      toast.success(`Correcto! +${result.xpGain} XP`);
+    } else {
+      toast.error("Casi. Mira la explicacion.");
+    }
+    if (result.leveledUp) {
+      track(EV.levelUp, { metadata: { level: result.newLevel } });
     }
 
-    setDifficulty(newDifficulty);
+    // Prefetch del proximo ejercicio mientras el alumno lee la explicacion:
+    // usa la dificultad ya ajustada para que "Siguiente" sea instantaneo.
+    startPrefetch(result.newDifficulty);
+
+    setDifficulty(result.newDifficulty);
     setSessionCount((c) => c + 1);
-    if (correct) setSessionCorrect((c) => c + 1);
+    if (result.correct) setSessionCorrect((c) => c + 1);
     refetchProgress();
     // Invalida los queries de perfil para que el StreakWidget + dashboard reflejen XP/racha al instante
     queryClient.invalidateQueries({ queryKey: ["profile-mini", user.id] });
     queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
     queryClient.invalidateQueries({ queryKey: ["my-attempts-dash", user.id] });
     queryClient.invalidateQueries({ queryKey: ["my-attempts", user.id] });
+    queryClient.invalidateQueries({ queryKey: ["srs-due", user.id] });
     queryClient.invalidateQueries({ queryKey: ["usage-status", user.id] });
   };
 
@@ -520,18 +463,7 @@ function TopicPage() {
                   {(() => {
                     const aiExprs = exercise.graph_expressions ?? [];
                     const detected = aiExprs.length ? [] : detectFunctions(exercise.statement);
-                    const exprs = aiExprs.length
-                      ? aiExprs.map((latex, i) => ({
-                          id: `ai${i}`,
-                          latex,
-                          color: i === 0 ? "#0EA5E9" : "#8B5CF6",
-                        }))
-                      : detected.map((d, i) => ({
-                          id: `d${i}`,
-                          latex: d.latex,
-                          color: "#0EA5E9",
-                          label: d.label,
-                        }));
+                    const exprs = buildAdaptiveGraphExpressions(aiExprs, detected);
                     if (!exprs.length) return null;
                     return (
                       <div className="mt-4">
@@ -546,7 +478,15 @@ function TopicPage() {
                         </Button>
                         {showGraph && (
                           <div className="mt-3">
-                            <GraphCard expressions={exprs} height={320} />
+                            <Suspense
+                              fallback={
+                                <div className="grid h-80 place-items-center rounded-xl border bg-muted/20">
+                                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                                </div>
+                              }
+                            >
+                              <GraphCard expressions={exprs} height={320} />
+                            </Suspense>
                           </div>
                         )}
                       </div>
@@ -797,25 +737,29 @@ function TopicPage() {
 
         <TabsContent value="tanda" className="mt-4">
           <div className="rounded-2xl border bg-card p-6 shadow-soft md:p-8">
-            <ActivityGenerator
-              topicId={topic.id}
-              topicName={topic.name}
-              initialLevel={difficultyToLevel(difficulty)}
-            />
+            <Suspense
+              fallback={
+                <div className="grid min-h-32 place-items-center">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              }
+            >
+              <ActivityGenerator
+                topicId={topic.id}
+                topicName={topic.name}
+                initialLevel={adaptiveDifficultyToLevel(difficulty)}
+              />
+            </Suspense>
           </div>
         </TabsContent>
       </Tabs>
 
-      <CalculatorFAB />
-      <FormulasFAB />
-      <MathWorkspace storageKey={`mathup:workspace:${slug}`} />
+      <Suspense fallback={null}>
+        <CalculatorFAB />
+        <FormulasFAB />
+        <MathWorkspace storageKey={`mathup:workspace:${slug}`} />
+      </Suspense>
       <PaywallDialog open={paywallOpen} onOpenChange={setPaywallOpen} kind="adaptive" />
     </div>
   );
-}
-
-function difficultyToLevel(d: number): DifficultyLevel {
-  if (d <= 2) return "básico";
-  if (d >= 4) return "alto";
-  return "intermedio";
 }

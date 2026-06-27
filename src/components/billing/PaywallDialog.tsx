@@ -12,20 +12,24 @@ import type { UsageKind } from "@/lib/billing/plans";
 
 const KIND_COPY: Record<UsageKind, { title: string; body: string }> = {
   adaptive: {
-    title: "Llegaste al límite diario 🙂",
-    body: "Completaste tus ejercicios gratis de hoy. Volvé mañana o pasate a Premium para practicar sin límites.",
+    title: "Llegaste al limite diario",
+    body: "Completaste tus ejercicios gratis de hoy. Volve manana o pasate a Premium para practicar sin limites.",
+  },
+  adaptive_generation: {
+    title: "Llegaste al limite de generaciones",
+    body: "Generaste todos tus ejercicios adaptativos gratis de hoy. Volve manana o pasate a Premium para practicar sin limites.",
   },
   tanda: {
-    title: "Llegaste al límite de tandas 🙂",
-    body: "Generaste todas tus tandas IA gratis de hoy. Volvé mañana o pasate a Premium para tandas ilimitadas.",
+    title: "Llegaste al limite de tandas",
+    body: "Generaste todas tus tandas IA gratis de hoy. Volve manana o pasate a Premium para tandas ilimitadas.",
   },
 };
 
 const PREMIUM_PERKS = [
   { Icon: InfinityIcon, text: "Ejercicios y tandas IA ilimitados" },
-  { Icon: Zap, text: "Respuestas más rápidas (próximamente)" },
-  { Icon: Upload, text: "Importá tu propio material (próximamente)" },
-  { Icon: Wrench, text: "Herramientas avanzadas (próximamente)" },
+  { Icon: Zap, text: "Respuestas mas rapidas (proximamente)" },
+  { Icon: Upload, text: "Importa tu propio material (proximamente)" },
+  { Icon: Wrench, text: "Herramientas avanzadas (proximamente)" },
 ];
 
 export function PaywallDialog({
@@ -52,7 +56,7 @@ export function PaywallDialog({
 
         <div className="rounded-xl border bg-muted/30 p-4">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Con Premium tenés
+            Con Premium tenes
           </p>
           <ul className="space-y-2">
             {PREMIUM_PERKS.map(({ Icon, text }) => (
@@ -69,7 +73,6 @@ export function PaywallDialog({
             className="w-full gap-2"
             size="lg"
             onClick={() => {
-              // Placeholder: acá se conectará el flujo de pago (Mercado Pago) más adelante.
               onOpenChange(false);
             }}
           >

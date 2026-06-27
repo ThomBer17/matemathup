@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { Flame, Trophy, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/auth-context";
 import { Progress } from "@/components/ui/progress";
 import { BadgeGrid } from "@/components/gamification/BadgeGrid";
 import { PlanUsageCard } from "@/components/billing/PlanUsageCard";

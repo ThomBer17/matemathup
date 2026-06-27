@@ -2,6 +2,7 @@ node_modules
 dist
 .output
 .vinxi
+supabase/.temp
 pnpm-lock.yaml
 package-lock.json
 bun.lock

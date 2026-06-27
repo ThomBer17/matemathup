@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { Flag, Loader2, Paperclip } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -12,14 +13,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/auth-context";
 import {
   REPORT_TYPE_OPTIONS,
   buildReportMetadata,
   type ReportContext,
   type ReportType,
 } from "@/lib/feedback/report-types";
+import { submitFeedbackReport } from "@/lib/feedback/feedback.functions";
 import { track, EV } from "@/lib/analytics/events";
 
 type ButtonVariant = React.ComponentProps<typeof Button>["variant"];
@@ -39,6 +40,7 @@ export function ReportProblem({
   className?: string;
 }) {
   const { user } = useAuth();
+  const submitFeedbackReportFn = useServerFn(submitFeedbackReport);
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<ReportType | null>(null);
   const [message, setMessage] = useState("");
@@ -57,17 +59,20 @@ export function ReportProblem({
         userAgent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
         url: typeof location !== "undefined" ? location.href : undefined,
       });
-      const { error } = await supabase.from("feedback_reports").insert({
-        user_id: user.id,
-        type,
-        message: message.trim(),
-        topic: context.topic ?? null,
-        exercise_id: context.exerciseId ?? null,
-        difficulty: context.difficulty ?? null,
-        metadata: JSON.parse(JSON.stringify(metadata)),
+      await submitFeedbackReportFn({
+        data: {
+          type,
+          message: message.trim(),
+          topic: context.topic ?? null,
+          exerciseId: context.exerciseId ?? null,
+          difficulty: context.difficulty ?? null,
+          metadata,
+        },
       });
-      if (error) throw error;
-      track(EV.reportSent, { entityType: "report", metadata: { type, topic: context.topic ?? null } });
+      track(EV.reportSent, {
+        entityType: "report",
+        metadata: { type, topic: context.topic ?? null },
+      });
       toast.success("¡Gracias! Recibimos tu reporte 🙌");
       reset();
       setOpen(false);
@@ -91,7 +96,13 @@ export function ReportProblem({
         {label}
       </Button>
 
-      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
+      <Dialog
+        open={open}
+        onOpenChange={(v) => {
+          setOpen(v);
+          if (!v) reset();
+        }}
+      >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-display">Reportar un problema</DialogTitle>
@@ -143,8 +154,8 @@ export function ReportProblem({
           <div className="flex items-start gap-2 rounded-lg border border-dashed bg-muted/20 p-2.5 text-[11px] text-muted-foreground">
             <Paperclip className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <span>
-              Se adjunta automáticamente el contexto (tema, dificultad, tipo de ejercicio,
-              tu respuesta y la correcta). No hace falta que lo escribas.
+              Se adjunta automáticamente el contexto (tema, dificultad, tipo de ejercicio, tu
+              respuesta y la correcta). No hace falta que lo escribas.
             </span>
           </div>
 
@@ -152,7 +163,11 @@ export function ReportProblem({
             <Button variant="ghost" onClick={() => setOpen(false)} disabled={submitting}>
               Cancelar
             </Button>
-            <Button onClick={handleSubmit} disabled={!type || !message.trim() || submitting} className="gap-2">
+            <Button
+              onClick={handleSubmit}
+              disabled={!type || !message.trim() || submitting}
+              className="gap-2"
+            >
               {submitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />

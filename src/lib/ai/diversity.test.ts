@@ -43,14 +43,11 @@ describe("mostSimilar", () => {
   });
 
   it("encuentra el más parecido y devuelve score", () => {
-    const result = mostSimilar(
-      "Calculá el seno de 30 grados",
-      [
-        "Hallá el área de un círculo",
-        "Calculá el seno de 60 grados",
-        "Resolvé la ecuación cuadrática",
-      ],
-    );
+    const result = mostSimilar("Calculá el seno de 30 grados", [
+      "Hallá el área de un círculo",
+      "Calculá el seno de 60 grados",
+      "Resolvé la ecuación cuadrática",
+    ]);
     expect(result).not.toBeNull();
     expect(result!.text).toContain("seno de 60");
     expect(result!.score).toBeGreaterThan(0.3);

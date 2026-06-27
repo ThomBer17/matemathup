@@ -42,17 +42,40 @@ describe("integridad de tareas — umbrales y estado", () => {
   it("auto-completa al alcanzar el umbral (hoy o atrasada)", () => {
     const hoy = { date: TODAY, status: "pending", completion_type: null, kind: "practice" };
     expect(shouldAutoComplete(hoy, TODAY, 3)).toBe(true);
-    const atrasada = { date: "2026-06-08", status: "pending", completion_type: null, kind: "practice" };
+    const atrasada = {
+      date: "2026-06-08",
+      status: "pending",
+      completion_type: null,
+      kind: "practice",
+    };
     expect(canCompleteTask(atrasada.date, TODAY)).toBe(true);
     expect(shouldAutoComplete(atrasada, TODAY, 3)).toBe(true);
     expect(shouldAutoComplete(atrasada, TODAY, 2)).toBe(false);
   });
 
   it("tarea hecha → done_auto vs done_manual", () => {
-    expect(deriveTaskState({ date: TODAY, status: "done", completion_type: "auto", kind: "practice" }, TODAY, 0).state).toBe("done_auto");
-    expect(deriveTaskState({ date: TODAY, status: "done", completion_type: "manual", kind: "practice" }, TODAY, 0).state).toBe("done_manual");
+    expect(
+      deriveTaskState(
+        { date: TODAY, status: "done", completion_type: "auto", kind: "practice" },
+        TODAY,
+        0,
+      ).state,
+    ).toBe("done_auto");
+    expect(
+      deriveTaskState(
+        { date: TODAY, status: "done", completion_type: "manual", kind: "practice" },
+        TODAY,
+        0,
+      ).state,
+    ).toBe("done_manual");
     // ya hecha no se vuelve a auto-completar
-    expect(shouldAutoComplete({ date: TODAY, status: "done", completion_type: "auto", kind: "practice" }, TODAY, 9)).toBe(false);
+    expect(
+      shouldAutoComplete(
+        { date: TODAY, status: "done", completion_type: "auto", kind: "practice" },
+        TODAY,
+        9,
+      ),
+    ).toBe(false);
   });
 
   it("toArgentinaDate corre la medianoche UTC al día anterior (UTC-3)", () => {
@@ -116,13 +139,23 @@ describe("generatePlan", () => {
   });
 
   it("examen hoy o pasado → un simulacro hoy", () => {
-    const tasks = generatePlan({ today: "2026-06-10", examDate: "2026-06-10", dailyMinutes: 30, topics: TOPICS });
+    const tasks = generatePlan({
+      today: "2026-06-10",
+      examDate: "2026-06-10",
+      dailyMinutes: 30,
+      topics: TOPICS,
+    });
     expect(tasks).toHaveLength(1);
     expect(tasks[0].kind).toBe("simulacro");
   });
 
   it("las fechas están ordenadas y dentro del rango", () => {
-    const tasks = generatePlan({ today: "2026-06-01", examDate: "2026-06-08", dailyMinutes: 30, topics: TOPICS });
+    const tasks = generatePlan({
+      today: "2026-06-01",
+      examDate: "2026-06-08",
+      dailyMinutes: 30,
+      topics: TOPICS,
+    });
     for (let i = 1; i < tasks.length; i++) {
       expect(tasks[i].date >= tasks[i - 1].date).toBe(true);
     }
@@ -132,8 +165,14 @@ describe("generatePlan", () => {
 
 describe("computePlanProgress", () => {
   it("calcula porcentaje", () => {
-    expect(computePlanProgress([{ status: "done" }, { status: "pending" }, { status: "done" }, { status: "pending" }]))
-      .toEqual({ done: 2, total: 4, pct: 50 });
+    expect(
+      computePlanProgress([
+        { status: "done" },
+        { status: "pending" },
+        { status: "done" },
+        { status: "pending" },
+      ]),
+    ).toEqual({ done: 2, total: 4, pct: 50 });
     expect(computePlanProgress([]).pct).toBe(0);
   });
 });
@@ -151,7 +190,11 @@ describe("replanTasks", () => {
   });
 
   it("si el examen ya pasó, manda todo a hoy", () => {
-    const updates = replanTasks([{ id: "b", status: "pending", orderIndex: 1 }], "2026-06-20", "2026-06-15");
+    const updates = replanTasks(
+      [{ id: "b", status: "pending", orderIndex: 1 }],
+      "2026-06-20",
+      "2026-06-15",
+    );
     expect(updates).toEqual([{ id: "b", date: "2026-06-20" }]);
   });
 });

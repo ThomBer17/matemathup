@@ -6,10 +6,10 @@
 import type { TopicAggregate, TopicMeta } from "./aggregate";
 
 export type RecommendationReason =
-  | "refuerzo"      // tema con trend "refuerzo"
-  | "continuar"    // tema con pocos intentos
-  | "mantener"     // mejor tema, mantener nivel
-  | "explorar";    // sin actividad reciente, sugerir explorar
+  | "refuerzo" // tema con trend "refuerzo"
+  | "continuar" // tema con pocos intentos
+  | "mantener" // mejor tema, mantener nivel
+  | "explorar"; // sin actividad reciente, sugerir explorar
 
 export interface Recommendation {
   topic: TopicMeta;
@@ -54,8 +54,11 @@ export function recommendNext(
 
   // 3) Mantener: tema dominado con actividad reciente → seguir afilando
   const dominant = aggregates.find(
-    (a) => a.accuracy >= 75 && a.totalAttempts >= 5 &&
-           a.lastAttemptAt && Date.now() - a.lastAttemptAt.getTime() < 3 * ONE_DAY,
+    (a) =>
+      a.accuracy >= 75 &&
+      a.totalAttempts >= 5 &&
+      a.lastAttemptAt &&
+      Date.now() - a.lastAttemptAt.getTime() < 3 * ONE_DAY,
   );
   if (dominant) {
     return {

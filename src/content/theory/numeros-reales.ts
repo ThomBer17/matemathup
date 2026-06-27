@@ -14,10 +14,22 @@ Sobre los reales operamos con suma, resta, multiplicación, división (salvo por
     "Potencias y raíces; racionalización",
   ],
   formulas: [
-    { label: "Valor absoluto", latex: String.raw`|x| = \begin{cases} x & \text{si } x \ge 0 \\ -x & \text{si } x < 0 \end{cases}` },
-    { label: "Racionalización", latex: String.raw`\frac{a}{\sqrt{b}} = \frac{a}{\sqrt{b}}\cdot\frac{\sqrt{b}}{\sqrt{b}} = \frac{a\sqrt{b}}{b}` },
-    { label: "Propiedad de raíces", latex: String.raw`\sqrt{a\cdot b} = \sqrt{a}\cdot\sqrt{b}\quad (a,b\ge 0)` },
-    { label: "Intervalo cerrado", latex: String.raw`[a,b] = \{\,x\in\mathbb{R} : a \le x \le b\,\}` },
+    {
+      label: "Valor absoluto",
+      latex: String.raw`|x| = \begin{cases} x & \text{si } x \ge 0 \\ -x & \text{si } x < 0 \end{cases}`,
+    },
+    {
+      label: "Racionalización",
+      latex: String.raw`\frac{a}{\sqrt{b}} = \frac{a}{\sqrt{b}}\cdot\frac{\sqrt{b}}{\sqrt{b}} = \frac{a\sqrt{b}}{b}`,
+    },
+    {
+      label: "Propiedad de raíces",
+      latex: String.raw`\sqrt{a\cdot b} = \sqrt{a}\cdot\sqrt{b}\quad (a,b\ge 0)`,
+    },
+    {
+      label: "Intervalo cerrado",
+      latex: String.raw`[a,b] = \{\,x\in\mathbb{R} : a \le x \le b\,\}`,
+    },
   ],
   examples: [
     {

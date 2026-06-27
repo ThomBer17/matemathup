@@ -35,7 +35,10 @@ describe("levelLabel y summarize", () => {
 
   it("resume aciertos", () => {
     const res = summarize([
-      { outcome: "correct" }, { outcome: "incorrect" }, { outcome: "correct" }, { outcome: "skipped" },
+      { outcome: "correct" },
+      { outcome: "incorrect" },
+      { outcome: "correct" },
+      { outcome: "skipped" },
     ]);
     expect(res).toEqual({ correct: 2, total: 4 });
   });

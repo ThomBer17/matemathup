@@ -4,14 +4,24 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { callAI, getAIConfig, FatalAIError } from "@/lib/ai/service";
 import { answersEqual, normalizeTrueFalse } from "@/lib/answer-normalize";
 import { getTopicScope, validateInScope, type TopicScope } from "@/lib/curriculum";
-import { checkArtificialPatterns, checkStatementMutation, checkClosestOptionFraud, checkMathematicalRationalization } from "@/lib/ai/quality-checks";
+import {
+  checkArtificialPatterns,
+  checkStatementMutation,
+  checkClosestOptionFraud,
+  checkMathematicalRationalization,
+} from "@/lib/ai/quality-checks";
 import { mostSimilar } from "@/lib/ai/diversity";
-import { rateLimit } from "@/lib/ai/rate-limit";
+import { persistentRateLimit } from "@/lib/ai/rate-limit";
 import { checkConsistency } from "@/lib/ai/consistency";
 import { sanitizeMathText } from "@/lib/ai/sanitize-text";
 import { checkNumericSanity } from "@/lib/ai/numeric-sanity";
 import { validateStructure } from "@/lib/ai/structural";
-import { assertWithinFreemiumLimit } from "@/lib/billing/usage";
+import {
+  assertWithinFreemiumLimit,
+  finishAIGeneration,
+  reserveAIGeneration,
+} from "@/lib/billing/usage";
+import { errorFields, log } from "@/lib/observability/log";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -33,7 +43,10 @@ function validateExercise(ex: ParsedExercise): { ok: true } | { ok: false; reaso
   if (ex.type === "multiple_choice") {
     const opts = ex.options ?? [];
     if (opts.length < 2 || opts.length > 5) {
-      return { ok: false, reason: `multiple_choice debe tener entre 2 y 5 opciones (tiene ${opts.length})` };
+      return {
+        ok: false,
+        reason: `multiple_choice debe tener entre 2 y 5 opciones (tiene ${opts.length})`,
+      };
     }
     const normalized = opts.map((o) => o.trim().toLowerCase());
     if (new Set(normalized).size !== normalized.length) {
@@ -44,10 +57,16 @@ function validateExercise(ex: ParsedExercise): { ok: true } | { ok: false; reaso
     ).length;
     if (matchCount === 0) {
       // El resultado correcto NO está entre las opciones → ejercicio roto.
-      return { ok: false, reason: `answer_not_in_choices: correct_answer "${ex.correct_answer}" no aparece en las opciones` };
+      return {
+        ok: false,
+        reason: `answer_not_in_choices: correct_answer "${ex.correct_answer}" no aparece en las opciones`,
+      };
     }
     if (matchCount > 1) {
-      return { ok: false, reason: "multiple_choice_integrity_failed: correct_answer coincide con varias opciones" };
+      return {
+        ok: false,
+        reason: "multiple_choice_integrity_failed: correct_answer coincide con varias opciones",
+      };
     }
   }
 
@@ -100,7 +119,10 @@ function buildUserPrompt(
   const retryNote = retryReason ? `\nFalló: ${retryReason}. Corregilo.` : "";
   // Solo los últimos 3 enunciados a evitar (menos tokens que toda la historia).
   const avoidBlock = avoid.length
-    ? `\nNo repitas (ni variantes con otros números): ${avoid.slice(0, 3).map((s) => `"${s}"`).join("; ")}`
+    ? `\nNo repitas (ni variantes con otros números): ${avoid
+        .slice(0, 3)
+        .map((s) => `"${s}"`)
+        .join("; ")}`
     : "";
 
   return `Ejercicio de "${topicName}" dificultad ${diffLabel} (${difficulty}/5).
@@ -218,9 +240,7 @@ export const generateExercise = createServerFn({ method: "POST" })
 
     // Freemium: bloquea si ya respondió su cuota diaria de práctica adaptativa.
     // Lanza un código estable que el cliente traduce a paywall (no error técnico).
-    await assertWithinFreemiumLimit(supabase, userId, "adaptive");
-
-    const rl = rateLimit(userId, "generate", 15);
+    const rl = await persistentRateLimit(supabase, userId, "generate", 15);
     if (!rl.ok) {
       throw new Error(`Estás generando muy seguido. Probá en ${rl.retryInSec}s.`);
     }
@@ -228,25 +248,44 @@ export const generateExercise = createServerFn({ method: "POST" })
     // Banco de ejercicios: si hay uno ya generado y sin ver, lo servimos (sin IA).
     const banked = await tryBank(supabase, userId, topicId, difficulty, avoid);
     if (banked) {
-      console.log(`[generateExercise] servido del banco · tema=${topicName} diff=${difficulty} · sin IA`);
+      log.info("adaptive_exercise_bank_hit", { topicName, difficulty });
       return banked;
     }
 
     const diffLabel =
-      ["muy fácil", "fácil", "intermedio", "difícil", "muy difícil"][difficulty - 1] ?? "intermedio";
+      ["muy fácil", "fácil", "intermedio", "difícil", "muy difícil"][difficulty - 1] ??
+      "intermedio";
 
     const scope = getTopicScope(topicName);
     const t0 = Date.now();
     let retried = false;
+    let generationLogId: string | null = null;
+
+    await assertWithinFreemiumLimit(supabase, userId, "adaptive_generation");
+    generationLogId = await reserveAIGeneration(supabase, {
+      userId,
+      topicId,
+      difficulty,
+      model: getAIConfig().model,
+      metadata: { topicName, kind: "adaptive" },
+    });
 
     let parsed: ParsedExercise;
     try {
       parsed = await generateOnce(topicName, diffLabel, difficulty, scope, avoid);
     } catch (e) {
+      await finishAIGeneration(supabase, generationLogId, {
+        status: "error",
+        errorMessage: e instanceof Error ? e.message : "generation_failed",
+      });
       // Errores de credenciales/config no se arreglan reintentando: propagamos el mensaje real.
       if (e instanceof FatalAIError) throw e;
       // Parse/schema falló en el primer intento — reintentamos UNA vez con instrucción explícita
-      console.warn("[generateExercise] parse error (first attempt), retrying", e);
+      log.warn("adaptive_exercise_parse_failed_retrying", {
+        ...errorFields(e),
+        topicName,
+        difficulty,
+      });
       try {
         parsed = await generateOnce(
           topicName,
@@ -257,8 +296,16 @@ export const generateExercise = createServerFn({ method: "POST" })
           "JSON inválido o campos faltantes — devolvé el objeto exacto del schema",
         );
       } catch (e2) {
+        await finishAIGeneration(supabase, generationLogId, {
+          status: "error",
+          errorMessage: e2 instanceof Error ? e2.message : "generation_retry_failed",
+        });
         if (e2 instanceof FatalAIError) throw e2;
-        console.error("AI parse error (after retry)", e2);
+        log.error("adaptive_exercise_parse_failed_after_retry", {
+          ...errorFields(e2),
+          topicName,
+          difficulty,
+        });
         throw new Error("La IA devolvió un formato inválido. Probá de nuevo.");
       }
     }
@@ -286,13 +333,19 @@ export const generateExercise = createServerFn({ method: "POST" })
       // 3) Scope curricular
       const scopeRes = validateInScope(combined, scope);
       if (!scopeRes.inScope) {
-        return { ok: false, reason: `invalid_structure: usó "${scopeRes.matched}" fuera del tema ${topicName}` };
+        return {
+          ok: false,
+          reason: `invalid_structure: usó "${scopeRes.matched}" fuera del tema ${topicName}`,
+        };
       }
 
       // 4) Narrativa artificial / correcciones ficticias
       const artifact = checkArtificialPatterns(combined);
       if (!artifact.ok) {
-        return { ok: false, reason: `math_validation_failed: narrativa artificial "${artifact.matched}"` };
+        return {
+          ok: false,
+          reason: `math_validation_failed: narrativa artificial "${artifact.matched}"`,
+        };
       }
 
       // 4b) Mutación de consigna: la IA cambia el problema para forzar la respuesta.
@@ -315,13 +368,19 @@ export const generateExercise = createServerFn({ method: "POST" })
       //     Aplica a TODO tipo (no solo MC); la racionalización vive en la explicación.
       const rationalization = checkMathematicalRationalization(`${ex.explanation} ${ex.statement}`);
       if (!rationalization.ok) {
-        return { ok: false, reason: `mathematical_rationalization_detected: "${rationalization.matched}"` };
+        return {
+          ok: false,
+          reason: `mathematical_rationalization_detected: "${rationalization.matched}"`,
+        };
       }
 
       // 5) Coherencia consigna ↔ respuesta + MATH > ANSWER KEY (la cuenta manda).
       const consistency = checkConsistency(ex.statement, ex.correct_answer, ex.explanation);
       if (!consistency.ok) {
-        return { ok: false, reason: `math_consistency_failed: ${consistency.reason ?? "incoherencia consigna-respuesta"}` };
+        return {
+          ok: false,
+          reason: `math_consistency_failed: ${consistency.reason ?? "incoherencia consigna-respuesta"}`,
+        };
       }
 
       // 6) Sanity numérico SOLO de la explicación (sus cálculos deben ser correctos).
@@ -352,7 +411,7 @@ export const generateExercise = createServerFn({ method: "POST" })
     };
 
     const tGen = Date.now();
-    let validation = checkAll(parsed);
+    const validation = checkAll(parsed);
     let effectiveDifficulty = difficulty;
     if (!validation.ok) {
       retried = true;
@@ -361,18 +420,38 @@ export const generateExercise = createServerFn({ method: "POST" })
       const isScopeFailure = validation.reason.toLowerCase().includes("fuera del tema");
       const retryDifficulty = isScopeFailure && difficulty >= 4 ? difficulty - 1 : difficulty;
       const retryDiffLabel =
-        ["muy fácil", "fácil", "intermedio", "difícil", "muy difícil"][retryDifficulty - 1] ?? "intermedio";
+        ["muy fácil", "fácil", "intermedio", "difícil", "muy difícil"][retryDifficulty - 1] ??
+        "intermedio";
 
       // Observabilidad: el reason ya viene con código (missing_expression,
       // numeric_sanity_failed, math_validation_failed, invalid_structure...).
-      console.warn(
-        `[generateExercise] retry_reason=${validation.reason}${retryDifficulty !== difficulty ? ` (baja a dif ${retryDifficulty})` : ""}`,
-      );
+      log.warn("adaptive_exercise_validation_failed_retrying", {
+        reason: validation.reason,
+        topicName,
+        difficulty,
+        retryDifficulty,
+      });
       try {
-        parsed = await generateOnce(topicName, retryDiffLabel, retryDifficulty, scope, avoid, validation.reason);
+        parsed = await generateOnce(
+          topicName,
+          retryDiffLabel,
+          retryDifficulty,
+          scope,
+          avoid,
+          validation.reason,
+        );
       } catch (e) {
+        await finishAIGeneration(supabase, generationLogId, {
+          status: "error",
+          errorMessage: e instanceof Error ? e.message : "validation_retry_failed",
+        });
         if (e instanceof FatalAIError) throw e;
-        console.error("AI parse error (retry)", e);
+        log.error("adaptive_exercise_validation_retry_parse_failed", {
+          ...errorFields(e),
+          topicName,
+          difficulty,
+          retryDifficulty,
+        });
         throw new Error("La IA devolvió un formato inválido. Probá de nuevo.");
       }
       // En el retry exigimos toda la validez matemática/estructural (checkCore),
@@ -380,15 +459,31 @@ export const generateExercise = createServerFn({ method: "POST" })
       // que dejar al alumno sin ejercicio.
       const coreRetry = checkCore(parsed);
       if (!coreRetry.ok) {
-        console.error(`[generateExercise] FALLÓ tras retry · reason=${coreRetry.reason}`, parsed);
+        await finishAIGeneration(supabase, generationLogId, {
+          status: "error",
+          generatedExercise: parsed,
+          errorMessage: coreRetry.reason,
+        });
+        log.error("adaptive_exercise_core_failed_after_retry", {
+          reason: coreRetry.reason,
+          topicName,
+          difficulty,
+          retryDifficulty,
+          parsed,
+        });
         throw new Error("No pudimos generar un ejercicio válido. Reintentá.");
       }
       effectiveDifficulty = retryDifficulty;
     }
     const tValidate = Date.now();
-    console.log(
-      `[generateExercise] TOTAL ${tValidate - t0}ms · gen=${tGen - t0}ms · validate=${tValidate - tGen}ms · retry=${retried} · tema=${topicName} diff=${effectiveDifficulty}`,
-    );
+    log.info("adaptive_exercise_generated", {
+      totalMs: tValidate - t0,
+      generationMs: tGen - t0,
+      validationMs: tValidate - tGen,
+      retried,
+      topicName,
+      difficulty: effectiveDifficulty,
+    });
 
     const { data: inserted, error } = await supabase
       .from("exercises")
@@ -409,17 +504,23 @@ export const generateExercise = createServerFn({ method: "POST" })
       .single();
 
     if (error) {
-      console.error("insert exercise", error);
+      await finishAIGeneration(supabase, generationLogId, {
+        status: "error",
+        generatedExercise: parsed,
+        errorMessage: error.message,
+      });
+      log.error("adaptive_exercise_insert_failed", {
+        error: error.message,
+        topicId,
+        topicName,
+        difficulty: effectiveDifficulty,
+      });
       throw new Error("No se pudo guardar el ejercicio.");
     }
 
-    void supabase.from("ai_generation_log").insert({
-      user_id: userId,
-      topic_id: topicId,
-      difficulty: effectiveDifficulty,
-      model: getAIConfig().model,
+    void finishAIGeneration(supabase, generationLogId, {
       status: "success",
-      generated_exercise: JSON.parse(JSON.stringify(parsed)),
+      generatedExercise: parsed,
     });
 
     return {

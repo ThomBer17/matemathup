@@ -1,21 +1,26 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { motion } from "motion/react";
 import { CalendarDays, Plus, Loader2, GraduationCap, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import {
-  generatePlan, daysUntil, todayArgentina, STUDY_TOPICS,
-} from "@/lib/study/plan";
+import { daysUntil, todayArgentina, STUDY_TOPICS } from "@/lib/study/plan";
+import { createStudyPlan } from "@/lib/study/tasks.functions";
 import { track, EV } from "@/lib/analytics/events";
 
 export const Route = createFileRoute("/_authenticated/study/")({
@@ -49,7 +54,10 @@ function StudyPage() {
         if (t.status === "done") p.done++;
         progress.set(t.plan_id, p);
       }
-      return (plans ?? []).map((p) => ({ ...p, progress: progress.get(p.id) ?? { done: 0, total: 0 } }));
+      return (plans ?? []).map((p) => ({
+        ...p,
+        progress: progress.get(p.id) ?? { done: 0, total: 0 },
+      }));
     },
   });
 
@@ -93,9 +101,16 @@ function StudyPage() {
         ) : (
           (plansQuery.data ?? []).map((p, i) => {
             const left = daysUntil(p.exam_date, today);
-            const pct = p.progress.total ? Math.round((p.progress.done / p.progress.total) * 100) : 0;
+            const pct = p.progress.total
+              ? Math.round((p.progress.done / p.progress.total) * 100)
+              : 0;
             return (
-              <motion.div key={p.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+              <motion.div
+                key={p.id}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.04 }}
+              >
                 <Link
                   to="/study/$id"
                   params={{ id: p.id }}
@@ -105,7 +120,9 @@ function StudyPage() {
                     <h3 className="truncate font-display text-lg font-semibold">{p.name}</h3>
                     <p className="text-xs text-muted-foreground">
                       📅 {new Date(p.exam_date + "T00:00:00").toLocaleDateString("es-AR")} ·{" "}
-                      {left === 0 ? "¡es hoy o ya pasó!" : `faltan ${left} día${left === 1 ? "" : "s"}`}
+                      {left === 0
+                        ? "¡es hoy o ya pasó!"
+                        : `faltan ${left} día${left === 1 ? "" : "s"}`}
                     </p>
                     <div className="mt-3 flex items-center gap-3">
                       <Progress value={pct} className="h-2 flex-1" />
@@ -123,7 +140,11 @@ function StudyPage() {
       <CreatePlanDialog
         open={creating}
         onOpenChange={setCreating}
-        onCreated={(id) => { setCreating(false); plansQuery.refetch(); navigate({ to: "/study/$id", params: { id } }); }}
+        onCreated={(id) => {
+          setCreating(false);
+          plansQuery.refetch();
+          navigate({ to: "/study/$id", params: { id } });
+        }}
       />
     </div>
   );
@@ -138,7 +159,7 @@ function CreatePlanDialog({
   onOpenChange: (v: boolean) => void;
   onCreated: (id: string) => void;
 }) {
-  const { user } = useAuth();
+  const createStudyPlanFn = useServerFn(createStudyPlan);
   const today = todayArgentina();
   const [name, setName] = useState("");
   const [examDate, setExamDate] = useState("");
@@ -152,54 +173,29 @@ function CreatePlanDialog({
   const canSubmit = name.trim() && examDate && examDate > today && topics.length > 0 && !submitting;
 
   const submit = async () => {
-    if (!user || !canSubmit) return;
+    if (!canSubmit) return;
     setSubmitting(true);
     try {
-      // dominio actual por tema
-      const [{ data: prog }, { data: tps }] = await Promise.all([
-        supabase.from("user_progress").select("topic_id, mastery_pct").eq("user_id", user.id),
-        supabase.from("topics").select("id, slug"),
-      ]);
-      const slugByTopic = new Map((tps ?? []).map((t) => [t.id, t.slug]));
-      const masteryBySlug = new Map<string, number>();
-      for (const p of prog ?? []) {
-        const slug = slugByTopic.get(p.topic_id);
-        if (slug) masteryBySlug.set(slug, Number(p.mastery_pct));
-      }
-      const planTopics = topics.map((slug) => ({
-        slug,
-        name: STUDY_TOPICS.find((t) => t.slug === slug)?.name ?? slug,
-        mastery: masteryBySlug.get(slug) ?? 0,
-      }));
-      const tasks = generatePlan({ today, examDate, dailyMinutes, topics: planTopics });
+      const plan = await createStudyPlanFn({
+        data: {
+          name,
+          examDate,
+          topics,
+          dailyMinutes,
+        },
+      });
 
-      const { data: plan, error } = await supabase
-        .from("study_plans")
-        .insert({ user_id: user.id, name: name.trim(), exam_date: examDate, daily_minutes: dailyMinutes, topics })
-        .select()
-        .single();
-      if (error || !plan) throw new Error(error?.message ?? "No se pudo crear el plan");
-
-      const { error: tErr } = await supabase.from("study_plan_tasks").insert(
-        tasks.map((t) => ({
-          plan_id: plan.id,
-          user_id: user.id,
-          date: t.date,
-          topic_slug: t.topicSlug,
-          topic_name: t.topicName,
-          kind: t.kind,
-          title: t.title,
-          objective: t.objective,
-          minutes: t.minutes,
-          order_index: t.orderIndex,
-        })),
-      );
-      if (tErr) throw new Error(tErr.message);
-
-      track(EV.planCreated, { entityType: "plan", entityId: plan.id, metadata: { topics: topics.length, daily_minutes: dailyMinutes, tasks: tasks.length } });
+      track(EV.planCreated, {
+        entityType: "plan",
+        entityId: plan.id,
+        metadata: { topics: topics.length, daily_minutes: dailyMinutes, tasks: plan.tasks },
+      });
       toast.success("¡Plan creado! 🎯");
       onCreated(plan.id);
-      setName(""); setExamDate(""); setTopics([]); setDailyMinutes(30);
+      setName("");
+      setExamDate("");
+      setTopics([]);
+      setDailyMinutes(30);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Error al crear el plan");
     } finally {
@@ -212,16 +208,27 @@ function CreatePlanDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="font-display">Nuevo plan de estudio</DialogTitle>
-          <DialogDescription>Lo armamos según tu dominio actual y tu tiempo disponible.</DialogDescription>
+          <DialogDescription>
+            Lo armamos según tu dominio actual y tu tiempo disponible.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <Field label="Nombre del examen">
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej: Parcial de Trigonometría" />
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ej: Parcial de Trigonometría"
+            />
           </Field>
 
           <Field label="Fecha del examen">
-            <Input type="date" min={today} value={examDate} onChange={(e) => setExamDate(e.target.value)} />
+            <Input
+              type="date"
+              min={today}
+              value={examDate}
+              onChange={(e) => setExamDate(e.target.value)}
+            />
           </Field>
 
           <Field label="Temas que entran">
@@ -253,7 +260,9 @@ function CreatePlanDialog({
                   onClick={() => setDailyMinutes(m)}
                   className={cn(
                     "rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all",
-                    dailyMinutes === m ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-primary/40",
+                    dailyMinutes === m
+                      ? "border-primary bg-primary/5 ring-1 ring-primary"
+                      : "border-border hover:border-primary/40",
                   )}
                 >
                   {m < 60 ? `${m} min` : m === 60 ? "1 hora" : "2 horas"}
@@ -264,9 +273,17 @@ function CreatePlanDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>Cancelar</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>
+            Cancelar
+          </Button>
           <Button onClick={submit} disabled={!canSubmit} className="gap-2">
-            {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Creando…</> : "Crear plan"}
+            {submitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> Creando…
+              </>
+            ) : (
+              "Crear plan"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -277,7 +294,9 @@ function CreatePlanDialog({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</label>
+      <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </label>
       {children}
     </div>
   );

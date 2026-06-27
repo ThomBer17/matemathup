@@ -5,13 +5,7 @@ import { Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { mathToLatex } from "@/lib/math-to-latex";
 
-export function MathPreview({
-  value,
-  className,
-}: {
-  value: string;
-  className?: string;
-}) {
+export function MathPreview({ value, className }: { value: string; className?: string }) {
   const { html, error } = useMemo(() => {
     const latex = mathToLatex(value);
     if (!latex.trim()) return { html: "", error: null };
@@ -42,9 +36,7 @@ export function MathPreview({
     >
       <Eye className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
       {isEmpty ? (
-        <span className="text-xs italic text-muted-foreground/60">
-          Vista previa
-        </span>
+        <span className="text-xs italic text-muted-foreground/60">Vista previa</span>
       ) : error ? (
         <span className="text-xs text-muted-foreground/70">
           Tipeá una expresión válida para ver la vista previa

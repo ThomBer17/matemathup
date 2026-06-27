@@ -1,17 +1,38 @@
 import { useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Upload, FileText, Image as ImageIcon, Trash2, Loader2,
-  BookMarked, AlertCircle, Sparkles, ChevronRight,
+  Upload,
+  FileText,
+  Image as ImageIcon,
+  Trash2,
+  Loader2,
+  BookMarked,
+  AlertCircle,
+  Sparkles,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/auth-context";
 import { cn } from "@/lib/utils";
-import { detectKind, extractFromFile, makePreview, isZip, expandZip, type MaterialKind } from "@/lib/materials/process";
+import {
+  detectKind,
+  extractFromFile,
+  makePreview,
+  isZip,
+  expandZip,
+  type MaterialKind,
+} from "@/lib/materials/process";
 import { classifyMaterial } from "@/lib/materials/classify";
+import {
+  createMaterialRecord,
+  deleteMaterialRecord,
+  finalizeMaterialRecord,
+  markMaterialError,
+} from "@/lib/materials/materials.functions";
 import { track, EV } from "@/lib/analytics/events";
 
 interface Material {
@@ -44,6 +65,10 @@ function sanitize(name: string): string {
 export function MyMaterials() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const createMaterialRecordFn = useServerFn(createMaterialRecord);
+  const finalizeMaterialRecordFn = useServerFn(finalizeMaterialRecord);
+  const markMaterialErrorFn = useServerFn(markMaterialError);
+  const deleteMaterialRecordFn = useServerFn(deleteMaterialRecord);
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
 
@@ -75,25 +100,26 @@ export function MyMaterials() {
     }
 
     // 1) Registro inmediato en estado "procesando" → aparece en la lista.
-    const { data: inserted, error: insErr } = await supabase
-      .from("materials")
-      .insert({
-        user_id: user.id,
-        file_name: file.name,
-        file_type: kind,
-        mime_type: file.type || null,
-        file_size: file.size,
-        status: "processing",
-      })
-      .select()
-      .single();
-
-    if (insErr || !inserted) {
+    let material;
+    try {
+      material = await createMaterialRecordFn({
+        data: {
+          fileName: file.name,
+          fileType: kind,
+          mimeType: file.type || null,
+          fileSize: file.size,
+        },
+      });
+    } catch {
       toast.error("No se pudo registrar el material.");
       return;
     }
-    const id = inserted.id as string;
-    track(EV.materialUploaded, { entityType: "material", entityId: id, metadata: { file_type: kind } });
+    const id = material.id;
+    track(EV.materialUploaded, {
+      entityType: "material",
+      entityId: id,
+      metadata: { file_type: kind },
+    });
     refetch();
 
     try {
@@ -113,22 +139,25 @@ export function MyMaterials() {
       const classification = classifyMaterial(text);
 
       // 4) Persistir resultado.
-      await supabase
-        .from("materials")
-        .update({
-          storage_path: storagePath,
-          extracted_text: text || null,
+      await finalizeMaterialRecordFn({
+        data: {
+          materialId: id,
+          storagePath,
+          extractedText: text || null,
           preview: text ? makePreview(text) : null,
-          page_count: pageCount,
-          detected_topic: classification.topic,
-          status: "ready",
-        })
-        .eq("id", id);
-      track(EV.materialProcessed, { entityType: "material", entityId: id, metadata: { topic: classification.topic, is_math: classification.isMath } });
+          pageCount,
+          detectedTopic: classification.topic,
+        },
+      });
+      track(EV.materialProcessed, {
+        entityType: "material",
+        entityId: id,
+        metadata: { topic: classification.topic, is_math: classification.isMath },
+      });
       refetch();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Error al procesar";
-      await supabase.from("materials").update({ status: "error", error_message: msg }).eq("id", id);
+      await markMaterialErrorFn({ data: { materialId: id, errorMessage: msg } }).catch(() => {});
       refetch();
     }
   };
@@ -157,26 +186,31 @@ export function MyMaterials() {
     if (!files) return;
     // Procesamos secuencialmente (OCR/unzip pesados) sin bloquear la UI.
     Array.from(files).reduce(
-      (chain, file) => chain.then(() => {
-        // RAR/7z/tar no se pueden descomprimir en el navegador → mensaje claro.
-        if (/\.(rar|7z|tar|gz|tgz)$/i.test(file.name)) {
-          toast.error(`No soportamos ${file.name.split(".").pop()?.toUpperCase()}. Convertilo a ZIP (o subí los PDFs sueltos).`);
-          return Promise.resolve();
-        }
-        return isZip(file) ? handleZip(file) : processSingleFile(file);
-      }),
+      (chain, file) =>
+        chain.then(() => {
+          // RAR/7z/tar no se pueden descomprimir en el navegador → mensaje claro.
+          if (/\.(rar|7z|tar|gz|tgz)$/i.test(file.name)) {
+            toast.error(
+              `No soportamos ${file.name.split(".").pop()?.toUpperCase()}. Convertilo a ZIP (o subí los PDFs sueltos).`,
+            );
+            return Promise.resolve();
+          }
+          return isZip(file) ? handleZip(file) : processSingleFile(file);
+        }),
       Promise.resolve(),
     );
   };
 
   const handleDelete = async (m: Material) => {
     if (!window.confirm(`¿Eliminar "${m.file_name}"?`)) return;
-    if (m.storage_path) {
-      await supabase.storage.from("materials").remove([m.storage_path]).catch(() => {});
+    try {
+      await deleteMaterialRecordFn({ data: { materialId: m.id } });
+      track(EV.materialDeleted, { entityType: "material", entityId: m.id });
+      refetch();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "No se pudo eliminar el material.";
+      toast.error(msg);
     }
-    await supabase.from("materials").delete().eq("id", m.id);
-    track(EV.materialDeleted, { entityType: "material", entityId: m.id });
-    refetch();
   };
 
   return (
@@ -188,27 +222,41 @@ export function MyMaterials() {
 
       {/* Zona de subida */}
       <div
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
         onDragLeave={() => setDragOver(false)}
-        onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          handleFiles(e.dataTransfer.files);
+        }}
         onClick={() => inputRef.current?.click()}
         className={cn(
           "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-8 text-center transition-colors",
-          dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/40 hover:bg-muted/30",
+          dragOver
+            ? "border-primary bg-primary/5"
+            : "border-border hover:border-primary/40 hover:bg-muted/30",
         )}
       >
         <div className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-700">
           <Upload className="h-5 w-5 text-white" />
         </div>
         <p className="text-sm font-medium">Arrastrá un archivo o hacé click para subir</p>
-        <p className="text-xs text-muted-foreground">PDF, imágenes (JPG, PNG, WEBP) o ZIP · hasta 15 MB (60 MB el ZIP)</p>
+        <p className="text-xs text-muted-foreground">
+          PDF, imágenes (JPG, PNG, WEBP) o ZIP · hasta 15 MB (60 MB el ZIP)
+        </p>
         <input
           ref={inputRef}
           type="file"
           accept="application/pdf,image/jpeg,image/png,image/webp,application/zip,.zip"
           multiple
           className="hidden"
-          onChange={(e) => { handleFiles(e.target.files); e.target.value = ""; }}
+          onChange={(e) => {
+            handleFiles(e.target.files);
+            e.target.value = "";
+          }}
         />
       </div>
 
@@ -232,11 +280,7 @@ export function MyMaterials() {
                     <ImageIcon className="h-4 w-4 text-sky-500" />
                   )}
                 </div>
-                <Link
-                  to="/materials/$id"
-                  params={{ id: m.id }}
-                  className="group min-w-0 flex-1"
-                >
+                <Link to="/materials/$id" params={{ id: m.id }} className="group min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{m.file_name}</p>
                   <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
                     <StatusBadge status={m.status} topic={m.detected_topic} />
