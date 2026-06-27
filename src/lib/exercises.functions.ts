@@ -26,6 +26,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
 const SIMILARITY_THRESHOLD = 0.7;
+const CURRENT_VALIDATION_VERSION = 2;
 
 const ExerciseSchema = z.object({
   statement: z.string().min(5),
@@ -166,6 +167,91 @@ function combinedScopeText(ex: ParsedExercise): string {
   return [ex.statement, ex.explanation, ...(ex.options ?? []), ...ex.hints].join(" ");
 }
 
+function sanitizeExerciseForValidation(exRaw: ParsedExercise): ParsedExercise {
+  return {
+    ...exRaw,
+    statement: sanitizeMathText(exRaw.statement),
+    explanation: sanitizeMathText(exRaw.explanation),
+    hints: exRaw.hints.map((h) => sanitizeMathText(h)),
+  };
+}
+
+function validateGeneratedExerciseCore(
+  exRaw: ParsedExercise,
+  scope: TopicScope,
+  topicName: string,
+): { ok: true } | { ok: false; reason: string } {
+  const ex = sanitizeExerciseForValidation(exRaw);
+
+  const structuralBasic = validateExercise(ex);
+  if (!structuralBasic.ok) return structuralBasic;
+
+  const structure = validateStructure(ex);
+  if (!structure.ok) return structure;
+
+  const combined = combinedScopeText(ex);
+
+  const scopeRes = validateInScope(combined, scope);
+  if (!scopeRes.inScope) {
+    return {
+      ok: false,
+      reason: `invalid_structure: usó "${scopeRes.matched}" fuera del tema ${topicName}`,
+    };
+  }
+
+  const artifact = checkArtificialPatterns(combined);
+  if (!artifact.ok) {
+    return {
+      ok: false,
+      reason: `math_validation_failed: narrativa artificial "${artifact.matched}"`,
+    };
+  }
+
+  const mutation = checkStatementMutation(ex.explanation);
+  if (!mutation.ok) {
+    return { ok: false, reason: `statement_mutation_attempt: "${mutation.matched}"` };
+  }
+
+  if (ex.type === "multiple_choice") {
+    const closest = checkClosestOptionFraud(`${ex.explanation} ${ex.statement}`);
+    if (!closest.ok) {
+      return { ok: false, reason: `multiple_choice_integrity_failed: "${closest.matched}"` };
+    }
+  }
+
+  const rationalization = checkMathematicalRationalization(`${ex.explanation} ${ex.statement}`);
+  if (!rationalization.ok) {
+    return {
+      ok: false,
+      reason: `mathematical_rationalization_detected: "${rationalization.matched}"`,
+    };
+  }
+
+  const consistency = checkConsistency(ex.statement, ex.correct_answer, ex.explanation);
+  if (!consistency.ok) {
+    return {
+      ok: false,
+      reason: `math_consistency_failed: ${consistency.reason ?? "incoherencia consigna-respuesta"}`,
+    };
+  }
+
+  const sanity = checkNumericSanity(ex.explanation);
+  if (!sanity.ok) {
+    return { ok: false, reason: sanity.reason ?? "numeric_sanity_failed" };
+  }
+
+  return { ok: true };
+}
+
+function shuffle<T>(items: T[]): T[] {
+  const out = items.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
 interface ServedExercise {
   id: string;
   statement: string;
@@ -187,12 +273,16 @@ async function tryBank(
   supabase: SupabaseClient<Database>,
   userId: string,
   topicId: string,
+  topicName: string,
   difficulty: number,
+  scope: TopicScope,
   avoid: string[],
 ): Promise<ServedExercise | null> {
   const { data: candidates } = await supabase
     .from("exercises")
-    .select("id, statement, type, options, correct_answer, explanation, hints, difficulty")
+    .select(
+      "id, statement, type, options, correct_answer, explanation, hints, difficulty, validation_version",
+    )
     .eq("topic_id", topicId)
     .eq("approved", true)
     .gte("difficulty", Math.max(1, difficulty - 1))
@@ -215,18 +305,61 @@ async function tryBank(
   );
   if (fresh.length === 0) return null;
 
-  const pick = fresh[Math.floor(Math.random() * fresh.length)];
-  return {
-    id: pick.id as string,
-    statement: pick.statement as string,
-    type: pick.type as ParsedExercise["type"],
-    options: (pick.options as string[] | null) ?? null,
-    correct_answer: pick.correct_answer as string,
-    explanation: pick.explanation as string,
-    hints: (pick.hints as string[] | null) ?? [],
-    graph_expressions: [],
-    difficulty: (pick.difficulty as number) ?? difficulty,
-  };
+  for (const pick of shuffle(fresh)) {
+    const served = {
+      id: pick.id as string,
+      statement: pick.statement as string,
+      type: pick.type as ParsedExercise["type"],
+      options: (pick.options as string[] | null) ?? null,
+      correct_answer: pick.correct_answer as string,
+      explanation: (pick.explanation as string | null) ?? "",
+      hints: (pick.hints as string[] | null) ?? [],
+      graph_expressions: [],
+      difficulty: (pick.difficulty as number) ?? difficulty,
+    };
+
+    const version = (pick.validation_version as number | null) ?? 0;
+    if (version >= CURRENT_VALIDATION_VERSION) return served;
+
+    const parsed = ExerciseSchema.safeParse({
+      statement: served.statement,
+      type: served.type,
+      options: served.options ?? undefined,
+      correct_answer: served.correct_answer,
+      explanation: served.explanation,
+      hints: served.hints,
+      graph_expressions: [],
+    });
+    const validation = parsed.success
+      ? validateGeneratedExerciseCore(parsed.data, scope, topicName)
+      : ({ ok: false, reason: parsed.error.issues[0]?.message ?? "invalid_schema" } as const);
+
+    if (validation.ok) {
+      const { error } = await supabase
+        .from("exercises")
+        .update({ validation_version: CURRENT_VALIDATION_VERSION })
+        .eq("id", served.id);
+      if (error) {
+        log.warn("exercise_bank_validation_version_update_failed", {
+          exerciseId: served.id,
+          error: error.message,
+        });
+      }
+      return served;
+    }
+
+    const { error } = await supabase
+      .from("exercises")
+      .update({ approved: false, validation_version: 0 })
+      .eq("id", served.id);
+    log.warn("exercise_bank_rejected_corrupt_exercise", {
+      exerciseId: served.id,
+      reason: validation.reason,
+      updateError: error?.message,
+    });
+  }
+
+  return null;
 }
 
 export const generateExercise = createServerFn({ method: "POST" })
@@ -245,8 +378,11 @@ export const generateExercise = createServerFn({ method: "POST" })
       throw new Error(`Estás generando muy seguido. Probá en ${rl.retryInSec}s.`);
     }
 
-    // Banco de ejercicios: si hay uno ya generado y sin ver, lo servimos (sin IA).
-    const banked = await tryBank(supabase, userId, topicId, difficulty, avoid);
+    const scope = getTopicScope(topicName);
+
+    // Banco de ejercicios: si hay uno ya generado y sin ver, lo revalidamos si hace falta
+    // antes de servirlo. Esto evita reciclar contenido viejo con answer key corrupta.
+    const banked = await tryBank(supabase, userId, topicId, topicName, difficulty, scope, avoid);
     if (banked) {
       log.info("adaptive_exercise_bank_hit", { topicName, difficulty });
       return banked;
@@ -256,7 +392,6 @@ export const generateExercise = createServerFn({ method: "POST" })
       ["muy fácil", "fácil", "intermedio", "difícil", "muy difícil"][difficulty - 1] ??
       "intermedio";
 
-    const scope = getTopicScope(topicName);
     const t0 = Date.now();
     let retried = false;
     let generationLogId: string | null = null;
@@ -498,6 +633,7 @@ export const generateExercise = createServerFn({ method: "POST" })
         difficulty: effectiveDifficulty,
         ai_generated: true,
         approved: true,
+        validation_version: CURRENT_VALIDATION_VERSION,
         created_by: userId,
       })
       .select()

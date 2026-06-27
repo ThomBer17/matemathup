@@ -389,6 +389,7 @@ export type Database = {
           tags: string[] | null;
           topic_id: string;
           type: Database["public"]["Enums"]["exercise_type"];
+          validation_version: number;
         };
         Insert: {
           ai_generated?: boolean;
@@ -406,6 +407,7 @@ export type Database = {
           tags?: string[] | null;
           topic_id: string;
           type?: Database["public"]["Enums"]["exercise_type"];
+          validation_version?: number;
         };
         Update: {
           ai_generated?: boolean;
@@ -423,6 +425,7 @@ export type Database = {
           tags?: string[] | null;
           topic_id?: string;
           type?: Database["public"]["Enums"]["exercise_type"];
+          validation_version?: number;
         };
         Relationships: [
           {

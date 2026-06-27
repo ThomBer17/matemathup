@@ -58,6 +58,7 @@ export function parseNumericValue(raw: string): number | null {
     // re-matchearía ese "sqrt(n)" generando "Math.Math.sqrt(n)".
     .replace(/sqrt\s*\(\s*(\d+(?:[.,]\d+)?)\s*\)/g, "Math.sqrt($1)")
     .replace(SQRT_RE, "Math.sqrt($1)")
+    .replace(/(\d|\))\s*(Math\.sqrt\()/g, "$1*$2")
     .replace(/(\d),(\d)/g, "$1.$2"); // coma decimal -> punto
 
   // Solo permitimos un set seguro de caracteres tras normalizar
@@ -345,6 +346,9 @@ export function checkAnswerKeyConsistency(
   const key = parseNumericValue(correctAnswer);
   if (key === null || !explanation) return { ok: true };
 
+  const finalEquality = checkFinalEqualityConclusion(explanation, correctAnswer);
+  if (!finalEquality.ok) return finalEquality;
+
   // Captura números precedidos por un marcador de RESULTADO FINAL de alta precisión.
   // Evitamos "entonces/por lo tanto/obtenemos" porque suelen preceder una ecuación
   // o un paso intermedio (ej. "entonces 3x = 6" capturaría el coeficiente 3).
@@ -366,6 +370,55 @@ export function checkAnswerKeyConsistency(
     return {
       ok: false,
       reason: `answer_key_mismatch: la explicación concluye ${concluded} pero answer_key="${correctAnswer}"`,
+    };
+  }
+  return { ok: true };
+}
+
+function numericClose(a: number, b: number): boolean {
+  return Math.abs(a - b) <= Math.max(1e-9, 1e-6 * Math.max(Math.abs(a), Math.abs(b), 1));
+}
+
+function trimMathCandidate(raw: string): string {
+  return raw
+    .replace(/\${1,2}/g, "")
+    .replace(/^[\s:]+/g, "")
+    .replace(/[\s,;:.!?]+$/g, "")
+    .trim();
+}
+
+function finalEqualityCandidate(explanation: string): string | null {
+  const normalized = normSym(explanation);
+  const lastEq = normalized.lastIndexOf("=");
+  if (lastEq < 0) return null;
+
+  const after = normalized.slice(lastEq + 1);
+  const firstLine = after.split(/\r?\n/)[0] ?? "";
+  const sentence = firstLine.split(/;/)[0] ?? "";
+  const candidate = trimMathCandidate(sentence);
+  return candidate || null;
+}
+
+/**
+ * Detecta conclusiones finales expresadas como cadena de igualdad:
+ * "50/18 + 9/18 - 15/18 = 44/18 = 22/9".
+ * Conservador: solo compara si el ultimo termino y la answer key son numericos.
+ */
+export function checkFinalEqualityConclusion(
+  explanation: string,
+  correctAnswer: string,
+): ConsistencyResult {
+  const candidate = finalEqualityCandidate(explanation);
+  if (!candidate) return { ok: true };
+
+  const concluded = parseNumericValue(candidate);
+  const key = parseNumericValue(correctAnswer);
+  if (concluded === null || key === null) return { ok: true };
+
+  if (!numericClose(concluded, key)) {
+    return {
+      ok: false,
+      reason: `explanation_answer_mismatch: la explicaciÃ³n concluye ${candidate} pero answer_key="${correctAnswer}"`,
     };
   }
   return { ok: true };

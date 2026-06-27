@@ -4,6 +4,7 @@ import {
   parseIntervalFromStatement,
   checkIntervalConsistency,
   checkAnswerKeyConsistency,
+  checkFinalEqualityConclusion,
   checkIntervalAnswerKey,
   checkSolutionSetMatch,
 } from "./consistency";
@@ -66,6 +67,22 @@ describe("checkSolutionSetMatch — conjunto-solución vs answer key", () => {
 });
 
 describe("checkAnswerKeyConsistency — MATH > ANSWER KEY", () => {
+  it("detecta fracciones cuando la explicacion concluye 22/9 pero la key dice 41/36", () => {
+    const r = checkAnswerKeyConsistency("50/18 + 9/18 - 15/18 = 44/18 = 22/9", "41/36");
+    expect(r.ok).toBe(false);
+    expect(r.reason).toContain("explanation_answer_mismatch");
+  });
+
+  it("acepta radical equivalente entre explicacion y key", () => {
+    const sqrt = String.fromCharCode(0x221a);
+    expect(checkAnswerKeyConsistency(`Simplificando, el resultado es ${sqrt}3`, "sqrt(3)").ok).toBe(
+      true,
+    );
+    expect(
+      checkAnswerKeyConsistency(`Simplificando, el resultado es ${sqrt}3`, `${sqrt}3`).ok,
+    ).toBe(true);
+  });
+
   it("detecta key que no coincide con el resultado de la explicación (teorema del resto)", () => {
     const r = checkAnswerKeyConsistency(
       "Por el teorema del resto, evaluamos p(2). El resto es 0.",
@@ -102,6 +119,19 @@ describe("checkAnswerKeyConsistency — MATH > ANSWER KEY", () => {
 
   it("no toma el coeficiente '3x' como resultado", () => {
     expect(checkAnswerKeyConsistency("El resultado es 3x + 1.", "5").ok).toBe(true);
+  });
+});
+
+describe("checkFinalEqualityConclusion", () => {
+  it("extrae el ultimo termino de una cadena de igualdad", () => {
+    const r = checkFinalEqualityConclusion("50/18 + 9/18 - 15/18 = 44/18 = 22/9", "22/9");
+    expect(r.ok).toBe(true);
+  });
+
+  it("falla si el ultimo termino de la cadena no coincide con la key", () => {
+    const r = checkFinalEqualityConclusion("50/18 + 9/18 - 15/18 = 44/18 = 22/9", "41/36");
+    expect(r.ok).toBe(false);
+    expect(r.reason).toContain("explanation_answer_mismatch");
   });
 });
 
