@@ -164,6 +164,24 @@ export function plainMathToLatex(input: string): string {
   return s.replace(/\s{2,}/g, " ").trim();
 }
 
+const TRIG_SQUARED = String.raw`(?:\^\s*(?:\{2\}|2)|²)`;
+const SIN_TERM = String.raw`(?:\\?sin|sen)\s*${TRIG_SQUARED}\s*\([^)]{1,32}\)`;
+const COS_TERM = String.raw`\\?cos\s*${TRIG_SQUARED}\s*\([^)]{1,32}\)`;
+const DANGLING_PYTHAGOREAN_IDENTITY_RE = new RegExp(
+  String.raw`((?:${SIN_TERM}\s*\+\s*${COS_TERM}|${COS_TERM}\s*\+\s*${SIN_TERM})\s*=\s*)(?=[$.,;:!?\n)]|$)`,
+  "gi",
+);
+
+/**
+ * Repara una falla frecuente de ejercicios generados: la identidad pitagórica queda
+ * escrita como "sen^2(x) + cos^2(x) =" sin el 1. Es conservador: solo actúa cuando
+ * el lado derecho está vacío.
+ */
+export function repairDanglingMathIdentities(input: string): string {
+  if (!input) return input;
+  return input.replace(DANGLING_PYTHAGOREAN_IDENTITY_RE, (_match, prefix: string) => `${prefix}1`);
+}
+
 function replaceUnicodeRootOnce(s: string): string {
   const idx = s.indexOf("√");
   if (idx === -1) return s;

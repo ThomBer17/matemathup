@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseExplanation, parseSteps, splitMathFragments } from "./explanation-format";
+import { repairDanglingMathIdentities } from "./math-to-latex";
 
 function plain(frags: { text: string; math: boolean }[]): string {
   return frags.map((f) => f.text).join("");
@@ -122,5 +123,25 @@ describe("parseSteps — segmenta conservando el texto crudo (con LaTeX)", () =>
 
   it("entrada vacía → []", () => {
     expect(parseSteps("")).toEqual([]);
+  });
+});
+
+describe("repairDanglingMathIdentities", () => {
+  it("completa la identidad pitagórica cuando queda sin lado derecho", () => {
+    expect(repairDanglingMathIdentities("Usamos sen^2(x) + cos^2(x) =")).toBe(
+      "Usamos sen^2(x) + cos^2(x) =1",
+    );
+  });
+
+  it("completa la identidad pitagórica dentro de LaTeX inline", () => {
+    expect(repairDanglingMathIdentities("Usamos $\\sin^2(x)+\\cos^2(x)=$.")).toBe(
+      "Usamos $\\sin^2(x)+\\cos^2(x)=1$.",
+    );
+  });
+
+  it("no toca igualdades que ya tienen lado derecho", () => {
+    expect(repairDanglingMathIdentities("Usamos sen^2(x) + cos^2(x) = 1")).toBe(
+      "Usamos sen^2(x) + cos^2(x) = 1",
+    );
   });
 });

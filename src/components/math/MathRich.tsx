@@ -3,7 +3,11 @@ import katex from "katex";
 import "katex/dist/katex.min.css";
 import { cn } from "@/lib/utils";
 import { sanitizeMathText } from "@/lib/ai/sanitize-text";
-import { plainMathToLatex, isRenderableMath } from "@/lib/math-to-latex";
+import {
+  plainMathToLatex,
+  isRenderableMath,
+  repairDanglingMathIdentities,
+} from "@/lib/math-to-latex";
 import { splitMathFragments } from "@/lib/explanation-format";
 
 /**
@@ -57,7 +61,7 @@ function renderProse(text: string, keyBase: string): ReactNode[] {
 function render(input: string): ReactNode[] {
   if (!input) return [];
   // Limpia "\n"/"\t"/"\r" literales sobrantes (no LaTeX: van seguidos de no-minúscula).
-  const text = input.replace(/\\[nrt](?![a-z])/g, " ");
+  const text = repairDanglingMathIdentities(input).replace(/\\[nrt](?![a-z])/g, " ");
   const out: ReactNode[] = [];
   let last = 0;
   let m: RegExpExecArray | null;
