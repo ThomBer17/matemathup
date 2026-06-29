@@ -1,4 +1,5 @@
 import { parseNumericValue } from "@/lib/ai/consistency";
+import { normalizeAnswerText } from "@/lib/math/format";
 
 export type ExerciseType = "multiple_choice" | "true_false" | "open";
 
@@ -35,6 +36,9 @@ export function answersEqual(a: string, b: string, type: ExerciseType): boolean 
     if (ca && cb) return ca === cb;
   }
   if (basic(a) === basic(b)) return true;
+  if (type === "multiple_choice") {
+    return normalizeAnswerText(a) === normalizeAnswerText(b);
+  }
   // Equivalencia numérica: "0.5" == "1/2", "2" == "2.0", "50%" no aplica.
   // Evita marcar incorrecta una respuesta correcta escrita en otra forma.
   const na = parseNumericValue(a);

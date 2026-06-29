@@ -114,6 +114,36 @@ describe("Canonical dispatcher and consistency", () => {
     expect(options[0]).toBe("5/6");
     expect(new Set(options).size).toBe(options.length);
   });
+
+  it("rechaza distractores equivalentes a la respuesta canonica simplificada", () => {
+    const solved = solveCanonical({ statement: "Simplificá $\\sqrt{50}$" });
+    expect(solved.ok).toBe(true);
+    if (!solved.ok) return;
+    expect(solved.answer.canonical).toBe("5*sqrt(2)");
+
+    const consistency = checkCanonicalConsistency(
+      {
+        statement: "Simplificá $\\sqrt{50}$",
+        type: "multiple_choice",
+        correct_answer: "5*sqrt(2)",
+        options: ["5*sqrt(2)", "sqrt(50)", "10*sqrt(5)", "2*sqrt(25)"],
+        explanation: "$\\sqrt{50}=5\\sqrt{2}$",
+      },
+      solved.answer,
+    );
+    expect(consistency.ok).toBe(false);
+    expect(consistency.issues.map((i) => i.code)).toContain("equivalent_option_duplicate");
+  });
+
+  it("filtra opciones previas equivalentes al construir distractores canonicos", () => {
+    const solved = solveCanonical({ statement: "Simplificá $\\sqrt{50}$" });
+    expect(solved.ok).toBe(true);
+    if (!solved.ok) return;
+
+    const options = buildCanonicalOptions(solved.answer, ["sqrt(50)", "10*sqrt(5)", "2*sqrt(25)"]);
+    expect(options).toContain("5*sqrt(2)");
+    expect(options).not.toContain("sqrt(50)");
+  });
 });
 
 describe("Canonical coverage", () => {

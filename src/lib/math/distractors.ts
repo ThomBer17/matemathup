@@ -1,3 +1,4 @@
+import { parseNumericValue } from "@/lib/ai/consistency";
 import { Rational } from "@/lib/fraction";
 import { normalizeAnswerText } from "./format";
 import type { CanonicalAnswer } from "./types";
@@ -49,9 +50,14 @@ export function buildCanonicalOptions(
   answer: CanonicalAnswer,
   previous: string[] | null | undefined,
 ): string[] {
-  const fromPrevious = (previous ?? []).filter(
-    (opt) => normalizeAnswerText(opt) !== normalizeAnswerText(answer.typable),
-  );
+  const answerKey = normalizeAnswerText(answer.typable);
+  const fromPrevious = (previous ?? []).filter((opt) => {
+    if (normalizeAnswerText(opt) === answerKey) return false;
+    if (answer.numeric == null) return true;
+    const value = parseNumericValue(opt);
+    if (value === null) return true;
+    return Math.abs(value - answer.numeric) > 1e-9 * Math.max(Math.abs(answer.numeric), 1);
+  });
   const generated =
     answer.kind === "interval" ? intervalDistractors(answer) : numericDistractors(answer);
   return unique([answer.typable, ...fromPrevious, ...generated]).slice(0, 4);

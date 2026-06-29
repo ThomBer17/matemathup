@@ -1,3 +1,4 @@
+import { parseNumericValue } from "@/lib/ai/consistency";
 import { normalizeAnswerText } from "./format";
 import type { CanonicalAnswer, CanonicalConsistencyResult, CanonicalExercise } from "./types";
 
@@ -8,6 +9,13 @@ function sameCanonical(a: string, answer: CanonicalAnswer): boolean {
     value === normalizeAnswerText(answer.typable) ||
     value === normalizeAnswerText(answer.display)
   );
+}
+
+function sameNumericValue(a: string, answer: CanonicalAnswer): boolean {
+  if (answer.numeric == null || !Number.isFinite(answer.numeric)) return false;
+  const value = parseNumericValue(a);
+  if (value === null) return false;
+  return Math.abs(value - answer.numeric) <= 1e-9 * Math.max(Math.abs(answer.numeric), 1);
 }
 
 export function checkCanonicalConsistency(
@@ -32,6 +40,18 @@ export function checkCanonicalConsistency(
       code: "options_missing_answer",
       message: `ninguna opción coincide con canonical="${answer.canonical}"`,
     });
+  }
+
+  if (exercise.type === "multiple_choice" && exercise.options && answer.numeric != null) {
+    const equivalentDistractor = exercise.options.find(
+      (o) => !sameCanonical(o, answer) && sameNumericValue(o, answer),
+    );
+    if (equivalentDistractor) {
+      issues.push({
+        code: "equivalent_option_duplicate",
+        message: `la opción "${equivalentDistractor}" equivale a canonical="${answer.canonical}" pero no está en forma canónica`,
+      });
+    }
   }
 
   if (exercise.explanation) {

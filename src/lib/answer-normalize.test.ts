@@ -77,8 +77,13 @@ describe("answersEqual", () => {
     expect(answersEqual("2", "3", "open")).toBe(false);
   });
 
-  it("multiple_choice: equivalencia numérica matchea opción en otra forma", () => {
-    expect(answersEqual("1/2", "0.5", "multiple_choice")).toBe(true);
+  it("multiple_choice: no acepta equivalentes numéricos en otra forma", () => {
+    expect(answersEqual("1/2", "0.5", "multiple_choice")).toBe(false);
+    expect(answersEqual("sqrt(50)", "5*sqrt(2)", "multiple_choice")).toBe(false);
+  });
+
+  it("multiple_choice: acepta la misma forma con símbolos distintos", () => {
+    expect(answersEqual("5 · √2", "5*sqrt(2)", "multiple_choice")).toBe(true);
   });
 });
 

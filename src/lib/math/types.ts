@@ -27,7 +27,11 @@ export type SolveResult =
   | { ok: false; reason: string };
 
 export interface CanonicalConsistencyIssue {
-  code: "explanation_mismatch" | "correct_answer_mismatch" | "options_missing_answer";
+  code:
+    | "explanation_mismatch"
+    | "correct_answer_mismatch"
+    | "options_missing_answer"
+    | "equivalent_option_duplicate";
   message: string;
 }
 
