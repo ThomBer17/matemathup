@@ -10,10 +10,12 @@ import {
   Check,
   X,
   RotateCw,
+  RefreshCcw,
   LineChart,
   AlertCircle,
   Trophy,
   BookText,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -132,6 +134,8 @@ function TopicPage() {
   const openAnswerRef = useRef<HTMLInputElement>(null);
   const [revealed, setRevealed] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [showSolution, setShowSolution] = useState(false);
   const [hintIndex, setHintIndex] = useState(-1);
   const [lastXp, setLastXp] = useState(0);
   const [sessionCount, setSessionCount] = useState(0);
@@ -183,6 +187,8 @@ function TopicPage() {
     setAnswer("");
     setRevealed(false);
     setIsCorrect(null);
+    setRetryCount(0);
+    setShowSolution(false);
     setHintIndex(-1);
     setShowGraph(false);
     try {
@@ -230,6 +236,7 @@ function TopicPage() {
     const correct = answersEqual(a, exercise.correct_answer, exercise.type);
     setIsCorrect(correct);
     setRevealed(true);
+    setShowSolution(correct || retryCount > 0);
     const evMeta = { topic: topic?.name, difficulty, exercise_type: exercise.type };
     track(EV.exerciseAnswered, { entityType: "exercise", entityId: exercise.id, metadata: evMeta });
     track(correct ? EV.exerciseCorrect : EV.exerciseIncorrect, {
@@ -258,11 +265,14 @@ function TopicPage() {
     }
 
     if (result.correct) {
+      setShowSolution(true);
       setLastXp(result.xpGain);
       track(EV.xpGained, { metadata: { amount: result.xpGain, source: "adaptive" } });
       toast.success(`Correcto! +${result.xpGain} XP`);
     } else {
-      toast.error("Casi. Mira la explicacion.");
+      toast.error(
+        retryCount === 0 ? "Casi. Probá una vez más con la pista." : "Casi. Mirá la explicación.",
+      );
     }
     if (result.leveledUp) {
       track(EV.levelUp, { metadata: { level: result.newLevel } });
@@ -294,6 +304,17 @@ function TopicPage() {
       entityId: exercise.id,
       metadata: { topic: topic?.name },
     });
+  };
+
+  const retryCurrentExercise = () => {
+    if (!exercise) return;
+    setRetryCount((c) => c + 1);
+    setAnswer("");
+    setRevealed(false);
+    setIsCorrect(null);
+    setShowSolution(false);
+    if (exercise.hints?.length && hintIndex < 0) setHintIndex(0);
+    requestAnimationFrame(() => openAnswerRef.current?.focus());
   };
 
   const diffLabel = useMemo(
@@ -652,8 +673,12 @@ function TopicPage() {
                         </span>
                         <span className="text-sm font-semibold">
                           {isCorrect ? (
-                            "¡Bien hecho!"
-                          ) : (
+                            retryCount > 0 ? (
+                              "¡Bien recuperado!"
+                            ) : (
+                              "¡Bien hecho!"
+                            )
+                          ) : showSolution ? (
                             <>
                               Respuesta correcta:{" "}
                               <MathRich
@@ -661,6 +686,8 @@ function TopicPage() {
                                 className="text-foreground"
                               />
                             </>
+                          ) : (
+                            "Todavía no. Probá una vez más."
                           )}
                         </span>
                         {isCorrect && lastXp > 0 && (
@@ -674,18 +701,51 @@ function TopicPage() {
                           </motion.span>
                         )}
                       </div>
-                      <StepByStepExplanation
-                        text={exercise.explanation}
-                        className="mt-4 border-t pt-4"
-                      />
-                      {!isCorrect && hasTheory(slug) && (
-                        <Link
-                          to="/theory/$slug"
-                          params={{ slug }}
-                          className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
-                        >
-                          <BookText className="h-3.5 w-3.5" /> Repasá la teoría de {topic.name}
-                        </Link>
+
+                      {!isCorrect && !showSolution ? (
+                        <div className="mt-4 border-t pt-4">
+                          <p className="text-sm text-muted-foreground">
+                            Usá la pista y corregí solo el paso que cambia. Si volvés a fallar, te
+                            muestro la solución completa.
+                          </p>
+                          {hintIndex < 0 && exercise.hints?.[0] && (
+                            <div className="mt-3 flex gap-2 rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm">
+                              <Lightbulb className="h-4 w-4 shrink-0 text-warning-foreground/80" />
+                              <MathRich text={exercise.hints[0]} />
+                            </div>
+                          )}
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            <Button onClick={retryCurrentExercise} size="sm" className="gap-2">
+                              <RefreshCcw className="h-4 w-4" />
+                              Intentar de nuevo
+                            </Button>
+                            <Button
+                              onClick={() => setShowSolution(true)}
+                              variant="outline"
+                              size="sm"
+                              className="gap-2"
+                            >
+                              <Eye className="h-4 w-4" />
+                              Ver solución
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <StepByStepExplanation
+                            text={exercise.explanation}
+                            className="mt-4 border-t pt-4"
+                          />
+                          {!isCorrect && hasTheory(slug) && (
+                            <Link
+                              to="/theory/$slug"
+                              params={{ slug }}
+                              className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                            >
+                              <BookText className="h-3.5 w-3.5" /> Repasá la teoría de {topic.name}
+                            </Link>
+                          )}
+                        </>
                       )}
                     </motion.div>
                   )}
@@ -704,7 +764,7 @@ function TopicPage() {
                       <Lightbulb className="mr-2 h-4 w-4" />
                       Pista
                     </Button>
-                    {revealed && (
+                    {revealed && (isCorrect || showSolution) && (
                       <Button onClick={loadNew} className="gap-2">
                         <RotateCw className="h-4 w-4" />
                         Siguiente
