@@ -12,12 +12,13 @@ import {
   TrendingUp,
   RotateCcw,
   Star,
+  Clock3,
+  CheckCircle2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth-context";
 import { Progress } from "@/components/ui/progress";
 import { getTopicIcon, topicGradient } from "@/lib/topic-icons";
-import { RecommendedCard } from "@/components/progress/RecommendedCard";
 import { WeakSpots } from "@/components/progress/WeakSpots";
 import {
   aggregateByTopic,
@@ -26,6 +27,7 @@ import {
   type TopicMeta,
 } from "@/lib/progress/aggregate";
 import { recommendNext } from "@/lib/progress/recommendations";
+import { buildDailySession, type DailySession } from "@/lib/progress/daily-session";
 import { computeBadges, badgeStats } from "@/lib/gamification/badges";
 import { ReportProblem } from "@/components/feedback/ReportProblem";
 import { MyMaterials } from "@/components/materials/MyMaterials";
@@ -162,6 +164,16 @@ function Dashboard() {
 
   const firstName = profile?.full_name?.split(" ")[0] ?? "estudiante";
   const isNewUser = attempts.length === 0;
+  const dailySession = useMemo(
+    () =>
+      buildDailySession({
+        diagnosticCompleted: Boolean(profile?.diagnostic_completed),
+        dueCount,
+        recommendation,
+        isNewUser,
+      }),
+    [profile?.diagnostic_completed, dueCount, recommendation, isNewUser],
+  );
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8 md:py-12">
@@ -208,108 +220,13 @@ function Dashboard() {
         )}
       </motion.div>
 
-      {/* Test diagnóstico: lo ofrecemos hasta que lo completen */}
-      {!loadingCore && profile && !profile.diagnostic_completed && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-6">
-          <Link
-            to="/diagnostic"
-            className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-gradient-to-br from-primary-soft/70 to-card p-5 shadow-soft transition hover:shadow-glow"
-          >
-            <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
-                <Sparkles className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="font-display text-base font-semibold">Hacé el test diagnóstico</p>
-                <p className="text-sm text-muted-foreground">
-                  ~5 minutos para calibrar tu nivel en cada tema y personalizar la práctica.
-                </p>
-              </div>
-            </div>
-            <span className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
-              Empezar <ArrowRight className="h-4 w-4" />
-            </span>
-          </Link>
-        </motion.div>
-      )}
-
-      {/* Repaso pendiente (SRS) — solo si ya pasó el diagnóstico, para no apilar banners */}
-      {!loadingCore && profile?.diagnostic_completed && dueCount > 0 && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-6">
-          <Link
-            to="/review"
-            className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5 shadow-soft transition hover:shadow-glow"
-          >
-            <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-300">
-                <RotateCcw className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="font-display text-base font-semibold">
-                  Tenés {dueCount} ejercicio{dueCount === 1 ? "" : "s"} para repasar
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Repasá los que fallaste, en el momento justo para que se te fijen.
-                </p>
-              </div>
-            </div>
-            <span className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
-              Repasar <ArrowRight className="h-4 w-4" />
-            </span>
-          </Link>
-        </motion.div>
-      )}
-
-      {/* Próximo paso destacado: lo primero accionable que ve un alumno que ya practicó */}
-      {!loadingCore && !isNewUser && recommendation && (
-        <div className="mt-6">
-          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Seguí con esto
-          </h2>
-          <RecommendedCard rec={recommendation} />
-        </div>
-      )}
+      {!loadingCore && <TodaySessionCard session={dailySession} />}
 
       {/* Carga inicial: skeletons en vez de flash de contenido vacío */}
       {loadingCore ? (
         <div className="mt-8">
           <StatCardsSkeleton />
         </div>
-      ) : isNewUser ? (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mt-6 rounded-2xl border bg-gradient-to-br from-primary-soft to-card p-6 shadow-soft md:p-8"
-        >
-          <div className="flex items-center gap-2 text-sm font-semibold text-primary">
-            <Sparkles className="h-4 w-4" />
-            ¡Arranquemos!
-          </div>
-          <h2 className="mt-2 font-display text-2xl font-bold">Practicá tu primer ejercicio</h2>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            En MatemathUp resolvés ejercicios generados por IA, adaptados a tu nivel. Empezá por un
-            tema cualquiera del programa. La dificultad sube cuando vas bien y baja si te trabás.
-            Cada respuesta te suma XP, rachas y desbloquea logros.
-          </p>
-          <div className="mt-5 flex flex-wrap gap-3">
-            <Link
-              to="/topics"
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
-            >
-              Ver temas <ArrowRight className="h-4 w-4" />
-            </Link>
-            {recommendation && (
-              <Link
-                to="/topics/$slug"
-                params={{ slug: recommendation.topic.slug }}
-                className="inline-flex items-center gap-2 rounded-xl border bg-background px-4 py-2 text-sm font-semibold hover:border-primary/40"
-              >
-                Empezar con {recommendation.topic.name}
-              </Link>
-            )}
-          </div>
-        </motion.div>
       ) : (
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map((s, i) => (
@@ -475,5 +392,69 @@ function Dashboard() {
         <ReportProblem variant="ghost" className="text-muted-foreground" />
       </div>
     </div>
+  );
+}
+
+function TodaySessionCard({ session }: { session: DailySession }) {
+  const Icon =
+    session.kind === "diagnostic"
+      ? Sparkles
+      : session.kind === "review"
+        ? RotateCcw
+        : session.kind === "practice"
+          ? Target
+          : BookOpen;
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mt-6 overflow-hidden rounded-2xl border bg-card shadow-soft"
+    >
+      <div className="grid gap-0 lg:grid-cols-[1fr_280px]">
+        <div className="p-5 md:p-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+              <Icon className="h-3.5 w-3.5" />
+              Sesión de hoy
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+              <Clock3 className="h-3.5 w-3.5" />
+              {session.estimate}
+            </span>
+          </div>
+
+          <p className="mt-4 text-sm font-semibold text-muted-foreground">{session.eyebrow}</p>
+          <h2 className="mt-1 font-display text-2xl font-bold md:text-3xl">{session.title}</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{session.detail}</p>
+
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <Link
+              to={session.target.to}
+              params={session.target.params}
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
+            >
+              {session.primaryLabel}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <span className="text-sm text-muted-foreground">{session.secondaryLabel}</span>
+          </div>
+        </div>
+
+        <div className="border-t bg-muted/30 p-5 lg:border-l lg:border-t-0">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            En esta sesión
+          </p>
+          <div className="mt-4 space-y-3">
+            {session.focus.map((item) => (
+              <div key={item} className="flex items-center gap-2 text-sm">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </motion.section>
   );
 }
