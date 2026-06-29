@@ -66,6 +66,16 @@ describe("parseExplanation — formato por pasos", () => {
     expect(plain(r.steps[0].lines[0].fragments)).toMatch(/^Planteamos/);
   });
 
+  it("no confunde un número final de desigualdad con marcador de paso", () => {
+    const raw =
+      "1) Partimos de la desigualdad |x-3| < 5. 2) Se traduce a -5 < x-3 < 5. 3) Sumamos 3 en los tres miembros: -2 < x < 8.";
+    const r = parseExplanation(raw);
+    expect(r.structured).toBe(true);
+    expect(plain(r.steps[0].lines[0].fragments)).toContain("|x-3| < 5");
+    expect(plain(r.steps[1].lines[0].fragments)).toMatch(/^Se traduce/);
+    expect(plain(r.steps[1].lines[0].fragments)).not.toContain("2)");
+  });
+
   it("respeta marcadores 'Paso N'", () => {
     const raw = "Paso 1: planteamos. Paso 2: resolvemos.";
     const r = parseExplanation(raw);

@@ -85,10 +85,12 @@ function splitIntoSegments(raw: string): string[] {
     (_m, pre: string, mark: string) => (pre === "" ? mark : SENTINEL + mark),
   );
 
-  // Enumeraciones "1)" "2." "3-" al comienzo de una cláusula → corte antes.
+  // Enumeraciones "1)" "2." "3-" al comienzo real de una cláusula → corte antes.
+  // No alcanza con "espacio + número.": en matemática aparece seguido como valor final
+  // de una oración ("|x-3| < 5. 2) ...") y ese 5 NO es un marcador de paso.
   s = s.replace(
-    new RegExp(`(^|[\\s${SENTINEL}])(\\d{1,2}[).-])\\s+`, "g"),
-    (_m, _pre, mark: string) => `${SENTINEL}${mark} `,
+    new RegExp(`(^|${SENTINEL}|(?<=[.!?:])\\s+)(\\d{1,2}[).-])\\s+`, "g"),
+    (_m, _pre: string, mark: string) => `${SENTINEL}${mark} `,
   );
 
   // Conectores → corte antes (conservando la palabra conectora en el segmento siguiente).
