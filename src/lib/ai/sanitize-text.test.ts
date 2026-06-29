@@ -11,6 +11,9 @@ describe("sanitizeMathText", () => {
     expect(sanitizeMathText("\\frac{1}{2}")).toBe("(1)/(2)");
     expect(sanitizeMathText("\\sqrt{2}")).toBe("√(2)");
     expect(sanitizeMathText("\\sqrt{x+1}")).toBe("√(x+1)");
+    expect(sanitizeMathText("\\frac{7\\sqrt{5}+5\\sqrt{2}}{5}")).toBe(
+      "(7√(5)+5√(2))/(5)",
+    );
   });
 
   it("símbolos comunes", () => {

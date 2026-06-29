@@ -40,7 +40,8 @@ const CHAR = {
   divide: String.fromCharCode(0x00f7), // ÷
   sqrt: String.fromCharCode(0x221a), // √
 };
-const SQRT_RE = new RegExp(`${CHAR.sqrt}\\s*\\(?\\s*(\\d+(?:[.,]\\d+)?)\\s*\\)?`, "g");
+const SQRT_PAREN_RE = new RegExp(`${CHAR.sqrt}\\s*\\(\\s*(\\d+(?:[.,]\\d+)?)\\s*\\)`, "g");
+const SQRT_BARE_RE = new RegExp(`${CHAR.sqrt}\\s*(\\d+(?:[.,]\\d+)?)`, "g");
 
 export function parseNumericValue(raw: string): number | null {
   let s = raw.trim().toLowerCase();
@@ -60,7 +61,8 @@ export function parseNumericValue(raw: string): number | null {
     // Si fuera al revés, el √ produce "Math.sqrt(n)" y el regex textual
     // re-matchearía ese "sqrt(n)" generando "Math.Math.sqrt(n)".
     .replace(/sqrt\s*\(\s*(\d+(?:[.,]\d+)?)\s*\)/g, "Math.sqrt($1)")
-    .replace(SQRT_RE, "Math.sqrt($1)")
+    .replace(SQRT_PAREN_RE, "Math.sqrt($1)")
+    .replace(SQRT_BARE_RE, "Math.sqrt($1)")
     .replace(/(\d|\))\s*(Math\.sqrt\()/g, "$1*$2")
     .replace(/(\d),(\d)/g, "$1.$2"); // coma decimal -> punto
 

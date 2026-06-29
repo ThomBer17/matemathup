@@ -106,11 +106,12 @@ export function sanitizeMathText(input: string, opts: { trim?: boolean } = {}): 
   const trim = opts.trim ?? true;
   let s = input;
 
-  // \frac{a}{b} y \dfrac{a}{b} → (a)/(b)
-  s = s.replace(/\\[dt]?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, "($1)/($2)");
   // \sqrt[n]{x} → raíz n(x) ; \sqrt{x} → √(x)
   s = s.replace(/\\sqrt\s*\[([^\]]*)\]\s*\{([^{}]*)\}/g, "raíz $1($2)");
   s = s.replace(/\\sqrt\s*\{([^{}]*)\}/g, "√($1)");
+  // \frac{a}{b} y \dfrac{a}{b} → (a)/(b). Va después de \sqrt para que
+  // \frac{7\sqrt{5}}{5} no quede bloqueada por las llaves internas de la raíz.
+  s = s.replace(/\\[dt]?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, "($1)/($2)");
   // \text{...}, \mathrm{...}, \mathbf{...} → contenido
   s = s.replace(/\\(?:text|mathrm|mathbf|mathit|operatorname)\s*\{([^{}]*)\}/g, "$1");
 

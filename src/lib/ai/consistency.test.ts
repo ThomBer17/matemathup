@@ -138,6 +138,14 @@ describe("checkFinalEqualityConclusion", () => {
     expect(r.ok).toBe(false);
     expect(r.reason).toContain("explanation_answer_mismatch");
   });
+
+  it("detecta conclusión radical distinta a la answer key", () => {
+    const explanation =
+      "Ahora sumamos: √5 + √2 + (2√5)/(5) = (5√5 + 5√2 + 2√5)/(5) = (7√5 + 5√2)/(5)";
+    const r = checkFinalEqualityConclusion(explanation, "√5 + √2");
+    expect(r.ok).toBe(false);
+    expect(r.reason).toContain("explanation_answer_mismatch");
+  });
 });
 
 describe("checkIntervalAnswerKey — intervalos (caso MC más cercana)", () => {
@@ -181,6 +189,9 @@ describe("parseNumericValue", () => {
     const sqrt = String.fromCharCode(0x221a); // √ — vía codepoint para evitar mangling del transpiler
     expect(parseNumericValue(`${sqrt}9`)).toBe(3);
     expect(parseNumericValue("sqrt(16)")).toBe(4);
+    expect(parseNumericValue(`(7${sqrt}5 + 5${sqrt}2)/(5)`)).toBeCloseTo(
+      (7 * Math.sqrt(5) + 5 * Math.sqrt(2)) / 5,
+    );
   });
 
   it("rechaza texto no numérico", () => {
