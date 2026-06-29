@@ -236,7 +236,7 @@ function TopicPage() {
     const correct = answersEqual(a, exercise.correct_answer, exercise.type);
     setIsCorrect(correct);
     setRevealed(true);
-    setShowSolution(correct || retryCount > 0);
+    setShowSolution(correct);
     const evMeta = { topic: topic?.name, difficulty, exercise_type: exercise.type };
     track(EV.exerciseAnswered, { entityType: "exercise", entityId: exercise.id, metadata: evMeta });
     track(correct ? EV.exerciseCorrect : EV.exerciseIncorrect, {
@@ -271,7 +271,9 @@ function TopicPage() {
       toast.success(`Correcto! +${result.xpGain} XP`);
     } else {
       toast.error(
-        retryCount === 0 ? "Casi. Probá una vez más con la pista." : "Casi. Mirá la explicación.",
+        retryCount === 0
+          ? "Casi. Probá una vez más con la pista."
+          : "Casi. Podés revisar la explicación.",
       );
     }
     if (result.leveledUp) {
@@ -689,6 +691,8 @@ function TopicPage() {
                                 className="text-foreground"
                               />
                             </>
+                          ) : retryCount > 0 ? (
+                            "Todavía no. Revisá la pista o abrí la solución."
                           ) : (
                             "Todavía no. Probá una vez más."
                           )}
@@ -708,8 +712,8 @@ function TopicPage() {
                       {!isCorrect && !showSolution ? (
                         <div className="mt-4 border-t pt-4">
                           <p className="text-sm text-muted-foreground">
-                            Usá la pista y corregí solo el paso que cambia. Si volvés a fallar, te
-                            muestro la solución completa.
+                            Usá la pista y corregí solo el paso que cambia. Si necesitás, podés
+                            abrir la solución completa.
                           </p>
                           {hintIndex < 0 && exercise.hints?.[0] && (
                             <div className="mt-3 flex gap-2 rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm">
