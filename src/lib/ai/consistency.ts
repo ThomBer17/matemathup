@@ -424,6 +424,88 @@ function parseTwoSidedXInterval(statement: string): Interval | null {
   return { lo, hi, loOpen: m[2] === "<", hiOpen: m[3] === "<" };
 }
 
+function parseLinearXExpression(raw: string): { a: number; b: number } | null {
+  const s = normalizeStatementMath(raw).replace(/\s+/g, "");
+  const m = /^([+-]?(?:\d+(?:[.,]\d+)?(?:\/\d+)?)?)\*?x([+-]\d+(?:[.,]\d+)?(?:\/\d+)?)?$/.exec(s);
+  if (!m) return null;
+
+  let a: number;
+  if (m[1] === "" || m[1] === "+") a = 1;
+  else if (m[1] === "-") a = -1;
+  else {
+    const parsed = parseNumericValue(m[1]);
+    if (parsed === null) return null;
+    a = parsed;
+  }
+  if (a === 0) return null;
+
+  const b = m[2] ? parseNumericValue(m[2]) : 0;
+  if (b === null) return null;
+  return { a, b };
+}
+
+function parseTwoSidedLinearInequality(statement: string): Interval | null {
+  const s = normalizeStatementMath(statement);
+  const num = String.raw`-?\d+(?:[.,]\d+)?(?:\/\d+)?`;
+  const linear = String.raw`[+-]?(?:\d+(?:[.,]\d+)?(?:\/\d+)?)?\s*\*?\s*x(?:\s*[+-]\s*\d+(?:[.,]\d+)?(?:\/\d+)?)?`;
+  const re = new RegExp(String.raw`(${num})\s*(<=|<)\s*(${linear})\s*(<=|<)\s*(${num})`, "i");
+  const m = re.exec(s);
+  if (!m) return null;
+
+  const left = parseNumericValue(m[1]);
+  const expr = parseLinearXExpression(m[3]);
+  const right = parseNumericValue(m[5]);
+  if (left === null || !expr || right === null) return null;
+
+  const lower: Interval = { lo: -Infinity, hi: Infinity, loOpen: true, hiOpen: true };
+  const upper: Interval = { lo: -Infinity, hi: Infinity, loOpen: true, hiOpen: true };
+  const leftBoundary = (left - expr.b) / expr.a;
+  const rightBoundary = (right - expr.b) / expr.a;
+
+  // left < ax+b  =>  ax+b > left
+  if (expr.a > 0) {
+    lower.lo = leftBoundary;
+    lower.loOpen = m[2] === "<";
+  } else {
+    lower.hi = leftBoundary;
+    lower.hiOpen = m[2] === "<";
+  }
+
+  // ax+b < right
+  if (expr.a > 0) {
+    upper.hi = rightBoundary;
+    upper.hiOpen = m[4] === "<";
+  } else {
+    upper.lo = rightBoundary;
+    upper.loOpen = m[4] === "<";
+  }
+
+  return intersectIntervals(lower, upper);
+}
+
+export function checkTwoSidedLinearInequality(
+  statement: string,
+  correctAnswer: string,
+): ConsistencyResult {
+  const expected = parseTwoSidedLinearInequality(statement);
+  if (!expected) return { ok: true };
+
+  const answerSet = parseAnswerIntervalSet(correctAnswer);
+  if (answerSet === null) {
+    return {
+      ok: false,
+      reason: `linear_inequality_mismatch: la solución es ${fmtSet([expected])} pero answer_key="${correctAnswer}"`,
+    };
+  }
+  if (!setsEqual([expected], answerSet)) {
+    return {
+      ok: false,
+      reason: `linear_inequality_mismatch: la solución es ${fmtSet([expected])} pero answer_key="${correctAnswer}"`,
+    };
+  }
+  return { ok: true };
+}
+
 function parseAbsLinearConstraint(statement: string): IntervalSet | null {
   const s = normalizeStatementMath(statement);
   const re =
@@ -677,6 +759,8 @@ export function checkConsistency(
   if (!probability.ok) return probability;
   const remainder = checkPolynomialRemainderTheorem(statement, correctAnswer);
   if (!remainder.ok) return remainder;
+  const linearInequality = checkTwoSidedLinearInequality(statement, correctAnswer);
+  if (!linearInequality.ok) return linearInequality;
   const inequalitySystem = checkSimpleInequalitySystem(statement, correctAnswer);
   if (!inequalitySystem.ok) return inequalitySystem;
   const interval = checkIntervalConsistency(statement, correctAnswer);

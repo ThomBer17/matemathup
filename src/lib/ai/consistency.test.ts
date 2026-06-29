@@ -9,6 +9,7 @@ import {
   checkSolutionSetMatch,
   checkConsistency,
   checkSimpleInequalitySystem,
+  checkTwoSidedLinearInequality,
   checkTwoGirlsWithoutReplacement,
   checkPolynomialRemainderTheorem,
 } from "./consistency";
@@ -273,6 +274,22 @@ describe("regresiones de ejercicios reportados", () => {
     expect(wrong.reason).toContain("[-2, 4)");
   });
 
+  it("detecta inecuación lineal de tres miembros: -5 < 2x - 1 < 3 => (-2,2)", () => {
+    const statement =
+      "El conjunto solución de la inecuación $-5 < 2x - 1 < 3$ es:";
+    expect(checkTwoSidedLinearInequality(statement, "(-2,2)").ok).toBe(true);
+    expect(checkTwoSidedLinearInequality(statement, "[-2,2]").ok).toBe(false);
+    const wrong = checkTwoSidedLinearInequality(statement, "-5");
+    expect(wrong.ok).toBe(false);
+    expect(wrong.reason).toContain("(-2, 2)");
+  });
+
+  it("resuelve inecuaciones de tres miembros con coeficiente negativo", () => {
+    const statement = "Resolvé $-1 < -2x + 3 <= 7$.";
+    expect(checkTwoSidedLinearInequality(statement, "[-2,2)").ok).toBe(true);
+    expect(checkTwoSidedLinearInequality(statement, "(-2,2]").ok).toBe(false);
+  });
+
   it("acepta sistema simultáneo vacío con valor absoluto y cuadrática representada por la key", () => {
     const statement =
       "¿Cuál es el conjunto de valores de x que satisfacen simultáneamente |x - 3| < √2 y x^2 - 6x + 5 > 0?";
@@ -297,5 +314,8 @@ describe("regresiones de ejercicios reportados", () => {
     const remainder =
       "El polinomio p(x)=2x^3 - 5x^2 - 8x + 20 se divide por (x - 2). ¿Cuál es el resto de la división?";
     expect(checkConsistency(remainder, "4").ok).toBe(false);
+
+    const linearInequality = "El conjunto solución de la inecuación -5 < 2x - 1 < 3 es:";
+    expect(checkConsistency(linearInequality, "-5").ok).toBe(false);
   });
 });
