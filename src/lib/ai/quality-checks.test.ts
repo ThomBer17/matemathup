@@ -47,6 +47,8 @@ describe("checkStatementMutation — DETECTA mutación de consigna", () => {
     "Usar (x+2) en vez de (x-2) para obtener 4.",
     "En vez de (x-2) tomamos el divisor (x+2).",
     "Redefinimos la consigna para que dé entero.",
+    "Oops, recalc: usemos otro divisor.",
+    "Revisemos: la respuesta esperada era 4.",
   ];
   for (const t of malos) {
     it(`detecta: "${t}"`, () => {

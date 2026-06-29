@@ -34,6 +34,9 @@ const ARTIFICIAL_PATTERNS: ArtifactPattern[] = [
     pattern: /reinterpret[oa]\s+(la|el)\s+(consigna|pregunta|problema)/i,
     label: "reinterpretación de consigna",
   },
+  { pattern: /\boops\b/i, label: "oops/recalculo informal" },
+  { pattern: /\brevisemos\b/i, label: "revisemos corrección post-hoc" },
+  { pattern: /\brecalc\b/i, label: "recalculo post-hoc" },
   { pattern: /supongamos\s+que\s+en\s+realidad/i, label: "supongamos en realidad" },
   {
     pattern: /en\s+realidad\s+la\s+(pregunta|consigna|respuesta)\s+(era|es|sería)/i,
@@ -90,6 +93,8 @@ export function checkArtificialPatterns(
  */
 const STATEMENT_MUTATION_PATTERNS: ArtifactPattern[] = [
   { pattern: /\bcorrij\w+\b/i, label: "corrijamos/corregir la consigna" },
+  { pattern: /\brevisemos\b/i, label: "revisemos corrección post-hoc" },
+  { pattern: /\boops\b/i, label: "oops/recalculo informal" },
   {
     pattern: /\bla\s+respuesta\s+esperada\s+(era|es|deber[ií]a)\b/i,
     label: "la respuesta esperada era",

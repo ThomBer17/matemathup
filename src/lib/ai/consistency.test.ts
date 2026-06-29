@@ -7,6 +7,10 @@ import {
   checkFinalEqualityConclusion,
   checkIntervalAnswerKey,
   checkSolutionSetMatch,
+  checkConsistency,
+  checkSimpleInequalitySystem,
+  checkTwoGirlsWithoutReplacement,
+  checkPolynomialRemainderTheorem,
 } from "./consistency";
 
 // Símbolos no-ASCII vía codepoint para evitar mangling del transpiler.
@@ -247,5 +251,51 @@ describe("checkIntervalConsistency", () => {
 
   it("no bloquea si la answer key no es numérica (no verificable)", () => {
     expect(checkIntervalConsistency("en el intervalo (1, 2)", "x = 3").ok).toBe(true);
+  });
+});
+
+describe("regresiones de ejercicios reportados", () => {
+  it("detecta probabilidad sin reemplazo: 5 chicas de 12 elegidas dos veces => 5/33", () => {
+    const statement =
+      "En una clase hay 12 alumnos: 5 son chicas y 7 son chicos. Se elige al azar un delegado y, sin reemplazo, se elige un subdelegado. ¿Cuál es la probabilidad de que ambos elegidos sean chicas?";
+    expect(checkTwoGirlsWithoutReplacement(statement, "5/33").ok).toBe(true);
+    const wrong = checkTwoGirlsWithoutReplacement(statement, "5/66");
+    expect(wrong.ok).toBe(false);
+    expect(wrong.reason).toContain("5/33");
+  });
+
+  it("detecta sistema simultáneo: -2 <= x < 4 e |x-1| <= 3 => [-2,4)", () => {
+    const statement =
+      "Determine el conjunto de valores de x que cumplen simultáneamente: -2 <= x < 4 y |x-1| <= 3.";
+    expect(checkSimpleInequalitySystem(statement, "[-2,4)").ok).toBe(true);
+    const wrong = checkSimpleInequalitySystem(statement, "[-5,-1] ∪ [1,4]");
+    expect(wrong.ok).toBe(false);
+    expect(wrong.reason).toContain("[-2, 4)");
+  });
+
+  it("acepta sistema simultáneo vacío con valor absoluto y cuadrática representada por la key", () => {
+    const statement =
+      "¿Cuál es el conjunto de valores de x que satisfacen simultáneamente |x - 3| < √2 y x^2 - 6x + 5 > 0?";
+    // Este checker solo resuelve la parte de valor absoluto + intervalo explícito; no debe falsear.
+    expect(checkSimpleInequalitySystem(statement, "∅").ok).toBe(true);
+  });
+
+  it("detecta teorema del resto: p(x)=2x^3-5x^2-8x+20 dividido por x-2 => 0", () => {
+    const statement =
+      "El polinomio p(x)=2x^3 - 5x^2 - 8x + 20 se divide por (x - 2). ¿Cuál es el resto de la división?";
+    expect(checkPolynomialRemainderTheorem(statement, "0").ok).toBe(true);
+    const wrong = checkPolynomialRemainderTheorem(statement, "4");
+    expect(wrong.ok).toBe(false);
+    expect(wrong.reason).toContain("0");
+  });
+
+  it("checkConsistency agrega los nuevos detectores", () => {
+    const probability =
+      "En una clase hay 12 alumnos: 5 son chicas y 7 son chicos. Se elige al azar un delegado y, sin reemplazo, se elige un subdelegado. ¿Cuál es la probabilidad de que ambos elegidos sean chicas?";
+    expect(checkConsistency(probability, "5/66").ok).toBe(false);
+
+    const remainder =
+      "El polinomio p(x)=2x^3 - 5x^2 - 8x + 20 se divide por (x - 2). ¿Cuál es el resto de la división?";
+    expect(checkConsistency(remainder, "4").ok).toBe(false);
   });
 });

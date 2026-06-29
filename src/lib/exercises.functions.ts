@@ -32,7 +32,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
 const SIMILARITY_THRESHOLD = 0.7;
-const CURRENT_VALIDATION_VERSION = 3;
+const CURRENT_VALIDATION_VERSION = 4;
 
 const ExerciseSchema = z.object({
   statement: z.string().min(5),

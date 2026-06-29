@@ -24,6 +24,8 @@ interface Interval {
   hiOpen: boolean;
 }
 
+type IntervalSet = Interval[];
+
 /**
  * Convierte un literal numérico simple a number.
  * Soporta: enteros, decimales (con , o .), fracciones a/b, signo, raíz simple.
@@ -45,6 +47,7 @@ export function parseNumericValue(raw: string): number | null {
   if (!s) return null;
 
   s = s
+    .replace(/[{}]/g, "")
     .split(CHAR.minus)
     .join("-")
     .split(CHAR.middot)
@@ -72,6 +75,18 @@ export function parseNumericValue(raw: string): number | null {
   } catch {
     return null;
   }
+}
+
+function gcd(a: number, b: number): number {
+  let x = Math.abs(a);
+  let y = Math.abs(b);
+  while (y) [x, y] = [y, x % y];
+  return x || 1;
+}
+
+function fractionString(num: number, den: number): string {
+  const g = gcd(num, den);
+  return `${num / g}/${den / g}`;
 }
 
 /**
@@ -103,6 +118,36 @@ function inInterval(value: number, iv: Interval): boolean {
   const aboveLo = iv.loOpen ? value > iv.lo : value >= iv.lo;
   const belowHi = iv.hiOpen ? value < iv.hi : value <= iv.hi;
   return aboveLo && belowHi;
+}
+
+function intersectIntervals(a: Interval, b: Interval): Interval | null {
+  const lo = Math.max(a.lo, b.lo);
+  const hi = Math.min(a.hi, b.hi);
+  let loOpen: boolean;
+  let hiOpen: boolean;
+
+  if (a.lo > b.lo) loOpen = a.loOpen;
+  else if (b.lo > a.lo) loOpen = b.loOpen;
+  else loOpen = a.loOpen || b.loOpen;
+
+  if (a.hi < b.hi) hiOpen = a.hiOpen;
+  else if (b.hi < a.hi) hiOpen = b.hiOpen;
+  else hiOpen = a.hiOpen || b.hiOpen;
+
+  if (lo > hi) return null;
+  if (lo === hi && (loOpen || hiOpen)) return null;
+  return { lo, hi, loOpen, hiOpen };
+}
+
+function intersectSets(a: IntervalSet, b: IntervalSet): IntervalSet {
+  const out: IntervalSet = [];
+  for (const ia of a) {
+    for (const ib of b) {
+      const iv = intersectIntervals(ia, ib);
+      if (iv) out.push(iv);
+    }
+  }
+  return normalizeSet(out);
 }
 
 const INTERVAL_TOKEN =
@@ -246,7 +291,35 @@ function setsEqual(a: Interval[], b: Interval[]): boolean {
 }
 
 function fmtSet(ivs: Interval[]): string {
+  if (ivs.length === 0) return "∅";
   return ivs.map(fmtInterval).join(` ${CUP} `);
+}
+
+function parseAnswerIntervalSet(raw: string): IntervalSet | null {
+  const normalized = normSym(raw)
+    .replace(/∞|\+?inf(inito)?/gi, "Infinity")
+    .replace(/-inf(inito)?/gi, "-Infinity")
+    .replace(/sqrt\(([^)]+)\)/gi, "√($1)");
+  if (/^[\s{}]*[∅Øø]\s*[\s{}]*$/i.test(normalized) || /\bvac[ií]o\b/i.test(normalized)) {
+    return [];
+  }
+
+  const endpoint = String.raw`(?:-?Infinity|-?\d+(?:[.,]\d+)?(?:\/\d+)?(?:\s*[+-]\s*√\(?\d+(?:[.,]\d+)?\)?)?|√\(?\d+(?:[.,]\d+)?\)?)`;
+  const re = new RegExp(String.raw`([[(])\s*(${endpoint})\s*[;,]\s*(${endpoint})\s*([\])])`, "gi");
+  const out: IntervalSet = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(normalized)) !== null) {
+    const lo = m[2] === "-Infinity" ? -Infinity : parseNumericValue(m[2]);
+    const hi = m[3] === "Infinity" ? Infinity : parseNumericValue(m[3]);
+    if (lo === null || hi === null) return null;
+    out.push({
+      lo: Math.min(lo, hi),
+      hi: Math.max(lo, hi),
+      loOpen: m[1] === "(",
+      hiOpen: m[4] === ")",
+    });
+  }
+  return out.length ? normalizeSet(out) : null;
 }
 
 // Marcadores de conclusión: si aparecen, miramos solo lo que viene DESPUÉS del último.
@@ -326,6 +399,176 @@ export function checkIntervalConsistency(
     return {
       ok: false,
       reason: `la respuesta ${value} no pertenece al intervalo pedido ${loB}${iv.lo}, ${iv.hi}${hiB}`,
+    };
+  }
+  return { ok: true };
+}
+
+function normalizeStatementMath(raw: string): string {
+  return normSym(raw)
+    .replace(/\s+/g, " ")
+    .replace(/\|/g, "|")
+    .replace(/\^\{?2\}?|²/g, "^2")
+    .replace(/√\s*\(?\s*([0-9.,]+)\s*\)?/g, "sqrt($1)")
+    .replace(/−/g, "-");
+}
+
+function parseTwoSidedXInterval(statement: string): Interval | null {
+  const s = normalizeStatementMath(statement);
+  const re = /(-?\d+(?:[.,]\d+)?(?:\/\d+)?)\s*(<=|<)\s*x\s*(<=|<)\s*(-?\d+(?:[.,]\d+)?(?:\/\d+)?)/i;
+  const m = re.exec(s);
+  if (!m) return null;
+  const lo = parseNumericValue(m[1]);
+  const hi = parseNumericValue(m[4]);
+  if (lo === null || hi === null) return null;
+  return { lo, hi, loOpen: m[2] === "<", hiOpen: m[3] === "<" };
+}
+
+function parseAbsLinearConstraint(statement: string): IntervalSet | null {
+  const s = normalizeStatementMath(statement);
+  const re =
+    /\|\s*x\s*([+-])\s*(\d+(?:[.,]\d+)?)\s*\|\s*(<=|<|>=|>)\s*(sqrt\(\d+(?:[.,]\d+)?\)|\d+(?:[.,]\d+)?(?:\/\d+)?)/i;
+  const m = re.exec(s);
+  if (!m) return null;
+  const shift = parseNumericValue(m[2]);
+  const radius = parseNumericValue(m[4]);
+  if (shift === null || radius === null || radius < 0) return null;
+  const center = m[1] === "-" ? shift : -shift;
+  const op = m[3];
+  if (op === "<" || op === "<=") {
+    return [
+      {
+        lo: center - radius,
+        hi: center + radius,
+        loOpen: op === "<",
+        hiOpen: op === "<",
+      },
+    ];
+  }
+  return normalizeSet([
+    { lo: -Infinity, hi: center - radius, loOpen: true, hiOpen: op === ">" },
+    { lo: center + radius, hi: Infinity, loOpen: op === ">", hiOpen: true },
+  ]);
+}
+
+export function checkSimpleInequalitySystem(
+  statement: string,
+  correctAnswer: string,
+): ConsistencyResult {
+  if (!/simult[aá]neamente|intersect|conjunto\s+de\s+valores/i.test(statement)) {
+    return { ok: true };
+  }
+  if (!/\|/.test(statement)) return { ok: true };
+
+  const interval = parseTwoSidedXInterval(statement);
+  const absSet = parseAbsLinearConstraint(statement);
+  const answerSet = parseAnswerIntervalSet(correctAnswer);
+  if (!interval || !absSet || answerSet === null) return { ok: true };
+
+  const expected = intersectSets([interval], absSet);
+  if (!setsEqual(expected, answerSet)) {
+    return {
+      ok: false,
+      reason: `inequality_system_mismatch: la solución es ${fmtSet(expected)} pero answer_key="${correctAnswer}"`,
+    };
+  }
+  return { ok: true };
+}
+
+export function checkTwoGirlsWithoutReplacement(
+  statement: string,
+  correctAnswer: string,
+): ConsistencyResult {
+  const s = statement.toLowerCase();
+  if (!/sin\s+reemplazo|sin\s+reposici[oó]n|sin\s+devoluci[oó]n/.test(s)) return { ok: true };
+  if (!/amb[oa]s?.{0,35}chicas|dos.{0,20}chicas/.test(s)) return { ok: true };
+
+  const totalMatch = /(?:clase|grupo).{0,20}(?:hay|tiene)\s+(\d+)\s+alumn/i.exec(statement);
+  const girlsMatch = /(\d+)\s+(?:son\s+)?chicas/i.exec(statement);
+  if (!totalMatch || !girlsMatch) return { ok: true };
+
+  const total = Number(totalMatch[1]);
+  const girls = Number(girlsMatch[1]);
+  if (!Number.isInteger(total) || !Number.isInteger(girls) || total < 2 || girls < 2) {
+    return { ok: true };
+  }
+
+  const expected = fractionString(girls * (girls - 1), total * (total - 1));
+  const expectedValue = parseNumericValue(expected);
+  const answerValue = parseNumericValue(correctAnswer);
+  if (expectedValue === null || answerValue === null) return { ok: true };
+  if (!numericClose(expectedValue, answerValue)) {
+    return {
+      ok: false,
+      reason: `probability_without_replacement_mismatch: la probabilidad es ${expected} pero answer_key="${correctAnswer}"`,
+    };
+  }
+  return { ok: true };
+}
+
+function parsePolynomialTerms(polyRaw: string): Map<number, number> | null {
+  const poly = normalizeStatementMath(polyRaw)
+    .replace(/\s+/g, "")
+    .replace(/\*/g, "")
+    .replace(/^\+/g, "");
+  const normalized = poly.replace(/-/g, "+-");
+  const terms = normalized.split("+").filter(Boolean);
+  if (!terms.length) return null;
+  const out = new Map<number, number>();
+  for (const term of terms) {
+    let coef: number;
+    let pow: number;
+    if (term.includes("x")) {
+      const [coefRaw, rest] = term.split("x");
+      if (coefRaw === "" || coefRaw === "+") coef = 1;
+      else if (coefRaw === "-") coef = -1;
+      else {
+        const parsed = parseNumericValue(coefRaw);
+        if (parsed === null) return null;
+        coef = parsed;
+      }
+      const powMatch = /^\^(\d+)$/.exec(rest ?? "");
+      pow = powMatch ? Number(powMatch[1]) : 1;
+    } else {
+      const parsed = parseNumericValue(term);
+      if (parsed === null) return null;
+      coef = parsed;
+      pow = 0;
+    }
+    out.set(pow, (out.get(pow) ?? 0) + coef);
+  }
+  return out;
+}
+
+function evaluatePolynomial(terms: Map<number, number>, x: number): number {
+  let total = 0;
+  for (const [pow, coef] of terms) total += coef * x ** pow;
+  return total;
+}
+
+export function checkPolynomialRemainderTheorem(
+  statement: string,
+  correctAnswer: string,
+): ConsistencyResult {
+  if (!/resto|residuo/i.test(statement)) return { ok: true };
+  const s = normalizeStatementMath(statement);
+  const polyMatch = /p\s*\(\s*x\s*\)\s*=\s*([^?]+?)\s+se\s+divide/i.exec(s);
+  const divisorMatch = /\(\s*x\s*([+-])\s*(\d+(?:[.,]\d+)?)\s*\)/i.exec(s);
+  if (!polyMatch || !divisorMatch) return { ok: true };
+
+  const aRaw = parseNumericValue(divisorMatch[2]);
+  if (aRaw === null) return { ok: true };
+  const root = divisorMatch[1] === "-" ? aRaw : -aRaw;
+  const terms = parsePolynomialTerms(polyMatch[1]);
+  if (!terms) return { ok: true };
+
+  const expected = evaluatePolynomial(terms, root);
+  const answer = parseNumericValue(correctAnswer);
+  if (answer === null) return { ok: true };
+  if (!numericClose(expected, answer)) {
+    return {
+      ok: false,
+      reason: `remainder_theorem_mismatch: el resto es ${expected} pero answer_key="${correctAnswer}"`,
     };
   }
   return { ok: true };
@@ -430,6 +673,12 @@ export function checkConsistency(
   correctAnswer: string,
   explanation = "",
 ): ConsistencyResult {
+  const probability = checkTwoGirlsWithoutReplacement(statement, correctAnswer);
+  if (!probability.ok) return probability;
+  const remainder = checkPolynomialRemainderTheorem(statement, correctAnswer);
+  if (!remainder.ok) return remainder;
+  const inequalitySystem = checkSimpleInequalitySystem(statement, correctAnswer);
+  if (!inequalitySystem.ok) return inequalitySystem;
   const interval = checkIntervalConsistency(statement, correctAnswer);
   if (!interval.ok) return interval;
   const numericKey = checkAnswerKeyConsistency(explanation, correctAnswer);
