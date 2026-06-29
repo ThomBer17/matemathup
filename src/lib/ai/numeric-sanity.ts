@@ -20,7 +20,7 @@ export interface SanityResult {
 
 const APPROX = "≈"; // ≈
 const LETTER = /[a-zA-ZáéíóúñÁÉÍÓÚÑ]/;
-const NUMERIC = /[0-9.,+\-*/×·÷()√\s]/; // dígitos, operadores, paréntesis, √
+const NUMERIC = /[0-9.,+\-−*/×·÷()√\s]/; // dígitos, operadores, paréntesis, √
 
 function round(n: number): number {
   return Math.round(n * 1000) / 1000;

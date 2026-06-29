@@ -19,6 +19,12 @@ describe("checkNumericSanity — debe DETECTAR errores", () => {
     const r = checkNumericSanity("Sabemos que 2 + 3 = 6.");
     expect(r.ok).toBe(false);
   });
+
+  it("detecta suma/resta incorrecta con signo menos unicode", () => {
+    const r = checkNumericSanity("Sumando: 2.25 + (−2) − 2 = 2.25 − 4 − 2 = 0.25.");
+    expect(r.ok).toBe(false);
+    expect(r.reason).toContain("numeric_sanity_failed");
+  });
 });
 
 describe("checkNumericSanity — NO debe marcar lo correcto", () => {
