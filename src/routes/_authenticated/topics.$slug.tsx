@@ -517,9 +517,11 @@ function TopicPage() {
                   <div className="mt-7 space-y-2.5">
                     {exercise.type === "multiple_choice" &&
                       exercise.options?.map((opt, i) => {
+                        const revealCorrectAnswer = Boolean(isCorrect || showSolution);
                         const isPicked = answer === opt;
                         const isRight =
-                          revealed && answersEqual(opt, exercise.correct_answer, "multiple_choice");
+                          revealCorrectAnswer &&
+                          answersEqual(opt, exercise.correct_answer, "multiple_choice");
                         const isWrong = revealed && isPicked && !isRight;
                         const dim = revealed && !isRight && !isWrong;
                         return (
@@ -573,8 +575,9 @@ function TopicPage() {
                           <div className="grid grid-cols-2 gap-2.5">
                             {(["true", "false"] as const).map((v) => {
                               const label = trueFalseLabel(v);
+                              const revealCorrectAnswer = Boolean(isCorrect || showSolution);
                               const isPicked = answer === v;
-                              const isRight = revealed && correctCanonical === v;
+                              const isRight = revealCorrectAnswer && correctCanonical === v;
                               const isWrong = revealed && isPicked && !isRight;
                               const dim = revealed && !isRight && !isWrong;
                               return (
