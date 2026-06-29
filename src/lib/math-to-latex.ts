@@ -89,8 +89,13 @@ const GREEK_UNICODE: Record<string, string> = {
   Ω: "\\Omega",
 };
 
-const KNOWN_FN_RE =
-  /\b(sin|cos|tan|cot|sec|csc|log|ln|sqrt|sen|tg|cotg|cosec|lim|max|min|mcd|mcm|exp)\b/gi;
+const KNOWN_FN_NAMES =
+  "sin|cos|tan|cot|sec|csc|log|ln|sqrt|sen|tg|cotg|cosec|lim|max|min|mcd|mcm|exp";
+
+const KNOWN_FN_RE = new RegExp(
+  String.raw`(^|[^A-Za-zÁÉÍÓÚÜáéíóúüÑñ])(?:${KNOWN_FN_NAMES})(?=\s*\(|\b)`,
+  "gi",
+);
 
 /**
  * ¿La expresión es matemática "compacta" (no prosa)? Si al sacar funciones conocidas
@@ -98,7 +103,7 @@ const KNOWN_FN_RE =
  * conviene tipografiarla con KaTeX (saldría en bastardilla y con subíndices raros).
  */
 export function isRenderableMath(run: string): boolean {
-  const stripped = run.replace(KNOWN_FN_RE, " ");
+  const stripped = run.replace(KNOWN_FN_RE, "$1 ");
   return !/[A-Za-zÁÉÍÓÚÜáéíóúüÑñ]{3,}/.test(stripped);
 }
 

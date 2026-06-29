@@ -76,12 +76,17 @@ describe("plainMathToLatex — notación plana/unicode → LaTeX", () => {
     expect(r).toContain("\\sqrt{3}");
     expect(r).not.toContain("sqrt(");
   });
+
+  it("convierte raíces ascii pegadas a coeficientes", () => {
+    expect(plainMathToLatex("sqrt(5) + 3sqrt(2)")).toBe("\\sqrt{5} + 3\\sqrt{2}");
+  });
 });
 
 describe("isRenderableMath", () => {
   it("acepta expresiones compactas", () => {
     expect(isRenderableMath("√(15² - 9²)")).toBe(true);
     expect(isRenderableMath("cos(θ)=4/5")).toBe(true);
+    expect(isRenderableMath("sqrt(5) + 3sqrt(2)")).toBe(true);
   });
 
   it("rechaza prosa con palabras largas", () => {
